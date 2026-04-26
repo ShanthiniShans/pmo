@@ -151,6 +151,26 @@ window.updateJiraMapping = async function(memberId, jiraId) {
 };
 
 // ─── INIT ─────────────────────────────────────────────────
+
+// Team track filter
+window._setTeamTrack = function(track) {
+  APP_STATE._teamTrackFilter = track;
+  navigateTo('team');
+};
+
+// Resource week navigation
+window._resourceWeek = function(direction, mode) {
+  if (mode === 'reset') {
+    APP_STATE._resourceWeekOffset = 0;
+  } else {
+    const current = APP_STATE._resourceWeekOffset || 0;
+    const next = current + direction;
+    if (next > 0) return;
+    APP_STATE._resourceWeekOffset = next;
+  }
+  navigateTo('resources');
+};
+
 export async function initApp() {
   const content = document.getElementById('content');
   content.innerHTML = '<div class="loading">Connecting to Firebase…</div>';
@@ -168,3 +188,27 @@ export async function initApp() {
   await initData(scheduleRefresh);
   navigateTo('dashboard');
 }
+
+// Test Jira connection
+window.testJiraConfig = async function() {
+  const result = document.getElementById('jira-test-result');
+  if (result) result.innerHTML = '<span class="small text-lt">Testing…</span>';
+  const { JiraService } = await import('./data.js');
+  const cfg = JiraService.getConfig();
+  if (!cfg.baseUrl || !cfg.token) {
+    if (result) result.innerHTML = '<span class="small text-red">Please fill in URL, email and token first.</span>';
+    return;
+  }
+  try {
+    const headers = { 'Authorization': 'Basic ' + btoa(`${cfg.email}:${cfg.token}`), 'Content-Type': 'application/json' };
+    const res = await fetch(`${cfg.baseUrl}/rest/api/3/myself`, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      if (result) result.innerHTML = `<span class="small text-green">✅ Connected as ${data.displayName||data.emailAddress}</span>`;
+    } else {
+      if (result) result.innerHTML = `<span class="small text-red">❌ Failed (${res.status}). Check your URL, email and token.</span>`;
+    }
+  } catch(e) {
+    if (result) result.innerHTML = `<span class="small text-amber">⚠️ CORS error — Jira API calls only work when the app is hosted (not localhost). Your config is saved and will work when deployed.</span>`;
+  }
+};

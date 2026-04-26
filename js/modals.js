@@ -81,6 +81,7 @@ export function openModal(type, id, extra) {
     case 'impact':        return modalImpact(id);
     case 'workflow':      return modalWorkflow(id);
     case 'resource':      return modalResource(id, extra);
+    case 'resourceDay':   return modalResourceDay(id, extra);
     case 'notes':         return modalNotes(id, extra);
     case 'onboarding':    return modalOnboarding(id);
     case 'capacity':      return modalCapacity();
@@ -990,4 +991,89 @@ window.doAssignMember = async function(trackName) {
     await DB.update('teamMembers', memId, { track: trackName });
     closeModal();
   } catch(e) { alert('Error: '+e.message); }
+};
+
+// ─── RESOURCE DAY MODAL (multi-track per day) ─────────────
+async function modalResourceDay(memberId, date) {
+  const member = APP_STATE.teamMembers.find(m => m.id === memberId);
+  const existing = APP_STATE.resources.filter(r => r.memberId === memberId && r.date === date);
+  const tracks = APP_STATE.settings.trackNames || ['Track 1','Track 2','Track 3'];
+  const trackColors = {'Track 1':'#1B2B5E','Track 2':'#00A896','Track 3':'#E8452C'};
+
+  show(`<div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Hours — ${member ? member.name : 'Member'}</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text-lt);margin-bottom:16px">
+        📅 ${new Date(date).toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long', year:'numeric'})}
+      </div>
+
+      ${existing.length > 0 ? `
+      <div style="margin-bottom:16px">
+        <div class="form-label">Existing Logs</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${existing.map(log => `
+          <div style="display:flex;align-items:center;gap:8px;background:${trackColors[log.track]||'#1B2B5E'}10;border:1px solid ${trackColors[log.track]||'#1B2B5E'}30;border-radius:7px;padding:8px 12px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${trackColors[log.track]||'#1B2B5E'};flex-shrink:0"></div>
+            <span style="font-size:13px;font-weight:700;color:${trackColors[log.track]||'#1B2B5E'}">${log.hours}h</span>
+            <span style="font-size:13px;flex:1">${log.track||'—'}</span>
+            ${log.activity ? `<span style="font-size:11px;color:var(--text-lt)">${log.activity}</span>` : ''}
+            <button class="btn btn-icon danger btn-xs" onclick="deleteResourceLog('${log.id}','${memberId}','${date}')">🗑</button>
+          </div>`).join('')}
+        </div>
+        <div style="font-size:12px;color:var(--text-lt);margin-top:6px">
+          Total: <strong>${existing.reduce((s,r)=>s+(parseFloat(r.hours)||0),0)}h</strong> logged today
+        </div>
+      </div>
+      <hr class="divider"/>` : ''}
+
+      <div class="form-label">Add New Entry</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Track *</label>
+          <select class="form-control" id="rdTrack">
+            <option value="">Select track…</option>
+            ${tracks.map(t => `<option value="${t}" ${member?.track===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hours *</label>
+          <input type="number" class="form-control" id="rdHours" min="0.5" max="16" step="0.5" value="8" placeholder="e.g. 4"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Activity / Project</label>
+        <input class="form-control" id="rdActivity" placeholder="e.g. API development, Sprint planning…"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" onclick="saveResourceDay('${memberId}','${date}')">+ Add Entry</button>
+    </div>
+  </div>`);
+}
+
+window.saveResourceDay = async function(memberId, date) {
+  const track    = document.getElementById('rdTrack')?.value;
+  const hours    = parseFloat(document.getElementById('rdHours')?.value);
+  const activity = document.getElementById('rdActivity')?.value?.trim() || '';
+
+  if (!track)         return alert('Please select a track');
+  if (!hours || hours <= 0) return alert('Please enter valid hours');
+
+  try {
+    await DB.add('resources', { memberId, date, track, hours, activity });
+    // Re-open modal to show updated list
+    openModal('resourceDay', memberId, date);
+  } catch(e) { alert('Error: ' + e.message); }
+};
+
+window.deleteResourceLog = async function(logId, memberId, date) {
+  if (!confirm('Delete this log entry?')) return;
+  try {
+    await DB.remove('resources', logId);
+    openModal('resourceDay', memberId, date);
+  } catch(e) { alert('Error: ' + e.message); }
 };
