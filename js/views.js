@@ -191,7 +191,7 @@ export function renderTracks() {
     ${tracks.map((t,i)=>{
       const tProj = projects.filter(p=>p.track===t.name);
       const tMem = members.filter(m=>m.track===t.name);
-      const cls = ['track-1','track-2','track-3'][i]||'track-1';
+      const clsMap = {'Track 1':'track-1','Track 2':'track-2','Track 3':'track-3'}; const cls = clsMap[t.name] || ['track-1','track-2','track-3'][i] || 'track-1';
       return `<div class="track-card ${cls}">
         <div class="track-header">
           <div>
@@ -377,7 +377,7 @@ export function renderMilestones() {
   const all = APP_STATE.milestones;
   const f = APP_STATE.filters;
   const ms = f.track ? all.filter(m=>m.track===f.track) : all;
-  const overdue   = ms.filter(m=>normaliseStatus(m.status)==='Overdue');
+  ms.sort((a,b)=>{ if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate > b.dueDate ? 1 : -1; }); const overdue = ms.filter(m=>normaliseStatus(m.status)==='Overdue');
   const atRisk    = ms.filter(m=>normaliseStatus(m.status)==='At Risk');
   const onTrack   = ms.filter(m=>['On Track','Yet to Start'].includes(normaliseStatus(m.status)));
   const completed = ms.filter(m=>normaliseStatus(m.status)==='Completed');
@@ -638,7 +638,7 @@ export function renderTeam() {
   const allMembers = APP_STATE.teamMembers;
   const tracks = ['All',...(APP_STATE.settings.trackNames||['Track 1','Track 2','Track 3'])];
   const activeTrack = APP_STATE._teamTrackFilter||'All';
-  const members = activeTrack==='All' ? allMembers : allMembers.filter(m=>m.track===activeTrack);
+  const unsorted = activeTrack==='All' ? allMembers : allMembers.filter(m=>m.track===activeTrack); const members = [...unsorted].sort((a,b)=>(b.availability||100)-(a.availability||100));
 
   return `
   <div class="view-header">
@@ -649,7 +649,7 @@ export function renderTeam() {
     ${tracks.map(t=>{
       const isActive = activeTrack===t;
       const count = t==='All' ? allMembers.length : allMembers.filter(m=>m.track===t).length;
-      const color = TRACK_COLORS[t]||'#1B2B5E';
+      const color = t==='All' ? '#1B2B5E' : (TRACK_COLORS[t]||'#1B2B5E');
       return `<button onclick="window._setTeamTrack('${t}')"
         style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid ${isActive?color:'var(--border)'};background:${isActive?color:'#fff'};color:${isActive?'#fff':color};font-family:'DM Sans',sans-serif;transition:all .15s">
         ${t} (${count})
@@ -668,7 +668,7 @@ export function renderTeam() {
               <div style="font-weight:700;color:var(--navy)">${m.name}</div>
             </div></td>
             <td>${m.role||'—'}</td>
-            <td>${m.track?`<span class="badge badge-navy" style="background:${TRACK_COLORS[m.track]||'#1B2B5E'}">${m.track}</span>`:'—'}</td>
+            <td>${m.track?`<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${TRACK_COLORS[m.track]||'#1B2B5E'};color:#fff">${m.track}</span>`:'—'}</td>
             <td><code style="font-size:12px;color:var(--text-mid)">${m.jiraId||'—'}</code></td>
             <td><div class="flex-center gap-8" style="min-width:120px">${progressBar(m.availability||100)}<span class="small">${m.availability||100}%</span></div></td>
             <td>
@@ -683,58 +683,121 @@ export function renderTeam() {
 }
 
 // ─── CAPACITY ─────────────────────────────────────────────
+
+// ─── CAPACITY ─────────────────────────────────────────────
 export function renderCapacity() {
-  const members = APP_STATE.teamMembers;
+  const members = [...APP_STATE.teamMembers].sort((a,b)=>(b.availability||100)-(a.availability||100));
   const f = APP_STATE.filters;
   const projects = f.track ? APP_STATE.projects.filter(p=>p.track===f.track) : APP_STATE.projects;
+  const milestones = APP_STATE.milestones;
+
+  // Auto-calculate project completion % from milestones
+  function projectCompletion(p) {
+    const pMs = milestones.filter(m => m.projectId === p.id);
+    if (pMs.length === 0) return p.progress || 0;
+    const done = pMs.filter(m => normaliseStatus(m.status) === 'Completed').length;
+    return Math.round(done / pMs.length * 100);
+  }
+
+  // Total allocation per project across all members
+  const projectTotals = projects.map(p => ({
+    allocated: members.reduce((s,m)=>s+((m.allocations||{})[p.id]||0), 0),
+    completion: projectCompletion(p)
+  }));
+
   return `
   ${filterBar()}
   <div class="view-header">
     <h1 class="view-title">Capacity Planning</h1>
     <button class="btn btn-primary" onclick="openModal('capacity')">Edit Allocations</button>
   </div>
+  <div style="background:#fff8f0;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400e">
+    💡 <strong>Completion %</strong> is auto-calculated from milestones. <strong>Availability</strong> is set per member. Allocation is entered manually via Edit Allocations.
+  </div>
   <div class="card" style="padding:0">
     <div class="capacity-scroll">
       <table class="capacity-table">
         <thead>
           <tr>
-            <th class="member-col">Team Member</th><th>Avail.</th>
-            ${projects.map(p=>`<th title="${p.name}">${p.name.length>13?p.name.slice(0,13)+'…':p.name}</th>`).join('')}
-            <th>Total</th><th>Status</th>
+            <th class="member-col">Team Member</th>
+            <th>Availability</th>
+            ${projects.map(p => {
+              const completion = projectCompletion(p);
+              const cc = completion>=70?'#059669':completion>=40?'#D97706':'#DC2626';
+              return `<th title="${p.name}">
+                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">${p.name.length>13?p.name.slice(0,13)+'…':p.name}</div>
+                <div style="font-size:9px;font-weight:700;color:${cc};margin-top:2px">${completion}% complete</div>
+              </th>`;
+            }).join('')}
+            <th>Total Alloc</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
-          ${members.map(m=>{
+          ${members.map(m => {
             const allocs = projects.map(p=>(m.allocations||{})[p.id]||0);
-            const total = allocs.reduce((s,a)=>s+a,0);
-            const avail = m.availability||100;
-            const cls = total>avail?'over':total<60?'under':'ok';
+            const total  = allocs.reduce((s,a)=>s+a, 0);
+            const avail  = m.availability || 100;
+            const cls    = total > avail ? 'over' : total > 0 && total <= avail ? 'ok' : 'under';
+            const tcol   = TRACK_COLORS[m.track] || '#1B2B5E';
             return `<tr>
               <td class="member-cell">
                 <div class="flex-center gap-8">
-                  <div class="chip-avatar">${avatar(m.name)}</div>
-                  <div><div class="member-name">${m.name}</div><div class="member-role">${m.role||''}</div></div>
+                  <div class="chip-avatar" style="background:${tcol}">${avatar(m.name)}</div>
+                  <div>
+                    <div class="member-name">${m.name}</div>
+                    <div class="member-role">${m.role||''}</div>
+                    <div style="font-size:10px;color:${tcol};font-weight:700">${m.track||''}</div>
+                  </div>
                 </div>
               </td>
-              <td style="text-align:center;font-size:12px">${avail}%</td>
-              ${projects.map((p,i)=>{
-                const v=allocs[i];
+              <td style="text-align:center;min-width:80px">
+                <div style="font-size:15px;font-weight:800;color:var(--navy)">${avail}%</div>
+                <div class="cap-bar" style="margin:4px auto 0;width:60px">
+                  <div style="width:${avail}%;background:var(--teal)"></div>
+                </div>
+              </td>
+              ${projects.map((p,i) => {
+                const v = allocs[i];
+                const pct = avail > 0 ? Math.min((v/avail*100), 100).toFixed(0) : 0;
                 return `<td class="${v>0?'alloc-active':''}">
-                  <div class="alloc-val ${total>avail?'over':''}">${v||0}%</div>
-                  ${v>0?`<div class="cap-bar"><div style="width:${Math.min(v,100)}%;background:${total>avail?'var(--coral)':'var(--teal)'}"></div></div>`:''}
+                  ${v > 0 ? `
+                  <div class="alloc-val ${v>avail?'over':''}" style="font-size:14px">${v}%</div>
+                  <div class="cap-bar" style="width:60px;margin:3px auto 0">
+                    <div style="width:${pct}%;background:${v>avail?'var(--coral)':'var(--teal)'}"></div>
+                  </div>` : `<div style="color:var(--text-lt);font-size:12px;text-align:center">—</div>`}
                 </td>`;
               }).join('')}
-              <td style="text-align:center;font-weight:700;color:${total>avail?'var(--red)':total<60?'var(--amber)':'var(--teal)'}">${total}%</td>
-              <td><span class="util-badge ${cls}">${cls==='over'?'Over':cls==='under'?'Under':'OK'}</span></td>
+              <td style="text-align:center">
+                <div style="font-size:16px;font-weight:800;color:${total>avail?'var(--red)':total===0?'var(--text-lt)':'var(--teal)'}">
+                  ${total}%
+                </div>
+                <div style="font-size:10px;color:var(--text-lt)">${avail > 0 ? Math.round(total/avail*100) : 0}% of capacity</div>
+              </td>
+              <td>
+                <span class="util-badge ${cls}">
+                  ${cls==='over'?'Over-allocated':cls==='under'?'Under-allocated':'Optimal'}
+                </span>
+              </td>
             </tr>`;
           }).join('')}
+          <!-- Summary row -->
+          <tr style="background:#F5F6FA;border-top:2px solid var(--border)">
+            <td class="member-cell" style="font-size:12px;font-weight:700;color:var(--text-lt)">PROJECT TOTALS</td>
+            <td></td>
+            ${projectTotals.map(pt => `
+            <td style="text-align:center">
+              <div style="font-size:13px;font-weight:700;color:var(--navy)">${pt.allocated}% alloc</div>
+              <div style="font-size:10px;color:var(--text-lt)">${pt.completion}% done</div>
+            </td>`).join('')}
+            <td></td><td></td>
+          </tr>
         </tbody>
       </table>
     </div>
   </div>`;
 }
 
-// ─── RESOURCE TRACKING ────────────────────────────────────
 export function renderResources() {
   const members = APP_STATE.teamMembers;
   const resources = APP_STATE.resources;

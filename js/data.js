@@ -4,7 +4,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import {
   getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, orderBy, setDoc, serverTimestamp
+  doc, onSnapshot, query, orderBy, setDoc, serverTimestamp,
+  memoryLocalCache, initializeFirestore, CACHE_SIZE_UNLIMITED
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const FIREBASE_CONFIG = {
@@ -17,7 +18,7 @@ const FIREBASE_CONFIG = {
 };
 
 const app = initializeApp(FIREBASE_CONFIG);
-export const db = getFirestore(app);
+export const db = initializeFirestore(app, { localCache: memoryLocalCache() });
 
 // ─── APP STATE ───────────────────────────────────────────
 export const APP_STATE = {
