@@ -1,0 +1,2343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Klarion — Program & Product Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap"/>
+<style>
+:root{
+  --sb:#160d2e; --sb-w:210px;
+  --navy:#1a1040; --navy2:#2d1f5e;
+  --teal:#06b6d4; --teal-dk:#0891b2;
+  --purple:#7c3aed; --coral:#ef4444;
+  --bg:#f4f6fb; --white:#fff;
+  --border:#e2e6f0; --border-dk:#c8d0e4;
+  --text:#1a1040; --mid:#4b5568; --lt:#94a3b8;
+  --green:#22c55e; --amber:#f59e0b; --blue:#3b82f6; --red:#ef4444;
+  --r:10px; --rs:6px;
+  --sh:0 1px 3px rgba(26,16,64,.07),0 4px 16px rgba(26,16,64,.05);
+  --shm:0 4px 24px rgba(26,16,64,.10);
+  --shl:0 8px 40px rgba(26,16,64,.16);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.5;display:flex;min-height:100vh;overflow-x:hidden}
+
+/* ── SIDEBAR ── */
+#sidebar{width:var(--sb-w);min-height:100vh;background:var(--sb);position:fixed;top:0;left:0;display:flex;flex-direction:column;z-index:100}
+.sb-logo{padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:9px;text-decoration:none}
+.sb-logo-icon{width:32px;height:32px;background:linear-gradient(135deg,#7c3aed,#06b6d4);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0}
+.sb-logo-text{font-size:13px;font-weight:800;color:#fff;letter-spacing:-.2px;line-height:1.2}
+.sb-logo-sub{font-size:9px;color:rgba(255,255,255,.35);font-weight:400;display:block;margin-top:1px}
+.nav-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 0}
+.nav-scroll::-webkit-scrollbar{width:3px}
+.nav-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px}
+.nav-group{padding:12px 0 4px}
+.nav-group-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:1px;padding:0 14px 5px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:12px;font-weight:500;color:rgba(255,255,255,.55);cursor:pointer;border-left:2px solid transparent;transition:all .12s;white-space:nowrap}
+.nav-item svg{flex-shrink:0;opacity:.7}
+.nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.9)}
+.nav-item.active{background:rgba(255,255,255,.10);color:#fff;font-weight:600;border-left-color:var(--teal)}
+.nav-item.active svg{opacity:1}
+.sb-bottom{border-top:1px solid rgba(255,255,255,.07);padding:6px 0 10px}
+.sb-crumb{padding:10px 14px 2px;font-size:9px;color:rgba(255,255,255,.22);text-transform:uppercase;letter-spacing:.6px}
+
+/* ── MAIN ── */
+#main{margin-left:var(--sb-w);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.content{padding:24px 28px;flex:1;max-width:1500px;width:100%}
+
+/* ── VIEW HEADER ── */
+.vh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.vh-left h1{font-size:24px;font-weight:800;color:var(--navy);line-height:1.2}
+.vh-left .sub{font-size:12px;color:var(--lt);margin-top:2px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:none;transition:all .12s;white-space:nowrap}
+.btn-primary{background:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(6,182,212,.3)}
+.btn-primary:hover{background:var(--teal-dk)}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-navy:hover{background:#120a30}
+.btn-ghost{background:transparent;border:1px solid var(--border-dk);color:var(--mid)}
+.btn-ghost:hover{background:var(--bg);border-color:var(--navy);color:var(--navy)}
+.btn-danger{background:#fef2f2;border:1px solid #fca5a5;color:var(--red)}
+.btn-danger:hover{background:#fee2e2}
+.btn-sm{padding:5px 12px;font-size:11px;border-radius:14px}
+.btn-xs{padding:3px 8px;font-size:10px;border-radius:10px}
+.btn-icon{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:5px;font-size:13px;color:var(--mid);font-family:'DM Sans',sans-serif;transition:background .12s}
+.btn-icon:hover{background:var(--bg)}
+
+/* ── FILTER ROW ── */
+.filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.6px}
+.fg select,.fg input{padding:6px 10px;border:1px solid var(--border-dk);border-radius:var(--rs);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white);min-width:120px}
+.fg select:focus,.fg input:focus{outline:none;border-color:var(--teal)}
+
+/* ── CARDS ── */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+.card-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px}
+
+/* ── STAT ROW ── */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
+.stat-num{font-size:30px;font-weight:800;color:var(--navy);line-height:1}
+.stat-lbl{font-size:11px;color:var(--lt);margin-top:4px}
+.stat-card.t{border-top:3px solid var(--teal)}
+.stat-card.b{border-top:3px solid var(--blue)}
+.stat-card.g{border-top:3px solid var(--green)}
+.stat-card.a{border-top:3px solid var(--amber)}
+.stat-card.r{border-top:3px solid var(--red)}
+.stat-card.p{border-top:3px solid var(--purple)}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;border-radius:var(--r)}
+table.dt{width:100%;border-collapse:collapse;font-size:12px}
+.dt th{background:var(--bg);color:var(--lt);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:9px 12px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap}
+.dt td{padding:11px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.dt tr:last-child td{border-bottom:none}
+.dt tr.clk{cursor:pointer}
+.dt tr.clk:hover td{background:#fafbff}
+.dt tr.done td{opacity:.6}
+
+/* ── PROGRESS ── */
+.pb{height:6px;background:#e8eaf0;border-radius:4px;overflow:hidden}
+.pb-fill{height:100%;border-radius:4px;transition:width .3s}
+
+/* ── FORM ── */
+.form-group{margin-bottom:13px}
+.form-label{display:block;font-size:10px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.form-control{width:100%;padding:8px 11px;border:1px solid var(--border-dk);border-radius:var(--rs);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white);transition:border-color .12s}
+.form-control:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(6,182,212,.1)}
+textarea.form-control{resize:vertical;min-height:70px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.form-row-full{grid-column:1/-1}
+
+/* ── TYPEAHEAD ── */
+.ta-wrap{position:relative}
+.ta-input{width:100%;padding:8px 11px;border:1px solid var(--border-dk);border-radius:var(--rs);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white)}
+.ta-input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(6,182,212,.1)}
+.ta-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--white);border:1px solid var(--border-dk);border-radius:var(--rs);box-shadow:var(--shm);z-index:500;max-height:200px;overflow-y:auto;display:none}
+.ta-dropdown.open{display:block}
+.ta-opt{padding:8px 12px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px}
+.ta-opt:hover{background:var(--bg)}
+.ta-selected{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.ta-chip{display:inline-flex;align-items:center;gap:5px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:3px 9px 3px 9px;font-size:11px;color:#2563eb;font-weight:600}
+.ta-chip button{background:none;border:none;cursor:pointer;font-size:13px;color:#2563eb;line-height:1;padding:0 0 0 2px}
+
+/* ── MODAL ── */
+.mo{position:fixed;inset:0;z-index:1000;background:rgba(22,13,46,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px}
+.mo-box{background:var(--white);border-radius:var(--r);box-shadow:var(--shl);width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+.mo-box.lg{max-width:760px}
+.mo-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--white);z-index:2}
+.mo-title{font-size:15px;font-weight:800;color:var(--navy)}
+.mo-close{background:none;border:none;font-size:21px;cursor:pointer;color:var(--lt);line-height:1}
+.mo-body{padding:18px 20px}
+.mo-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--white)}
+
+/* ── AVATAR ── */
+.av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;background:var(--navy)}
+.av-sm{width:22px;height:22px;font-size:9px}
+.av-lg{width:36px;height:36px;font-size:13px}
+
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+
+/* ── MISC ── */
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.empty{text-align:center;padding:40px 20px;color:var(--lt);font-size:13px}
+.loading{padding:60px;text-align:center;color:var(--lt);font-size:13px}
+.section-lbl{font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
+.note-block{background:#fffbeb;border-left:3px solid #fde68a;border-radius:0 var(--rs) var(--rs) 0;padding:8px 12px;font-size:12px;color:var(--mid);font-style:italic;margin:8px 0}
+.chip-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.info-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600}
+
+/* ── GANTT ── */
+.gantt-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.gantt-hdr{display:grid;grid-template-columns:260px 1fr;background:#f5f6fa;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:10}
+.gantt-hdr-lbl{padding:9px 14px;font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.6px;border-right:1px solid var(--border)}
+.gantt-timeline{overflow:hidden}
+.gantt-q-row{display:flex;border-bottom:1px solid var(--border)}
+.gantt-q{display:flex;align-items:center;gap:5px;padding:5px 8px;border-right:1px solid var(--border);font-size:12px}
+.gantt-q-lbl{font-weight:800;color:var(--navy)}
+.now-badge{background:var(--teal);color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px}
+.gantt-q-sub{font-size:10px;color:var(--lt)}
+.gantt-m-row{display:flex}
+.gantt-m{text-align:center;padding:4px 0;font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase;border-right:1px solid #eef0f6}
+.gantt-row{display:grid;grid-template-columns:260px 1fr;border-bottom:1px solid #f0f2f8;min-height:60px;cursor:pointer;transition:background .1s}
+.gantt-row:hover{background:#fafbff}
+.gantt-seg-hdr{display:grid;grid-template-columns:260px 1fr;background:#f7f8fb;border-bottom:1px solid var(--border);padding:5px 14px;align-items:center}
+.gantt-seg-name{font-size:9px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:1px}
+.gantt-lbl{padding:8px 12px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;gap:3px}
+.gantt-feat-name{font-size:12px;font-weight:700;color:var(--navy);line-height:1.3}
+.gantt-feat-sub{font-size:10px;color:var(--lt)}
+.gantt-feat-note{font-size:10px;color:var(--mid);font-style:italic}
+.gantt-bar-area{position:relative;overflow:visible}
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;opacity:.2;z-index:3;pointer-events:none}
+.g-bar{position:absolute;top:50%;transform:translateY(-50%);height:22px;border-radius:4px;z-index:4;min-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.g-bar-lbl{position:absolute;inset:0;display:flex;align-items:center;padding:0 7px;font-size:9px;font-weight:700;color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden}
+.g-ms-line{position:absolute;top:0;bottom:0;width:2px;z-index:5;pointer-events:none}
+.g-ms-dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;border:2px solid #fff;z-index:6;cursor:help;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.gantt-view-tabs{display:flex;gap:4px;margin-bottom:10px}
+.gvt{padding:5px 14px;border-radius:14px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border-dk);background:var(--white);color:var(--mid);font-family:'DM Sans',sans-serif;transition:all .12s}
+.gvt.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── CLARITY ── */
+.pipeline-bar{display:flex;background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow-x:auto;margin-bottom:14px}
+.ps{flex:1;min-width:110px;padding:10px 12px;border-right:1px solid var(--border)}
+.ps:last-child{border-right:none}
+.ps-name{font-size:11px;font-weight:700;margin-bottom:3px}
+.ps-desc{font-size:10px;color:var(--lt);line-height:1.4}
+.clarity-board{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;align-items:flex-start}
+.cl-col{flex:0 0 210px}
+.cl-col-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--white);border:1px solid var(--border);border-radius:var(--r) var(--r) 0 0}
+.cl-col-name{font-size:11px;font-weight:700;color:var(--navy)}
+.cl-col-cnt{font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px}
+.cl-col-body{background:#f4f6fb;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px;min-height:100px;display:flex;flex-direction:column;gap:6px}
+.cl-card{background:var(--white);border:1px solid var(--border);border-radius:var(--rs);padding:10px;cursor:pointer;transition:box-shadow .12s}
+.cl-card:hover{box-shadow:var(--sh)}
+.cl-card-title{font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;margin-bottom:2px}
+.cl-card-owner{font-size:10px;color:var(--lt);margin-bottom:4px}
+.cl-card-note{font-size:10px;color:var(--mid);font-style:italic;background:#f8f9fc;border-left:2px solid var(--border-dk);padding:3px 6px;border-radius:0 3px 3px 0;margin-bottom:5px;line-height:1.4}
+.cl-card-meta{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.days-chip{font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;border:1px solid}
+
+/* ── PULSE ── */
+.pulse-snap{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;margin-bottom:16px;box-shadow:var(--sh)}
+.snap-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.snap-n{text-align:center;cursor:pointer}
+.snap-v{font-size:36px;font-weight:800;line-height:1;margin-bottom:3px}
+.snap-name{font-size:13px;font-weight:700;color:var(--navy)}
+.snap-desc{font-size:10px;color:var(--lt)}
+.stage-bdown{display:flex;gap:5px;flex-wrap:wrap}
+.sb-block{flex:1;min-width:65px;text-align:center;padding:8px 4px;border-radius:8px;border:1px solid;cursor:pointer}
+.sb-num{font-size:18px;font-weight:800}
+.sb-name{font-size:9px;color:var(--mid);margin-top:2px}
+.pulse-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px}
+.pt{padding:7px 16px;font-size:12px;font-weight:600;color:var(--lt);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .12s}
+.pt.active{color:var(--navy);border-bottom-color:var(--navy)}
+.flag-card{background:var(--white);border:1px solid var(--border);border-left:3px solid transparent;border-radius:var(--rs);padding:11px 13px;margin-bottom:7px;cursor:pointer}
+.flag-card:hover{box-shadow:var(--sh)}
+.flag-card.high{border-left-color:#ef4444}
+.flag-card.med{border-left-color:#f59e0b}
+.flag-type{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:1px 6px;border-radius:4px;white-space:nowrap}
+
+/* ── DETAIL PAGE ── */
+.det-layout{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+.det-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:12px;box-shadow:var(--sh)}
+.det-title{font-size:20px;font-weight:800;color:var(--navy);line-height:1.2;margin-bottom:6px}
+.det-meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.det-meta-item .lbl{font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}
+.det-meta-item .val{font-size:13px;color:var(--text)}
+
+/* ── MILESTONE & TASK ── */
+.ms-list{display:flex;flex-direction:column;gap:10px}
+.ms-item{border:1px solid var(--border);border-radius:var(--rs);overflow:hidden}
+.ms-hdr{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg);cursor:pointer;user-select:none}
+.ms-hdr:hover{background:#edf0f8}
+.ms-chevron{font-size:10px;color:var(--lt);transition:transform .2s}
+.ms-chevron.open{transform:rotate(90deg)}
+.ms-title-text{font-size:13px;font-weight:700;color:var(--navy);flex:1}
+.ms-body{padding:12px;border-top:1px solid var(--border);display:none}
+.ms-body.open{display:block}
+.task-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.task-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--white);border:1px solid var(--border);border-radius:var(--rs)}
+.task-check{width:15px;height:15px;accent-color:var(--teal);flex-shrink:0;cursor:pointer}
+.task-name{flex:1;font-size:12px;color:var(--text)}
+.task-name.done{text-decoration:line-through;color:var(--lt)}
+.task-assignee{font-size:10px;color:var(--lt)}
+.task-due{font-size:10px;color:var(--lt)}
+
+/* ── CAPACITY ── */
+.cap-table{border-collapse:collapse;font-size:11px;min-width:600px;width:100%}
+.cap-table th{background:var(--bg);font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;text-align:center;border:1px solid var(--border);white-space:nowrap}
+.cap-table th.mc{text-align:left;min-width:150px}
+.cap-table td{padding:9px 10px;border:1px solid var(--border);text-align:center;vertical-align:middle}
+.cap-table td.mc{text-align:left}
+.util-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700}
+.util-over{background:#fef2f2;color:#dc2626}
+.util-ok{background:#f0fdf4;color:#16a34a}
+.util-under{background:#fffbeb;color:#d97706}
+
+/* ── RISK ── */
+.risk-score{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:11px;font-weight:800}
+.score-h{background:#fef2f2;color:#dc2626}
+.score-m{background:#fffbeb;color:#d97706}
+.score-l{background:#f0fdf4;color:#16a34a}
+
+/* ── ADMIN ── */
+.admin-layout{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:start}
+.admin-nav{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.admin-tab{display:block;width:100%;text-align:left;padding:10px 14px;font-size:12px;font-weight:500;color:var(--mid);background:none;border:none;border-left:3px solid transparent;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .12s;border-bottom:1px solid var(--border)}
+.admin-tab:last-child{border-bottom:none}
+.admin-tab:hover{background:var(--bg);color:var(--navy)}
+.admin-tab.active{background:#f0f4ff;color:var(--navy);font-weight:700;border-left-color:var(--teal)}
+.admin-panel{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:22px}
+.admin-sec-title{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:5px}
+.admin-sec-desc{font-size:12px;color:var(--mid);margin-bottom:18px}
+.admin-list-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0f2f8}
+.admin-list-item:last-child{border-bottom:none}
+.admin-save{background:var(--navy);color:#fff;border:none;border-radius:var(--rs);padding:9px 18px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer}
+.admin-save:hover{background:#120a30}
+.admin-add{font-size:11px;font-weight:600;color:var(--teal);background:#ecfeff;border:1px solid #a5f3fc;border-radius:var(--rs);padding:6px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:14px;display:inline-block}
+.admin-remove{font-size:10px;color:var(--red);background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;padding:3px 7px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.admin-note{font-size:10px;color:var(--mid);background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:7px 10px;margin-bottom:12px}
+.a-input{width:100%;padding:7px 10px;border:1px solid var(--border-dk);border-radius:var(--rs);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white)}
+.a-input:focus{outline:none;border-color:var(--teal)}
+
+/* ── REPORTS ── */
+.report-section{margin-bottom:22px}
+.report-section h2{font-size:14px;font-weight:700;color:var(--navy);padding-bottom:7px;border-bottom:2px solid var(--border);margin-bottom:12px}
+
+/* ── KNOWLEDGE ── */
+.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.doc-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:15px;box-shadow:var(--sh);transition:box-shadow .12s;display:flex;flex-direction:column;gap:7px}
+.doc-card:hover{box-shadow:var(--shm)}
+.doc-title{font-size:13px;font-weight:700;color:var(--navy)}
+.doc-desc{font-size:11px;color:var(--mid)}
+.doc-meta{font-size:10px;color:var(--lt);display:flex;gap:8px;flex-wrap:wrap}
+.doc-tag{background:#f0f2f8;color:var(--mid);font-size:9px;padding:2px 7px;border-radius:8px}
+
+/* PRINT */
+@media print{#sidebar{display:none!important}#main{margin-left:0!important}.content{padding:10px!important}}
+
+/* ── TAB NOTE (purpose) ── */
+.tab-note{display:flex;gap:10px;align-items:flex-start;background:#f5f7ff;border:1px solid #d8def0;border-left:3px solid var(--teal);border-radius:var(--rs);padding:9px 13px;margin-bottom:14px;font-size:11.5px;color:var(--mid);line-height:1.5}
+.tab-note-icon{flex-shrink:0;width:18px;height:18px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+.tab-note strong{color:var(--navy);font-weight:700}
+
+/* ── EXEC connector visual ── */
+.nav-group-exec{position:relative;background:linear-gradient(180deg,rgba(6,182,212,.08),rgba(124,58,237,.04));margin:8px 6px;border-radius:8px;padding:8px 0 10px}
+.nav-group-exec .nav-group-lbl{padding-left:12px;color:rgba(255,255,255,.55)}
+.nav-group-exec .exec-item{margin-left:6px;padding-left:24px;position:relative}
+.nav-group-exec .exec-item::before{content:'';position:absolute;left:14px;top:-2px;bottom:-2px;width:1.5px;background:rgba(6,182,212,.35)}
+.nav-group-exec .exec-item:first-of-type::before{top:50%}
+.nav-group-exec .exec-item:last-of-type::before{bottom:50%}
+.nav-group-exec .exec-item::after{content:'';position:absolute;left:11px;top:50%;width:7px;height:7px;border-radius:50%;background:rgba(6,182,212,.6);border:1.5px solid var(--sb);transform:translateY(-50%);z-index:2}
+.nav-group-exec .exec-item.active::after{background:var(--teal);box-shadow:0 0 0 2px rgba(6,182,212,.3)}
+.exec-step{margin-left:auto;background:rgba(255,255,255,.1);color:rgba(255,255,255,.55);font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-group-exec .exec-item.active .exec-step{background:var(--teal);color:#fff}
+
+/* ── EXEC banner header (shown above each exec view) ── */
+.exec-banner{background:linear-gradient(90deg,#0a1740 0%,#1a1040 50%,#2d1f5e 100%);color:#fff;border-radius:var(--r);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:0}
+.exec-step-card{flex:1;display:flex;align-items:center;gap:10px;padding:6px 14px;cursor:pointer;border-radius:var(--rs);transition:background .12s;position:relative;text-decoration:none;color:#fff}
+.exec-step-card:hover{background:rgba(255,255,255,.06)}
+.exec-step-card.active{background:rgba(6,182,212,.18)}
+.exec-step-num{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.exec-step-card.active .exec-step-num{background:var(--teal);color:#fff}
+.exec-step-card.done .exec-step-num{background:#22c55e;color:#fff}
+.exec-step-card.done .exec-step-num::after{content:'✓';font-size:13px}
+.exec-step-card.done .exec-step-num span{display:none}
+.exec-step-info{flex:1;min-width:0}
+.exec-step-title{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exec-step-desc{font-size:10px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.exec-arrow{color:rgba(255,255,255,.3);font-size:14px;flex-shrink:0;padding:0 2px}
+
+/* ── PLEDGES ── */
+.pledge-card{background:var(--white);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;box-shadow:var(--sh);display:grid;grid-template-columns:1fr auto;gap:12px;align-items:flex-start}
+.pledge-card.honored{border-left-color:var(--green);opacity:.85}
+.pledge-card.broken{border-left-color:var(--red);background:#fffafa}
+.pledge-card.atrisk{border-left-color:var(--amber)}
+.pledge-title{font-size:14px;font-weight:700;color:var(--navy);line-height:1.3;margin-bottom:4px}
+.pledge-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:11px;color:var(--lt);margin-bottom:6px}
+.pledge-quote{font-size:12px;color:var(--mid);font-style:italic;background:#fafbff;border-left:2px solid var(--border-dk);padding:6px 10px;border-radius:0 4px 4px 0;margin-top:6px}
+.countdown{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap}
+.countdown.urgent{background:#fef2f2;color:#dc2626}
+.countdown.soon{background:#fffbeb;color:#d97706}
+.countdown.fine{background:#f0fdf4;color:#16a34a}
+.countdown.past{background:#fef2f2;color:#dc2626;text-decoration:line-through}
+.countdown.honored{background:#f0fdf4;color:#16a34a}
+
+/* ── TASK ENHANCEMENTS ── */
+.task-row{display:grid;grid-template-columns:18px 1fr 110px 90px 90px 110px 70px 30px;gap:8px;align-items:center;padding:8px 10px;background:var(--white);border:1px solid var(--border);border-radius:var(--rs);font-size:11.5px}
+.task-row:hover{border-color:var(--border-dk);background:#fafbff}
+.task-row.done .task-row-name{text-decoration:line-through;color:var(--lt)}
+.task-row-name{font-size:12px;color:var(--text);font-weight:500;line-height:1.3}
+.task-row-meta{font-size:10px;color:var(--lt);margin-top:1px}
+.task-row-cell{font-size:10.5px;color:var(--mid)}
+.task-row-cell.due-overdue{color:var(--red);font-weight:700}
+.task-mini-select{font-size:10px;padding:3px 6px;border:1px solid var(--border-dk);border-radius:4px;background:var(--white);font-family:'DM Sans',sans-serif;width:100%}
+.task-table-hdr{display:grid;grid-template-columns:18px 1fr 110px 90px 90px 110px 70px 30px;gap:8px;padding:6px 10px;font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.dep-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:600;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+.dep-chip.met{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0}
+
+/* ── ROADMAP IMPROVEMENTS ── */
+.gantt-hdr{grid-template-columns:300px 1fr !important}
+.gantt-row{grid-template-columns:300px 1fr !important;min-height:72px !important}
+.gantt-seg-hdr{grid-template-columns:300px 1fr !important;padding:8px 16px !important}
+.gantt-lbl{padding:11px 14px !important;gap:5px !important}
+.gantt-feat-name{font-size:13px !important;line-height:1.35 !important}
+.gantt-feat-sub{font-size:10.5px !important;color:var(--mid) !important;margin-top:1px}
+.gantt-feat-note{font-size:10px !important;margin-top:3px}
+.g-bar{height:26px !important}
+.g-bar-lbl{font-size:10px !important;letter-spacing:.2px}
+.gantt-q{padding:7px 10px !important}
+.gantt-m{padding:5px 0 !important;font-size:10px !important}
+.legend-bar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--white);border:1px solid var(--border);border-radius:var(--rs);padding:9px 14px;margin-bottom:12px;font-size:11px;color:var(--mid)}
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">K</div>
+    <div>
+      <div class="sb-logo-text" id="sb-name">KLARION</div>
+      <span class="sb-logo-sub">Program &amp; Product Management</span>
+    </div>
+  </div>
+  <div class="nav-scroll">
+    <!-- Pulse - top-level dashboard -->
+    <div class="nav-group">
+      <div class="nav-group-lbl">Dashboard</div>
+      <div class="nav-item active" data-view="pulse" onclick="V('pulse')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1,9 4,9 6,3 8,14 10,7 12,11 14,9 17,9"/></svg>
+        Pulse
+      </div>
+    </div>
+    <!-- Product -->
+    <div class="nav-group">
+      <div class="nav-group-lbl">Product</div>
+      <div class="nav-item" data-view="roadmap" onclick="V('roadmap')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="5" width="5" height="3" rx="1"/><rect x="7" y="9" width="5" height="3" rx="1"/><rect x="3" y="13" width="6" height="3" rx="1"/><line x1="1" y1="2" x2="1" y2="16"/></svg>
+        Product Roadmap
+      </div>
+      <div class="nav-item" data-view="clarity" onclick="V('clarity')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="1" width="3" height="16" rx="1"/><rect x="6" y="3" width="3" height="12" rx="1"/><rect x="11" y="5" width="3" height="8" rx="1"/><rect x="16" y="7" width="1" height="4" rx="0.5"/></svg>
+        Clarity
+      </div>
+      <div class="nav-item" data-view="pledges" onclick="V('pledges')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 2h12v14l-6-3-6 3z"/><polyline points="6,7 8,9 12,5"/></svg>
+        Pledges
+      </div>
+    </div>
+    <!-- Planning -->
+    <div class="nav-group">
+      <div class="nav-group-lbl">Planning</div>
+      <div class="nav-item" data-view="projects" onclick="V('projects')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="14" height="12" rx="2"/><line x1="2" y1="7" x2="16" y2="7"/><line x1="6" y1="3" x2="6" y2="7"/><line x1="12" y1="3" x2="12" y2="7"/></svg>
+        Projects
+      </div>
+      <div class="nav-item" data-view="milestones" onclick="V('milestones')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><polyline points="9,5 9,9 12,11"/></svg>
+        Milestones
+      </div>
+      <div class="nav-item" data-view="onboarding" onclick="V('onboarding')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 2L2 7v9h14V7L9 2z"/><rect x="6" y="11" width="6" height="6"/></svg>
+        Onboarding
+      </div>
+    </div>
+    <!-- Execution -->
+    <div class="nav-group nav-group-exec">
+      <div class="nav-group-lbl">Execution · Connected</div>
+      <div class="nav-item exec-item" data-view="team" onclick="V('team')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="7" cy="6" r="3"/><path d="M1 16c0-3.3 2.7-6 6-6"/><circle cx="14" cy="8" r="2.5"/><path d="M10.5 16c0-2.5 1.6-4.5 3.5-4.5s3.5 2 3.5 4.5"/></svg>
+        Team <span class="exec-step">1</span>
+      </div>
+      <div class="nav-item exec-item" data-view="capacity" onclick="V('capacity')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="10" width="3" height="7"/><rect x="5" y="6" width="3" height="11"/><rect x="9" y="2" width="3" height="15"/><rect x="13" y="7" width="3" height="10"/></svg>
+        Capacity <span class="exec-step">2</span>
+      </div>
+      <div class="nav-item exec-item" data-view="resources" onclick="V('resources')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="16" height="12" rx="2"/><line x1="1" y1="7" x2="17" y2="7"/><line x1="5" y1="3" x2="5" y2="15"/></svg>
+        Resources <span class="exec-step">3</span>
+      </div>
+    </div>
+    <!-- Health -->
+    <div class="nav-group">
+      <div class="nav-group-lbl">Health</div>
+      <div class="nav-item" data-view="risks" onclick="V('risks')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 2L1 16h16L9 2z"/><line x1="9" y1="8" x2="9" y2="11"/><circle cx="9" cy="13.5" r=".5" fill="currentColor"/></svg>
+        Risk Register
+      </div>
+      <div class="nav-item" data-view="escalations" onclick="V('escalations')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 1v10M9 14v3"/><path d="M4 5l5-4 5 4"/></svg>
+        Escalations
+      </div>
+    </div>
+    <!-- Reports -->
+    <div class="nav-group">
+      <div class="nav-group-lbl">Reports</div>
+      <div class="nav-item" data-view="leadership" onclick="V('leadership')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="2"/><line x1="5" y1="6" x2="13" y2="6"/><line x1="5" y1="9" x2="10" y2="9"/><line x1="5" y1="12" x2="8" y2="12"/></svg>
+        Leadership Report
+      </div>
+      <div class="nav-item" data-view="impacts" onclick="V('impacts')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1,13 5,8 8,11 12,4 17,7"/><line x1="1" y1="16" x2="17" y2="16"/></svg>
+        Impact Tracker
+      </div>
+      <div class="nav-item" data-view="charters" onclick="V('charters')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 2h10l2 3v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5l2-3z"/><line x1="5" y1="8" x2="13" y2="8"/><line x1="5" y1="11" x2="10" y2="11"/></svg>
+        Charters
+      </div>
+      <div class="nav-item" data-view="knowledge" onclick="V('knowledge')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h14v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3z"/><line x1="2" y1="3" x2="16" y2="3"/><line x1="5" y1="8" x2="13" y2="8"/><line x1="5" y1="11" x2="10" y2="11"/></svg>
+        Knowledge
+      </div>
+    </div>
+  </div>
+  <div class="sb-bottom">
+    <div class="nav-item" data-view="admin" onclick="V('admin')">
+      <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.2 3.2l1.4 1.4M13.4 13.4l1.4 1.4M3.2 14.8l1.4-1.4M13.4 4.6l1.4-1.4"/></svg>
+      Admin
+    </div>
+    <div class="sb-crumb" id="sb-crumb">Klarion · Product</div>
+  </div>
+</nav>
+
+<div id="main">
+  <div class="content" id="content"><div class="loading">Loading Klarion…</div></div>
+</div>
+<div id="modal-root"></div>
+
+<script type="module">
+import {
+  getState, persist, resetToSeed,
+  addItem, updateItem, removeItem, getItem,
+  addMilestone, updateMilestone, removeMilestone,
+  addTask, updateTask, removeTask,
+  updateSettings,
+  teamName, teamMember, avatar, fmtDate, today, isOverdue,
+  statusBadge, progressBar, TRACK_COLORS, STATUS_COLORS
+} from './data2.js';
+
+/* ══════════════════════════════════════════════════════════
+   ROUTER
+══════════════════════════════════════════════════════════ */
+let curView = 'roadmap', curParams = {}, viewStack = [];
+let ganttMode = 'quarter'; // week|month|quarter|year
+let adminTab = 'general';
+let pulseTab = 'flags';
+
+window.V = function(view, params={}) {
+  viewStack.push({view:curView,params:curParams});
+  curView = view; curParams = params;
+  _render();
+};
+
+window.goBack = function() {
+  const prev = viewStack.pop();
+  if (prev) { curView=prev.view; curParams=prev.params; _render(); }
+  else { curView='roadmap'; curParams={}; _render(); }
+};
+
+function _render() {
+  document.querySelectorAll('.nav-item[data-view]').forEach(el =>
+    el.classList.toggle('active', el.dataset.view === curView));
+  const c = document.getElementById('content');
+  c.innerHTML = '<div class="loading">Loading…</div>';
+  setTimeout(() => {
+    try { c.innerHTML = VIEWS[curView]?.(curParams) || '<div class="empty">View not found</div>'; }
+    catch(e) { c.innerHTML = `<div class="loading" style="color:red">Error: ${e.message}<br><pre style="font-size:10px;margin-top:8px">${e.stack}</pre></div>`; console.error(e); }
+  }, 0);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SHARED HELPERS
+══════════════════════════════════════════════════════════ */
+const TC = TRACK_COLORS;
+const tColor = (t) => TC[t] || '#94a3b8';
+
+function pBar(pct) {
+  const p=Math.min(pct||0,100), c=p>=70?'#22c55e':p>=40?'#f59e0b':'#ef4444';
+  return `<div class="pb"><div class="pb-fill" style="width:${p}%;background:${c}"></div></div>`;
+}
+
+function sbadge(s){return statusBadge(s);}
+
+function filterBar(fields) {
+  const {settings}=getState();
+  const parts=[];
+  if(fields.includes('track')) parts.push(`<div class="fg"><label>Track</label><select onchange="setF('track',this.value)"><option value="">All</option>${settings.trackNames.map(t=>`<option value="${t}" ${curParams.track===t?'selected':''}>${t}</option>`).join('')}</select></div>`);
+  if(fields.includes('status')) parts.push(`<div class="fg"><label>Status</label><select onchange="setF('status',this.value)"><option value="">All</option>${settings.statusOptions.map(s=>`<option value="${s}" ${curParams.status===s?'selected':''}>${s}</option>`).join('')}</select></div>`);
+  if(fields.includes('segment')) parts.push(`<div class="fg"><label>Segment</label><select onchange="setF('segment',this.value)"><option value="">All</option>${settings.segments.map(s=>`<option value="${s}" ${curParams.segment===s?'selected':''}>${s}</option>`).join('')}</select></div>`);
+  if(fields.includes('priority')) parts.push(`<div class="fg"><label>Priority</label><select onchange="setF('priority',this.value)"><option value="">All</option>${settings.priorityOptions.map(p=>`<option value="${p}" ${curParams.priority===p?'selected':''}>${p}</option>`).join('')}</select></div>`);
+  return `<div class="filter-row">${parts.join('')}<button class="btn btn-ghost btn-sm" onclick="resetF()">Reset</button></div>`;
+}
+
+window.setF = (k,v) => { curParams[k]=v; _render(); };
+window.resetF = () => { curParams={}; _render(); };
+
+function filterItems(arr) {
+  return arr.filter(p => {
+    if(curParams.track && p.track!==curParams.track) return false;
+    if(curParams.status && p.status!==curParams.status) return false;
+    if(curParams.segment && p.segment!==curParams.segment) return false;
+    if(curParams.priority && p.priority!==curParams.priority) return false;
+    return true;
+  });
+}
+
+function tmSelect(id,val,name='') {
+  const {teamMembers}=getState();
+  return `<select class="form-control" id="${id}"><option value="">—</option>${teamMembers.map(m=>`<option value="${m.id}" ${(val===m.id||val===m.name)?'selected':''}>${m.name}</option>`).join('')}</select>`;
+}
+
+function trackSelect(id, val) {
+  const {settings}=getState();
+  return `<select class="form-control" id="${id}"><option value="">—</option>${settings.trackNames.map(t=>`<option value="${t}" ${val===t?'selected':''}>${t}</option>`).join('')}</select>`;
+}
+
+function statusSelect(id, val) {
+  const {settings}=getState();
+  return `<select class="form-control" id="${id}">${settings.statusOptions.map(s=>`<option value="${s}" ${val===s?'selected':''}>${s}</option>`).join('')}</select>`;
+}
+
+function phaseSelect(id, val) {
+  const {settings}=getState();
+  return `<select class="form-control" id="${id}">${settings.phaseOptions.map(p=>`<option value="${p}" ${val===p?'selected':''}>${p}</option>`).join('')}</select>`;
+}
+
+function prioritySelect(id, val) {
+  const {settings}=getState();
+  return `<select class="form-control" id="${id}">${settings.priorityOptions.map(p=>`<option value="${p}" ${val===p?'selected':''}>${p}</option>`).join('')}</select>`;
+}
+
+function v(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function n(id){return parseInt(v(id))||0;}
+
+// Tab purpose note
+function tabNote(text) {
+  return `<div class="tab-note"><div class="tab-note-icon">i</div><div>${text}</div></div>`;
+}
+
+// Execution banner — connects Team / Capacity / Resources visually
+function execBanner(active) {
+  const steps = [
+    {id:'team',num:1,title:'Team',desc:'Who is on the squad'},
+    {id:'capacity',num:2,title:'Capacity',desc:'How loaded each person is'},
+    {id:'resources',num:3,title:'Resources',desc:'Who is doing what & when'}
+  ];
+  const idx = steps.findIndex(s=>s.id===active);
+  return `<div class="exec-banner">
+    ${steps.map((s,i)=>`
+      <a class="exec-step-card ${s.id===active?'active':''} ${i<idx?'done':''}" onclick="V('${s.id}')">
+        <div class="exec-step-num"><span>${s.num}</span></div>
+        <div class="exec-step-info">
+          <div class="exec-step-title">${s.title}</div>
+          <div class="exec-step-desc">${s.desc}</div>
+        </div>
+      </a>
+      ${i<steps.length-1?`<div class="exec-arrow">→</div>`:''}
+    `).join('')}
+  </div>`;
+}
+
+// Countdown for pledges
+function pledgeCountdown(deadline, status){
+  if(status==='Honored') return `<span class="countdown honored">✓ Honored</span>`;
+  if(status==='Broken') return `<span class="countdown past">✗ Broken</span>`;
+  if(!deadline) return `<span class="countdown fine">No deadline</span>`;
+  const d = new Date(deadline), now = new Date();
+  const days = Math.ceil((d-now)/(1000*60*60*24));
+  if(days < 0) return `<span class="countdown past">${Math.abs(days)}d overdue</span>`;
+  if(days <= 3) return `<span class="countdown urgent">${days}d left</span>`;
+  if(days <= 14) return `<span class="countdown soon">${days}d left</span>`;
+  return `<span class="countdown fine">${days}d left</span>`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   VIEWS
+══════════════════════════════════════════════════════════ */
+const VIEWS = {
+
+/* ─── ROADMAP ─────────────────────────────────────────── */
+roadmap(params) {
+  const {features,settings}=getState();
+  const seg=curParams.segment||'All', trk=curParams.track||'All', stg=curParams.stage||'All';
+
+  // Date range by ganttMode
+  const now = new Date();
+  let rangeStart, rangeEnd, headerFn;
+
+  if(ganttMode==='week') {
+    const mon = new Date(now); mon.setDate(now.getDate()-now.getDay()+1);
+    rangeStart=new Date(mon); rangeEnd=new Date(mon); rangeEnd.setDate(mon.getDate()+34); // 5 weeks
+  } else if(ganttMode==='month') {
+    rangeStart=new Date(now.getFullYear(),now.getMonth()-1,1);
+    rangeEnd=new Date(now.getFullYear(),now.getMonth()+5,0);
+  } else if(ganttMode==='quarter') {
+    const q=Math.floor(now.getMonth()/3);
+    rangeStart=new Date(now.getFullYear(),q*3,1);
+    rangeEnd=new Date(now.getFullYear(),q*3+9,0);
+  } else { // year
+    rangeStart=new Date(2026,3,1); rangeEnd=new Date(2027,2,31);
+  }
+
+  const totalMs=rangeEnd-rangeStart;
+  function pct(d){if(!d)return null;const dt=new Date(d);if(isNaN(dt))return null;const c=Math.max(rangeStart,Math.min(rangeEnd,dt));return+((c-rangeStart)/totalMs*100).toFixed(3);}
+  function barRange(s,e){if(!s||!e)return null;const sd=new Date(s),ed=new Date(e);if(isNaN(sd)||isNaN(ed))return null;if(ed<rangeStart||sd>rangeEnd)return null;const cs=Math.max(rangeStart,sd),ce=Math.min(rangeEnd,ed);const l=+((cs-rangeStart)/totalMs*100).toFixed(3),w=Math.max(0.5,+((ce-cs)/totalMs*100).toFixed(3));return{left:l,width:w};}
+
+  const todayPct=pct(today());
+
+  // Build column headers
+  function buildHeaders() {
+    if(ganttMode==='week'||ganttMode==='month') {
+      // Show months
+      const months=[];let cur=new Date(rangeStart.getFullYear(),rangeStart.getMonth(),1);
+      while(cur<=rangeEnd){months.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
+      const mRow=months.map(m=>{const w=(new Date(m.getFullYear(),m.getMonth()+1,0)-Math.max(m,rangeStart))/(totalMs)*100;return`<div class="gantt-m" style="width:${w.toFixed(2)}%">${m.toLocaleDateString('en-GB',{month:'short'})}</div>`;}).join('');
+      const qRow=`<div style="display:flex"><div style="flex:1;padding:5px 8px;font-size:10px;font-weight:700;color:var(--lt);border-right:1px solid var(--border)">${rangeStart.toLocaleDateString('en-GB',{month:'short',year:'numeric'})} – ${rangeEnd.toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</div></div>`;
+      return qRow+`<div class="gantt-m-row">${mRow}</div>`;
+    } else if(ganttMode==='quarter'||ganttMode==='year') {
+      // Quarters row + months row
+      const qs=[];let d=new Date(rangeStart);
+      while(d<rangeEnd){const q=Math.floor(d.getMonth()/3);const qEnd=new Date(d.getFullYear(),q*3+3,0);qs.push({label:`Q${q+1}`,sub:`${['Jan','Apr','Jul','Oct'][q]} – ${['Mar','Jun','Sep','Dec'][q]}`,start:new Date(d),end:new Date(Math.min(qEnd,rangeEnd))});d=new Date(qEnd.getFullYear(),qEnd.getMonth()+1,1);}
+      const qRow=`<div class="gantt-q-row">${qs.map(q=>{const w=+((Math.min(q.end,rangeEnd)-Math.max(q.start,rangeStart))/totalMs*100).toFixed(2);const isNow=now>=q.start&&now<=q.end;return`<div class="gantt-q" style="width:${w}%"><span class="gantt-q-lbl">${q.label}${isNow?'<span class="now-badge">NOW</span>':''}</span><span class="gantt-q-sub">${q.sub}</span></div>`;}).join('')}</div>`;
+      const months=[];let cur=new Date(rangeStart.getFullYear(),rangeStart.getMonth(),1);
+      while(cur<=rangeEnd){months.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
+      const mRow=`<div class="gantt-m-row">${months.map(m=>{const ms=Math.max(m,rangeStart),me=Math.min(new Date(m.getFullYear(),m.getMonth()+1,0),rangeEnd);const w=+((me-ms)/totalMs*100).toFixed(2);return`<div class="gantt-m" style="width:${w}%">${m.toLocaleDateString('en-GB',{month:'short'})}</div>`;}).join('')}</div>`;
+      return qRow+mRow;
+    }
+    return '';
+  }
+
+  let filtered=[...features];
+  if(seg!=='All') filtered=filtered.filter(f=>f.segment===seg);
+  if(trk!=='All') filtered=filtered.filter(f=>f.track===trk);
+  if(stg!=='All') filtered=filtered.filter(f=>f.stage===stg);
+  const withDates=filtered.filter(f=>f.startDate&&f.endDate);
+  const withoutDates=filtered.filter(f=>!f.startDate||!f.endDate);
+
+  const STAGE_COLORS={'Idea':'#7c3aed','Brief Draft':'#3b82f6','3-Way Scope':'#f59e0b','Ready to Build':'#10b981','In Progress':'#0ea5e9','Released':'#22c55e','Observation':'#8b5cf6'};
+  const MS_C={'Achieved':'#22c55e','Pending':'#f59e0b','Missed':'#ef4444'};
+
+  const segs=seg==='All'?(getState().settings.segments||[]):[seg];
+  const gridLines=`<div style="position:absolute;inset:0;display:flex;pointer-events:none;z-index:1">${Array(12).fill(0).map((_,i)=>`<div style="flex:1;border-right:1px solid #eef0f6"></div>`).join('')}</div>`;
+
+  const segRows=segs.map(s=>{
+    const sf=withDates.filter(f=>f.segment===s);
+    if(!sf.length) return '';
+    return `<div class="gantt-seg-hdr"><span class="gantt-seg-name">${s}</span><span style="font-size:10px;color:var(--lt)">${sf.length} feature${sf.length!==1?'s':''}</span></div>`+
+    sf.map(f=>{
+      const bar=barRange(f.startDate,f.endDate);
+      const tc=tColor(f.track);
+      const sc=STAGE_COLORS[f.stage]||'#94a3b8';
+      const msHtml=(f.milestones||[]).map(m=>{
+        const mp=pct(m.date);if(mp===null)return'';
+        const mc=MS_C[m.status]||'#94a3b8';
+        return `<div class="g-ms-line" style="left:${mp}%;background:${mc};opacity:.5" title="${m.title}"></div><div class="g-ms-dot" style="left:${mp}%;background:${mc}" title="${m.title} · ${m.status}"></div>`;
+      }).join('');
+      return `<div class="gantt-row" onclick="V('feature-detail',{id:'${f.id}'})">
+        <div class="gantt-lbl">
+          <div style="display:flex;align-items:flex-start;gap:5px">
+            <div style="width:3px;height:14px;background:${tc};border-radius:2px;flex-shrink:0;margin-top:2px"></div>
+            <div>
+              <div class="gantt-feat-name">${f.title}</div>
+              ${f.description?`<div class="gantt-feat-sub">${f.description}</div>`:''}
+              ${f.note?`<div class="gantt-feat-note">↳ ${f.note}</div>`:''}
+            </div>
+          </div>
+          <div class="chip-row" style="margin-left:8px;margin-top:3px">
+            <span style="display:inline-flex;align-items:center;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:${sc}18;color:${sc}">${f.stage}</span>
+            ${f.jiraKey?`<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe">${f.jiraKey}</span>`:''}
+          </div>
+        </div>
+        <div class="gantt-bar-area">
+          ${gridLines}
+          ${todayPct!==null?`<div class="today-line" style="left:${todayPct}%"></div>`:''}
+          ${bar?`<div class="g-bar" style="left:${bar.left}%;width:${bar.width}%;background:${tc}"><div class="g-bar-lbl">${bar.width>5?f.title.slice(0,20):''}</div></div>`:''}
+          ${msHtml}
+        </div>
+      </div>`;
+    }).join('');
+  }).join('');
+
+  return `<div class="vh"><div class="vh-left"><h1>Product Roadmap</h1><div class="sub">${getState().settings.fiscalYear} · Features on a timeline grouped by segment</div></div><button class="btn btn-primary" onclick="openModal('newFeature')">+ New Feature</button></div>
+  ${tabNote('<strong>Product Roadmap</strong> — long-horizon timeline of features grouped by segment. Use this to communicate <em>when</em> things ship and how tracks interplay across quarters. Switch time scale below; click a bar to drill in.')}
+  <div class="gantt-view-tabs">
+    ${['week','month','quarter','year'].map(m=>`<button class="gvt ${ganttMode===m?'active':''}" onclick="setGanttMode('${m}')">${m.charAt(0).toUpperCase()+m.slice(1)}</button>`).join('')}
+  </div>
+  <div class="filter-row">
+    <div class="fg"><label>Segment</label><select onchange="setF('segment',this.value)"><option value="">All</option>${(getState().settings.segments||[]).map(s=>`<option value="${s}" ${seg===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="fg"><label>Track</label><select onchange="setF('track',this.value)"><option value="">All</option>${getState().settings.trackNames.map(t=>`<option value="${t}" ${trk===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="fg"><label>Stage</label><select onchange="setF('stage',this.value)"><option value="">All</option>${getState().settings.stages.map(s=>`<option value="${s}" ${stg===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    <button class="btn btn-ghost btn-sm" onclick="resetF()">Reset</button>
+  </div>
+  <!-- Legend -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--white);border:1px solid var(--border);border-radius:var(--rs);padding:8px 14px;margin-bottom:10px;font-size:11px;color:var(--mid)">
+    ${Object.entries(TC).map(([t,c])=>`<div style="display:flex;align-items:center;gap:4px"><div style="width:20px;height:7px;border-radius:2px;background:${c}"></div><span>${t}</span></div>`).join('')}
+    <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 0 1px #22c55e"></div><span>Achieved</span></div>
+    <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:#f59e0b;border:2px solid #fff;box-shadow:0 0 0 1px #f59e0b"></div><span>Pending</span></div>
+    <div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 1px #ef4444"></div><span>Missed</span></div>
+    <div style="margin-left:auto;font-size:10px;color:var(--lt);font-style:italic">Click a feature to view details</div>
+  </div>
+  <div class="gantt-wrap">
+    <div class="gantt-hdr">
+      <div class="gantt-hdr-lbl">FEATURE</div>
+      <div class="gantt-timeline">${buildHeaders()}</div>
+    </div>
+    <div>${segRows||'<div class="empty">No features with dates match current filters.</div>'}</div>
+  </div>
+  ${withoutDates.length?`<div class="card" style="margin-top:14px;padding:0"><div style="padding:12px 16px;font-size:12px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border)">Features without dates (${withoutDates.length})</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>Feature</th><th>Stage</th><th>Track</th><th>Segment</th><th>PM</th><th>Jira</th></tr></thead><tbody>${withoutDates.map(f=>`<tr class="clk" onclick="V('feature-detail',{id:'${f.id}'})"><td style="font-weight:600">${f.title}</td><td>${sbadge(f.stage)}</td><td>${f.track||'—'}</td><td>${f.segment||'—'}</td><td>${teamName(f.pm)}</td><td>${f.jiraKey?`<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:#eff6ff;color:#2563eb">${f.jiraKey}</span>`:'—'}</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
+},
+
+/* ─── CLARITY ─────────────────────────────────────────── */
+clarity(params) {
+  const {features,settings}=getState();
+  const seg=curParams.segment||'All', trk=curParams.track||'All';
+  let filtered=[...features];
+  if(seg!=='All') filtered=filtered.filter(f=>f.segment===seg);
+  if(trk!=='All') filtered=filtered.filter(f=>f.track===trk);
+  const total=filtered.length, rtb=filtered.filter(f=>f.stage==='Ready to Build').length, stale=filtered.filter(f=>f.daysInStage>=14).length;
+  const SC={'Idea':'#7c3aed','Brief Draft':'#3b82f6','3-Way Scope':'#f59e0b','Ready to Build':'#10b981','In Progress':'#0ea5e9','Released':'#22c55e','Observation':'#8b5cf6'};
+  const _clarityNote = tabNote('<strong>Clarity Board</strong> — every feature in the funnel by maturity stage (Idea → Released). Use this to surface <em>what is stuck</em>, what needs scoping, and what is ready to start. Counts at the top show flow.');
+  return `<div class="vh"><div class="vh-left"><h1>Clarity Board</h1><div class="sub">Every feature, every stage. See what's moving, what's stuck, and what needs a decision.</div></div><button class="btn btn-primary" onclick="openModal('newFeature')">+ New Feature</button></div>
+  <div class="pipeline-bar">${settings.stages.map(s=>`<div class="ps"><div class="ps-name" style="color:${SC[s]||'#94a3b8'}">● ${s}</div><div class="ps-desc">${settings.stageDescriptions[s]||''}</div></div>`).join('')}</div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <span style="padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;background:#f0f2ff;color:var(--navy);border:2px solid #d0d5f5">${total} Total</span>
+    <span style="padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;background:#ecfdf5;color:#059669;border:2px solid #a7f3d0">${rtb} Ready to Build</span>
+    <span style="padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;background:#fff7ed;color:#c2410c;border:2px solid #fed7aa">${stale} Stale (14+ days)</span>
+  </div>
+  <div class="filter-row">
+    <div class="fg"><label>Segment</label><select onchange="setF('segment',this.value)"><option value="">All</option>${settings.segments.map(s=>`<option value="${s}" ${seg===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="fg"><label>Track</label><select onchange="setF('track',this.value)"><option value="">All</option>${settings.trackNames.map(t=>`<option value="${t}" ${trk===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <button class="btn btn-ghost btn-sm" onclick="resetF()">Reset</button>
+  </div>
+  <div class="clarity-board">${settings.stages.map(s=>{
+    const items=filtered.filter(f=>f.stage===s);
+    const c=SC[s]||'#94a3b8';
+    return `<div class="cl-col"><div class="cl-col-hdr" style="border-top:3px solid ${c}"><span class="cl-col-name">${s}</span><span class="cl-col-cnt" style="background:${c}18;color:${c}">${items.length}</span></div><div class="cl-col-body">${items.length?items.map(f=>{const dc=f.daysInStage>=20?'#f97316':f.daysInStage>=14?'#f59e0b':'#94a3b8';return`<div class="cl-card" onclick="V('feature-detail',{id:'${f.id}'})"><div class="cl-card-title">${f.title}</div><div class="cl-card-owner">${teamName(f.pm)}</div>${f.note?`<div class="cl-card-note">${f.note}</div>`:''}<div class="cl-card-meta"><span class="days-chip" style="color:${dc};border-color:${dc}30;background:${dc}08">${f.daysInStage}d</span>${f.questions?`<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa">${f.questions} Q</span>`:''}</div></div>`;}).join(''):'<div style="font-size:11px;color:var(--lt);padding:10px 0;text-align:center">Empty</div>'}</div></div>`;
+  }).join('')}</div>`;
+},
+
+/* ─── PLEDGES ─────────────────────────────────────────── */
+pledges(params) {
+  const {pledges=[],settings}=getState();
+  const filtered=filterItems(pledges);
+  const active=filtered.filter(p=>!['Honored','Broken'].includes(p.status));
+  const honored=filtered.filter(p=>p.status==='Honored');
+  const broken=filtered.filter(p=>p.status==='Broken');
+
+  function pCard(p){
+    const cls = p.status==='Honored'?'honored':p.status==='Broken'?'broken':p.status==='At Risk'?'atrisk':'';
+    return `<div class="pledge-card ${cls}">
+      <div>
+        <div class="pledge-title">${p.title}</div>
+        <div class="pledge-meta">
+          ${sbadge(p.status)}
+          <span>•</span>
+          <span>To <strong style="color:var(--navy)">${p.commitTo||'—'}</strong></span>
+          <span>•</span>
+          <span>Owner <strong style="color:var(--navy)">${teamName(p.commitOwner)}</strong></span>
+          ${p.project?`<span>•</span><span>${p.project}</span>`:''}
+          ${p.track?`<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${tColor(p.track)}18;color:${tColor(p.track)}">${p.track}</span>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--lt)">Committed ${fmtDate(p.commitDate)} · Deadline ${fmtDate(p.deadline)}</div>
+        ${p.context?`<div class="pledge-quote">${p.context}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        ${pledgeCountdown(p.deadline,p.status)}
+        <div style="display:flex;gap:4px">
+          <button class="btn-icon" onclick="openModal('pledge','${p.id}')" title="Edit">✏️</button>
+          <button class="btn-icon" onclick="delItem('pledges','${p.id}')" title="Delete">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function section(title, items, color){
+    if(!items.length) return '';
+    return `<div style="margin-bottom:22px">
+      <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border)">${title} (${items.length})</div>
+      ${items.map(pCard).join('')}
+    </div>`;
+  }
+
+  return `<div class="vh"><div class="vh-left"><h1>Pledges</h1><div class="sub">Commitments made to leadership, customers, partners — with hard deadlines</div></div><button class="btn btn-primary" onclick="openModal('pledge')">+ New Pledge</button></div>
+  ${tabNote('<strong>Pledges</strong> — promises made to specific stakeholders with hard deadlines. Track each commitment, its countdown, owner and audience separately from regular project deadlines. Mark <em>Honored</em> when delivered or <em>Broken</em> if missed — both stay visible for accountability.')}
+  ${filterBar(['track','status'])}
+  <div class="stat-row">
+    <div class="stat-card t"><div class="stat-num">${pledges.length}</div><div class="stat-lbl">Total</div></div>
+    <div class="stat-card b"><div class="stat-num">${active.length}</div><div class="stat-lbl">Active</div></div>
+    <div class="stat-card g"><div class="stat-num">${honored.length}</div><div class="stat-lbl">Honored</div></div>
+    <div class="stat-card r"><div class="stat-num">${broken.length}</div><div class="stat-lbl">Broken</div></div>
+  </div>
+  ${section('🟠 Active commitments', active, 'var(--purple)')}
+  ${section('✅ Honored', honored, 'var(--green)')}
+  ${section('❌ Broken', broken, 'var(--red)')}
+  ${!filtered.length?'<div class="empty">No pledges yet. Add the first commitment to start tracking.</div>':''}`;
+},
+
+/* ─── PULSE ───────────────────────────────────────────── */
+pulse(params) {
+  const {features,settings}=getState();
+  const trk=curParams.track||'All', seg=curParams.segment||'All';
+  let f=[...features];
+  if(trk!=='All') f=f.filter(x=>x.track===trk);
+  if(seg!=='All') f=f.filter(x=>x.segment===seg);
+  const total=f.length, building=f.filter(x=>['Brief Draft','3-Way Scope','Ready to Build','In Progress'].includes(x.stage)).length;
+  const watching=f.filter(x=>['Released','Observation'].includes(x.stage)).length;
+  const SC={'Idea':'#7c3aed','Brief Draft':'#3b82f6','3-Way Scope':'#f59e0b','Ready to Build':'#10b981','In Progress':'#0ea5e9','Released':'#22c55e','Observation':'#8b5cf6'};
+  const stageCounts=settings.stages.map(s=>({stage:s,count:f.filter(x=>x.stage===s).length,color:SC[s]||'#94a3b8'}));
+  const stale=f.filter(x=>x.daysInStage>=14);
+  const blocked=f.filter(x=>x.note&&(x.note.toLowerCase().includes('block')||x.note.toLowerCase().includes('wait')));
+  const hasQ=f.filter(x=>x.questions>0);
+  const noMs=f.filter(x=>x.stage==='In Progress'&&(!x.milestones||!x.milestones.length));
+  const flags=[
+    ...blocked.map(x=>({type:'BLOCKED',feature:x,msg:x.note,urgency:'high'})),
+    ...stale.map(x=>({type:'STALE',feature:x,msg:`In ${x.stage} for ${x.daysInStage} days`,urgency:x.daysInStage>=25?'high':'med'})),
+    ...hasQ.map(x=>({type:'UNRESOLVED',feature:x,msg:`${x.questions} open question${x.questions!==1?'s':''}`,urgency:'med'})),
+    ...noMs.map(x=>({type:'NO MILESTONE',feature:x,msg:'In Progress with no milestones',urgency:'med'}))
+  ];
+  const flagsHtml=flags.length?`<div style="font-size:13px;color:var(--mid);margin-bottom:14px"><span style="font-size:22px;font-weight:800;color:#f59e0b">${flags.length}</span> active flags — resolve highest urgency first</div>`+
+    ['high','med'].map(u=>{const group=flags.filter(fl=>fl.urgency===u);if(!group.length)return'';return`<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;border-radius:4px;display:inline-block;margin-bottom:8px;${u==='high'?'background:#fef2f2;color:#dc2626':'background:#fffbeb;color:#d97706'}">● ${u==='high'?'High Priority':'Needs Attention'} · ${group.length}</div>${group.map(fl=>`<div class="flag-card ${u}" onclick="V('feature-detail',{id:'${fl.feature.id}'})"><div style="display:flex;align-items:flex-start;gap:8px"><span class="flag-type" style="${u==='high'?'background:#fef2f2;color:#dc2626':'background:#fffbeb;color:#d97706'}">${fl.type}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--navy)">${fl.feature.title}</div><div style="font-size:11px;color:var(--mid);margin-top:2px">${fl.msg}</div><div style="font-size:10px;color:var(--lt);margin-top:2px">${teamName(fl.feature.pm)} · ${fl.feature.segment||'—'}</div></div><div style="font-size:16px;font-weight:800;color:var(--lt)">${fl.feature.daysInStage}d</div></div></div>`).join('')}</div>`;}).join('')
+    :'<div class="empty">🎉 No active flags — everything looks healthy!</div>';
+
+  const weekItems=f.filter(x=>['In Progress','Ready to Build'].includes(x.stage)).slice(0,8);
+  const weekHtml=weekItems.length?weekItems.map(x=>`<div class="flag-card" onclick="V('feature-detail',{id:'${x.id}'})"><div style="display:flex;align-items:center;gap:10px"><div style="width:10px;height:10px;border-radius:50%;background:${SC[x.stage]||'#94a3b8'};flex-shrink:0"></div><div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--navy)">${x.title}</div><div style="font-size:10px;color:var(--lt)">${x.stage} · ${x.segment||'—'} · ${teamName(x.pm)}</div>${x.note?`<div style="font-size:10px;color:var(--mid);font-style:italic;margin-top:2px">${x.note}</div>`:''}</div>${sbadge(x.stage)}</div></div>`).join('')
+    :'<div class="empty">No active features this week.</div>';
+
+  return `<div class="vh"><div class="vh-left"><h1>Pulse</h1><div class="sub">Your weekly standup, generated.</div></div></div>
+  ${tabNote('<strong>Pulse</strong> — the snapshot dashboard. Portfolio numbers, flagged risks, and what shipped this week. Use this Monday morning to brief your leads or yourself.')}
+  <div class="filter-row"><div class="fg"><label>Track</label><select onchange="setF('track',this.value)"><option value="">All</option>${settings.trackNames.map(t=>`<option value="${t}" ${trk===t?'selected':''}>${t}</option>`).join('')}</select></div><div class="fg"><label>Segment</label><select onchange="setF('segment',this.value)"><option value="">All</option>${settings.segments.map(s=>`<option value="${s}" ${seg===s?'selected':''}>${s}</option>`).join('')}</select></div><button class="btn btn-ghost btn-sm" onclick="resetF()">Reset</button></div>
+  <div class="pulse-snap">
+    <div class="section-lbl">PORTFOLIO SNAPSHOT</div>
+    <div class="snap-nums"><div class="snap-n"><div class="snap-v" style="color:var(--navy)">${total}</div><div class="snap-name">Total</div><div class="snap-desc">all features across all stages</div></div><div class="snap-n"><div class="snap-v" style="color:#3b82f6">${building}</div><div class="snap-name">Building</div><div class="snap-desc">Brief + Scope + Ready + In Progress</div></div><div class="snap-n"><div class="snap-v" style="color:#7c3aed">${watching}</div><div class="snap-name">Watching</div><div class="snap-desc">Released + Observation</div></div><div class="snap-n"><div class="snap-v" style="color:var(--lt)">0</div><div class="snap-name">Done</div><div class="snap-desc">Signed off and marked Complete</div></div></div>
+    <div class="section-lbl">STAGE-BY-STAGE BREAKDOWN</div>
+    <div class="stage-bdown">${stageCounts.map(sc=>`<div class="sb-block" style="border-color:${sc.color}20;background:${sc.color}08"><div class="sb-num" style="color:${sc.color}">${sc.count}</div><div class="sb-name">${sc.stage}</div></div>`).join('')}</div>
+  </div>
+  <div class="pulse-tabs"><button class="pt ${pulseTab==='flags'?'active':''}" onclick="setPulseTab('flags')">Flags</button><button class="pt ${pulseTab==='week'?'active':''}" onclick="setPulseTab('week')">This Week</button></div>
+  <div id="pulse-flags" style="display:${pulseTab==='flags'?'block':'none'}">${flagsHtml}</div>
+  <div id="pulse-week" style="display:${pulseTab==='week'?'block':'none'}">${weekHtml}</div>`;
+},
+
+/* ─── PROJECTS LIST ───────────────────────────────────── */
+projects(params) {
+  const {projects}=getState();
+  const filtered=filterItems(projects);
+  return `<div class="vh"><div class="vh-left"><h1>Projects</h1><div class="sub">${projects.length} total projects</div></div><button class="btn btn-primary" onclick="openModal('project')">+ New Project</button></div>
+  ${tabNote('<strong>Projects</strong> — every active and completed project across the org. Click a row to open the detail page where you manage milestones, tasks, team and notes.')}
+  ${filterBar(['track','status','priority'])}
+  <div class="stat-row">
+    <div class="stat-card t"><div class="stat-num">${projects.length}</div><div class="stat-lbl">Total</div></div>
+    <div class="stat-card b"><div class="stat-num">${projects.filter(p=>p.status==='In Progress').length}</div><div class="stat-lbl">In Progress</div></div>
+    <div class="stat-card g"><div class="stat-num">${projects.filter(p=>p.status==='Completed').length}</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat-card a"><div class="stat-num">${projects.filter(p=>p.status==='On Hold').length}</div><div class="stat-lbl">On Hold</div></div>
+    <div class="stat-card r"><div class="stat-num">${projects.filter(p=>p.priority==='Critical').length}</div><div class="stat-lbl">Critical</div></div>
+  </div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Phase</th><th>Status</th><th>Priority</th><th>Lead</th><th>Start</th><th>End</th><th>Progress</th><th>Jira</th><th></th></tr></thead><tbody>
+  ${filtered.length?filtered.map(p=>`<tr class="clk ${p.status==='Completed'?'done':''}" onclick="V('project-detail',{id:'${p.id}',col:'projects'})">
+    <td><div style="font-weight:700;color:var(--navy)">${p.name}</div><div style="font-size:10px;color:var(--lt)">${p.description||''}</div>${p.note?`<div style="font-size:10px;color:#d97706;margin-top:2px;font-style:italic">↳ ${p.note}</div>`:''}</td>
+    <td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${tColor(p.track)}18;color:${tColor(p.track)}">${p.track||'—'}</span></td>
+    <td style="font-size:11px">${p.phase||'—'}</td>
+    <td>${sbadge(p.status)}</td>
+    <td>${sbadge(p.priority)}</td>
+    <td><div style="display:flex;align-items:center;gap:5px"><div class="av av-sm" style="background:${tColor(p.track)}">${avatar(teamName(p.devLead))}</div><span style="font-size:11px">${teamName(p.devLead)}</span></div></td>
+    <td style="font-size:11px;color:var(--lt)">${fmtDate(p.startDate)}</td>
+    <td style="font-size:11px;color:${isOverdue(p.endDate)&&p.status!=='Completed'?'var(--red)':'var(--lt)'}">${fmtDate(p.endDate)}</td>
+    <td style="min-width:100px">${pBar(p.progress)}<div style="font-size:10px;color:var(--lt);margin-top:2px">${p.progress||0}%</div></td>
+    <td>${p.jiraKey?`<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:#eff6ff;color:#2563eb">${p.jiraKey}</span>`:'—'}</td>
+    <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="openModal('project','${p.id}')">✏️</button><button class="btn-icon" onclick="delItem('projects','${p.id}')">🗑</button></td>
+  </tr>`).join(''):`<tr><td colspan="11" class="empty">No projects found.</td></tr>`}
+  </tbody></table></div></div>`;
+},
+
+/* ─── PROJECT DETAIL ──────────────────────────────────── */
+'project-detail'(params) {
+  const col=params.col||'projects';
+  const p=getItem(col,params.id);
+  if(!p) return '<div class="empty">Not found.</div>';
+  const {teamMembers}=getState();
+  const team=(p.team||[]).map(id=>teamMember(id)||{name:id,role:'—'});
+  const milestones=p.milestones||[];
+  const totalTasks=milestones.reduce((s,m)=>s+(m.tasks||[]).length,0);
+  const doneTasks=milestones.reduce((s,m)=>s+(m.tasks||[]).filter(t=>t.status==='Done'||t.status==='Completed').length,0);
+
+  function msCard(ms,idx) {
+    const owners=(ms.owners||[]).map(id=>teamName(id));
+    const tasks=ms.tasks||[];
+    const done=tasks.filter(t=>t.status==='Done'||t.status==='Completed').length;
+    const mc={Completed:'#22c55e','At Risk':'#f59e0b',Overdue:'#ef4444','Yet to Start':'#94a3b8','In Progress':'#3b82f6','On Track':'#3b82f6'}[ms.status]||'#94a3b8';
+    return `<div class="ms-item">
+      <div class="ms-hdr" onclick="toggleMs('ms-body-${ms.id}',this)">
+        <div class="ms-chevron">▶</div>
+        <div style="width:10px;height:10px;border-radius:50%;background:${mc};flex-shrink:0"></div>
+        <div class="ms-title-text">${ms.title}</div>
+        ${sbadge(ms.status)}
+        <span style="font-size:11px;color:var(--lt)">${fmtDate(ms.dueDate)}</span>
+        ${owners.length?`<div class="chip-row" style="margin-left:auto">${owners.map(n=>`<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#eff6ff;color:#2563eb">${n.split(' ')[0]}</span>`).join('')}</div>`:''}
+        ${tasks.length?`<span style="font-size:10px;color:var(--lt)">${done}/${tasks.length} tasks</span>`:''}
+        <div onclick="event.stopPropagation();openModal('milestoneEdit','${ms.id}','${params.id}','${col}')">✏️</div>
+        <div onclick="event.stopPropagation();delMilestone('${col}','${params.id}','${ms.id}')">🗑</div>
+      </div>
+      <div class="ms-body" id="ms-body-${ms.id}">
+        ${ms.revisedETA?`<div style="font-size:11px;color:#d97706;margin-bottom:8px">⚠️ Revised ETA: ${fmtDate(ms.revisedETA)} — ${ms.delayReason||''}</div>`:''}
+        ${ms.notes?`<div class="note-block">${ms.notes}</div>`:''}
+        ${tasks.length?`
+        <div class="task-table-hdr">
+          <div></div><div>Task</div><div>Owner</div><div>Status</div><div>Due</div><div>Depends on</div><div>Priority</div><div></div>
+        </div>
+        <div class="task-list">${tasks.map(t=>{
+          const done2=t.status==='Done'||t.status==='Completed';
+          const overdue=isOverdue(t.dueDate)&&!done2;
+          const depTask=t.dependsOn?tasks.find(x=>x.id===t.dependsOn):null;
+          const depMet=depTask&&(depTask.status==='Done'||depTask.status==='Completed');
+          const otherTasks=tasks.filter(x=>x.id!==t.id);
+          return `<div class="task-row ${done2?'done':''}">
+            <input type="checkbox" class="task-check" ${done2?'checked':''} onchange="toggleTask('${col}','${params.id}','${ms.id}','${t.id}',this.checked)"/>
+            <div><div class="task-row-name">${t.title}</div>${t.notes?`<div class="task-row-meta">${t.notes}</div>`:''}</div>
+            <div class="task-row-cell">${t.assignee?`<div style="display:flex;align-items:center;gap:4px"><div class="av av-sm" style="width:18px;height:18px;font-size:8px">${avatar(teamName(t.assignee))}</div><span style="font-size:10px">${teamName(t.assignee).split(' ')[0]}</span></div>`:'<span style="color:var(--lt)">—</span>'}</div>
+            <select class="task-mini-select" onchange="updTaskField('${col}','${params.id}','${ms.id}','${t.id}','status',this.value)">${['Yet to Start','In Progress','Blocked','Done'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select>
+            <div class="task-row-cell ${overdue?'due-overdue':''}">${fmtDate(t.dueDate)}</div>
+            <div>${depTask?`<span class="dep-chip ${depMet?'met':''}" title="${depTask.title}">${depMet?'✓':'⏳'} ${depTask.title.slice(0,12)}${depTask.title.length>12?'…':''}</span>`:'<span style="color:var(--lt);font-size:10px">—</span>'}</div>
+            <div class="task-row-cell">${t.priority?sbadge(t.priority):'<span style="color:var(--lt)">—</span>'}</div>
+            <div style="display:flex;gap:2px"><button class="btn-icon" onclick="openModal('editTask','${ms.id}','${params.id}','${col}','${t.id}')" title="Edit">✏️</button><button class="btn-icon" onclick="delTask('${col}','${params.id}','${ms.id}','${t.id}')" title="Delete">🗑</button></div>
+          </div>`;
+        }).join('')}</div>`:'<div style="font-size:11px;color:var(--lt);padding:8px 4px">No tasks yet.</div>'}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('addTask','${ms.id}','${params.id}','${col}')">+ Add Task</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  return `<button class="btn btn-ghost btn-sm" onclick="goBack()" style="margin-bottom:12px">← Back</button>
+  <div class="det-layout">
+    <div>
+      <div class="det-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="flex:1">
+            <div class="chip-row" style="margin-bottom:6px">${sbadge(p.status)}${sbadge(p.priority)}<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${tColor(p.track)}18;color:${tColor(p.track)}">${p.track||'—'}</span></div>
+            <div class="det-title">${p.name}</div>
+            ${col==='onboardingProjects'?`<div style="display:inline-flex;align-items:center;gap:4px;background:var(--navy);color:#fff;border-radius:4px;padding:2px 9px;font-size:10px;font-weight:700;margin-bottom:6px">👤 ${p.customerName||'—'}</div>`:''}
+            ${p.description?`<div style="font-size:13px;color:var(--mid);margin-bottom:8px">${p.description}</div>`:''}
+            ${p.note?`<div class="note-block">↳ ${p.note}</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="openModal('project','${p.id}','${col}')">Edit</button><button class="btn btn-danger btn-sm" onclick="delItem('${col}','${p.id}',true)">Delete</button></div>
+        </div>
+        <hr class="divider"/>
+        <div class="det-meta-grid">
+          <div class="det-meta-item"><span class="lbl">Phase</span><span class="val">${p.phase||'—'}</span></div>
+          <div class="det-meta-item"><span class="lbl">Dev Lead</span><span class="val">${teamName(p.devLead)}</span></div>
+          <div class="det-meta-item"><span class="lbl">Start</span><span class="val">${fmtDate(p.startDate)}</span></div>
+          <div class="det-meta-item"><span class="lbl">End</span><span class="val" style="color:${isOverdue(p.endDate)&&p.status!=='Completed'?'var(--red)':'inherit'}">${fmtDate(p.endDate)}</span></div>
+          <div class="det-meta-item"><span class="lbl">Jira</span><span class="val">${p.jiraKey||'—'}</span></div>
+          <div class="det-meta-item"><span class="lbl">Stakeholders</span><span class="val">${p.stakeholders||'—'}</span></div>
+        </div>
+        <div class="section-lbl">PROGRESS</div>
+        ${pBar(p.progress||0,8)}
+        <div style="font-size:11px;color:var(--lt);margin-top:4px">${p.progress||0}% · ${doneTasks}/${totalTasks} tasks done</div>
+        <hr class="divider"/>
+        <div class="section-lbl">TEAM</div>
+        <div class="chip-row">${team.map(m=>`<div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 4px"><div class="av av-sm">${avatar(m.name)}</div><div><div style="font-size:11px;font-weight:600">${m.name}</div><div style="font-size:10px;color:var(--lt)">${m.role||'—'}</div></div></div>`).join('')||'<span style="color:var(--lt);font-size:12px">No team assigned</span>'}</div>
+        ${p.objectives?`<hr class="divider"/><div class="section-lbl">OBJECTIVES</div><div style="font-size:12px;color:var(--mid)">${p.objectives}</div>`:''}
+      </div>
+
+      <!-- Milestones & Tasks -->
+      <div class="det-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin:0">Milestones & Tasks</div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('addMilestone','${params.id}','${col}')">+ Add Milestone</button>
+        </div>
+        ${milestones.length?`<div class="ms-list">${milestones.map((ms,i)=>msCard(ms,i)).join('')}</div>`:'<div class="empty">No milestones yet. Add one to start tracking progress.</div>'}
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+      <div class="det-card" style="position:sticky;top:20px">
+        <div class="section-lbl">PROJECT DETAILS</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Status</div><div style="margin-top:3px">${sbadge(p.status)}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Priority</div><div style="margin-top:3px">${sbadge(p.priority)}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Track</div><div style="font-size:12px;margin-top:3px;font-weight:600;color:${tColor(p.track)}">${p.track||'—'}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Dev Lead</div><div style="font-size:12px;margin-top:3px">${teamName(p.devLead)}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Milestones</div><div style="font-size:12px;margin-top:3px">${milestones.length} total · ${milestones.filter(m=>m.status==='Completed').length} completed</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Tasks</div><div style="font-size:12px;margin-top:3px">${doneTasks}/${totalTasks} done</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Jira Key</div><div style="font-size:12px;margin-top:3px">${p.jiraKey||'—'}</div></div>
+        </div>
+        <hr class="divider"/>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('addNote','${params.id}','${col}')" style="width:100%">+ Add Note</button>
+      </div>
+    </div>
+  </div>`;
+},
+
+/* ─── MILESTONES ──────────────────────────────────────── */
+milestones(params) {
+  const {projects,onboardingProjects}=getState();
+  const all=[...projects,...onboardingProjects];
+  const allMs=[];
+  all.forEach(p=>{ (p.milestones||[]).forEach(m=>allMs.push({...m,projectName:p.name,projectId:p.id,col:projects.includes(p)?'projects':'onboardingProjects'})); });
+  const overdue=allMs.filter(m=>m.status==='Overdue'), atRisk=allMs.filter(m=>m.status==='At Risk'), ontrack=allMs.filter(m=>['Yet to Start','On Track'].includes(m.status)), done=allMs.filter(m=>m.status==='Completed');
+
+  function msRow(m) {
+    const owners=(m.owners||[]).map(id=>teamName(id));
+    const tasks=m.tasks||[];const doneTasks=tasks.filter(t=>t.status==='Done'||t.status==='Completed').length;
+    const mc={Completed:'#22c55e','At Risk':'#f59e0b',Overdue:'#ef4444','Yet to Start':'#94a3b8','In Progress':'#3b82f6','On Track':'#3b82f6'}[m.status]||'#94a3b8';
+    return `<tr><td><div style="font-weight:700;color:var(--navy)">${m.title}</div>${m.delayReason?`<div style="font-size:10px;color:#d97706">⚠️ ${m.delayReason}</div>`:''}</td>
+    <td><span style="font-size:11px;cursor:pointer;color:var(--teal);text-decoration:underline" onclick="V('project-detail',{id:'${m.projectId}',col:'${m.col}'})">${m.projectName}</span></td>
+    <td>${sbadge(m.status)}</td>
+    <td style="font-size:11px">${fmtDate(m.dueDate)}${m.revisedETA?`<div style="font-size:10px;color:#d97706">→ ${fmtDate(m.revisedETA)}</div>`:''}</td>
+    <td><div class="chip-row">${owners.map(n=>`<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;background:#eff6ff;color:#2563eb">${n.split(' ')[0]}</span>`).join('')||'—'}</div></td>
+    <td style="font-size:11px">${tasks.length?`${doneTasks}/${tasks.length} tasks`:'No tasks'}</td></tr>`;
+  }
+
+  function section(title,items,color) {
+    if(!items.length)return'';
+    return `<div style="margin-bottom:20px"><div style="font-size:13px;font-weight:700;color:${color};margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border)">${title} (${items.length})</div><div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt"><thead><tr><th>Milestone</th><th>Project</th><th>Status</th><th>Due Date</th><th>Owners</th><th>Tasks</th></tr></thead><tbody>${items.map(msRow).join('')}</tbody></table></div></div></div>`;
+  }
+
+  return `<div class="vh"><div class="vh-left"><h1>Milestones</h1><div class="sub">${allMs.length} milestones across all projects</div></div></div>
+  ${tabNote('<strong>Milestones</strong> — cross-project milestone roll-up. Use this to spot delays and at-risk dates without opening every project.')}
+  ${filterBar(['track'])}
+  ${section('🔴 Overdue',overdue,'var(--red)')}${section('🟡 At Risk',atRisk,'var(--amber)')}${section('🔵 On Track / Yet to Start',ontrack,'var(--blue)')}${section('✅ Completed',done,'var(--green)')}
+  ${!allMs.length?'<div class="empty">No milestones found.</div>':''}`;
+},
+
+/* ─── ONBOARDING ──────────────────────────────────────── */
+onboarding(params) {
+  const {onboardingProjects}=getState();
+  const filtered=filterItems(onboardingProjects);
+  return `<div class="vh"><div class="vh-left"><h1>Onboarding Projects</h1><div class="sub">${onboardingProjects.length} customer onboarding projects</div></div><button class="btn btn-primary" onclick="openModal('onboarding')">+ New Onboarding</button></div>
+  ${filterBar(['track','status'])}
+  <div class="stat-row">
+    <div class="stat-card b"><div class="stat-num">${onboardingProjects.length}</div><div class="stat-lbl">Total</div></div>
+    <div class="stat-card t"><div class="stat-num">${onboardingProjects.filter(p=>p.status==='In Progress').length}</div><div class="stat-lbl">In Progress</div></div>
+    <div class="stat-card g"><div class="stat-num">${onboardingProjects.filter(p=>p.status==='Completed').length}</div><div class="stat-lbl">Completed</div></div>
+  </div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt"><thead><tr><th>Customer</th><th>Project</th><th>Track</th><th>Phase</th><th>Status</th><th>Lead</th><th>Start</th><th>End</th><th>Progress</th><th>Jira</th><th></th></tr></thead><tbody>
+  ${filtered.length?filtered.map(p=>`<tr class="clk" onclick="V('project-detail',{id:'${p.id}',col:'onboardingProjects'})">
+    <td><div style="background:var(--navy);color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;display:inline-block">👤 ${p.customerName||'—'}</div></td>
+    <td><div style="font-weight:700;color:var(--navy)">${p.name}</div><div style="font-size:10px;color:var(--lt)">${p.description||''}</div></td>
+    <td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${tColor(p.track)}18;color:${tColor(p.track)}">${p.track||'—'}</span></td>
+    <td style="font-size:11px">${p.phase||'—'}</td>
+    <td>${sbadge(p.status)}</td>
+    <td style="font-size:11px">${teamName(p.devLead)}</td>
+    <td style="font-size:11px;color:var(--lt)">${fmtDate(p.startDate)}</td>
+    <td style="font-size:11px;color:var(--lt)">${fmtDate(p.endDate)}</td>
+    <td style="min-width:90px">${pBar(p.progress)}<div style="font-size:10px;color:var(--lt);margin-top:2px">${p.progress||0}%</div></td>
+    <td>${p.jiraKey?`<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:#eff6ff;color:#2563eb">${p.jiraKey}</span>`:'—'}</td>
+    <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="openModal('onboarding','${p.id}')">✏️</button><button class="btn-icon" onclick="delItem('onboardingProjects','${p.id}')">🗑</button></td>
+  </tr>`).join(''):`<tr><td colspan="11" class="empty">No onboarding projects.</td></tr>`}
+  </tbody></table></div></div>`;
+},
+
+/* ─── TEAM ────────────────────────────────────────────── */
+team(params) {
+  const {teamMembers}=getState();
+  const filtered=curParams.track?teamMembers.filter(m=>m.track===curParams.track):teamMembers;
+  return `${execBanner('team')}
+  ${tabNote('<strong>Team</strong> — Step 1 of execution. Roster of people, roles and tracks. Add or edit a member here, then move on to Capacity to plan their load.')}
+  <div class="vh"><div class="vh-left"><h1>Team</h1><div class="sub">${teamMembers.length} members</div></div><button class="btn btn-primary" onclick="openModal('teamMember')">+ Add Member</button></div>
+  ${filterBar(['track'])}
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt"><thead><tr><th>Name</th><th>Role</th><th>Track</th><th>Email</th><th>Availability</th><th></th></tr></thead><tbody>
+  ${filtered.map(m=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:8px"><div class="av" style="background:${tColor(m.track)}">${avatar(m.name)}</div><span style="font-weight:700">${m.name}</span></div></td>
+    <td style="font-size:12px">${m.role||'—'}</td>
+    <td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${tColor(m.track)}18;color:${tColor(m.track)}">${m.track||'—'}</span></td>
+    <td style="font-size:11px;color:var(--lt)">${m.email||m.jiraId||'—'}</td>
+    <td style="min-width:110px">${pBar(m.availability||100)}<div style="font-size:10px;color:var(--lt);margin-top:2px">${m.availability||100}%</div></td>
+    <td><button class="btn-icon" onclick="openModal('teamMember','${m.id}')">✏️</button><button class="btn-icon" onclick="delItem('teamMembers','${m.id}')">🗑</button></td>
+  </tr>`).join('')}
+  </tbody></table></div></div>`;
+},
+
+/* ─── CAPACITY ────────────────────────────────────────── */
+capacity(params) {
+  const {teamMembers,projects}=getState();
+  const activeProjects=projects.filter(p=>p.status!=='Completed');
+
+  // Calculate member utilization from allocations
+  function getMemberUtil(m) {
+    const total=activeProjects.reduce((s,p)=>{
+      const alloc=(m.allocations||{})[p.id]||0;
+      return s+alloc;
+    },0);
+    return total;
+  }
+
+  return `${execBanner('capacity')}
+  ${tabNote('<strong>Capacity</strong> — Step 2 of execution. % allocation per person across active projects. Each cell shows allocation; <strong>Total Allocated</strong> should not exceed <strong>Availability</strong> (over-allocated rows in red). Click <em>Edit Allocations</em> to rebalance, then verify in Resources.')}
+  <div class="vh"><div class="vh-left"><h1>Capacity Planning</h1><div class="sub">Allocation across active projects — standard PMO capacity matrix</div></div><button class="btn btn-primary" onclick="openModal('capacity')">Edit Allocations</button></div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table class="cap-table">
+    <thead><tr>
+      <th class="mc">Team Member</th>
+      <th>Availability</th>
+      ${activeProjects.map(p=>`<th title="${p.name}" style="max-width:90px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">${p.name.length>12?p.name.slice(0,12)+'…':p.name}</div><div style="font-size:8px;color:var(--lt);margin-top:2px">${p.track||''}</div></th>`).join('')}
+      <th>Total Alloc.</th>
+      <th>Status</th>
+    </tr></thead>
+    <tbody>
+    ${teamMembers.map(m=>{
+      const avail=m.availability||100;
+      const allocs=activeProjects.map(p=>(m.allocations||{})[p.id]||0);
+      const total=allocs.reduce((s,a)=>s+a,0);
+      const cls=total>avail?'util-over':total>0&&total<=avail?'util-ok':'util-under';
+      const label=total>avail?'Over-allocated':total===0?'Unallocated':'Optimal';
+      return `<tr>
+        <td class="mc"><div style="display:flex;align-items:center;gap:7px"><div class="av" style="background:${tColor(m.track)}">${avatar(m.name)}</div><div><div style="font-weight:700;font-size:12px">${m.name}</div><div style="font-size:10px;color:var(--lt)">${m.role||''}</div></div></div></td>
+        <td><div style="font-size:15px;font-weight:800;color:var(--navy);text-align:center">${avail}%</div>${pBar(avail)}</td>
+        ${allocs.map((a,i)=>`<td style="text-align:center">${a>0?`<div style="font-size:14px;font-weight:800;color:${a>avail?'var(--red)':'var(--navy)'}">${a}%</div>${pBar(Math.min(a/avail*100,100))}`:''}</td>`).join('')}
+        <td style="text-align:center"><div style="font-size:16px;font-weight:800;color:${total>avail?'var(--red)':total===0?'var(--lt)':'var(--teal)'}">${total}%</div><div style="font-size:9px;color:var(--lt)">${avail>0?Math.round(total/avail*100):0}% of capacity</div></td>
+        <td><span class="util-badge ${cls}">${label}</span></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div></div>`;
+},
+
+/* ─── RESOURCES ───────────────────────────────────────── */
+resources(params) {
+  const {teamMembers,resources}=getState();
+  const weekOff=curParams.weekOffset||0;
+  const d=new Date(today());
+  const days=[];
+  for(let i=0;i<7;i++){const day=new Date(d);day.setDate(d.getDate()+weekOff*7+i-d.getDay()+1);days.push(day.toISOString().split('T')[0]);}
+  const ws=new Date(days[0]).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  const we=new Date(days[6]).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  function getLogs(mid,date){return resources.filter(r=>r.memberId===mid&&r.date===date);}
+  function totalH(mid,date){return getLogs(mid,date).reduce((s,r)=>s+(parseFloat(r.hours)||0),0);}
+
+  return `${execBanner('resources')}
+  ${tabNote('<strong>Resources</strong> — Step 3 of execution. Actual hours logged per day per person. Use this to validate the capacity plan against reality and catch silent under- or over-work.')}
+  <div class="vh"><div class="vh-left"><h1>Resource Tracking</h1><div class="sub">Weekly hours log across the team</div></div><button class="btn btn-primary" onclick="openModal('resource')">+ Log Hours</button></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:var(--white);border:1px solid var(--border);border-radius:var(--rs);padding:10px 14px">
+    <button class="btn btn-ghost btn-sm" onclick="setWeekOffset(${weekOff-1})">← Prev</button>
+    <div style="flex:1;text-align:center;font-size:13px;font-weight:600;color:var(--navy)">${ws} — ${we}${weekOff===0?'<span style="font-size:10px;background:var(--teal);color:#fff;padding:1px 7px;border-radius:8px;margin-left:8px">This Week</span>':''}</div>
+    <button class="btn btn-ghost btn-sm" ${weekOff>=0?'disabled style="opacity:.4"':''} onclick="setWeekOffset(${weekOff+1})">Next →</button>
+    ${weekOff!==0?`<button class="btn btn-ghost btn-sm" onclick="setWeekOffset(0)">Today</button>`:''}
+  </div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt">
+    <thead><tr><th>Member</th>${days.map(d=>{const isToday=d===today();return`<th style="${isToday?'background:#1a1040;color:#fff':''}">${new Date(d).toLocaleDateString('en-GB',{weekday:'short'})}<br>${new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}${isToday?'<div style="font-size:8px;opacity:.7">TODAY</div>':''}</th>`;}).join('')}<th>Week Total</th></tr></thead>
+    <tbody>${teamMembers.map(m=>{
+      const weekTotal=days.reduce((s,d)=>s+totalH(m.id,d),0);
+      return`<tr><td><div style="font-weight:600">${m.name}</div><div style="font-size:10px;color:${tColor(m.track)};font-weight:600">${m.track||'—'}</div></td>
+      ${days.map(d=>{
+        const logs=getLogs(m.id,d);const tot=totalH(m.id,d);const isToday=d===today();
+        return`<td style="${isToday?'background:#f8faff':''};cursor:pointer" onclick="openModal('resourceDay','${m.id}','${d}')">
+          ${logs.length?`<div style="display:flex;flex-direction:column;gap:2px">${logs.map(l=>`<div style="background:${tColor(l.track)||'#1B2B5E'}18;border-left:2px solid ${tColor(l.track)||'#1B2B5E'};padding:2px 4px;border-radius:0 3px 3px 0;font-size:10px;font-weight:700;color:${tColor(l.track)||'#1B2B5E'}">${l.hours}h</div>`).join('')}</div>`:'<div style="font-size:10px;color:var(--lt);text-align:center">—</div>'}
+        </td>`;
+      }).join('')}
+      <td style="text-align:center;font-weight:700;color:${weekTotal>40?'var(--red)':weekTotal>0?'var(--navy)':'var(--lt)'}">${weekTotal>0?weekTotal+'h':'—'}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div></div>`;
+},
+
+/* ─── RISKS ───────────────────────────────────────────── */
+risks(params) {
+  const {risks}=getState();
+  const filtered=filterItems(risks);
+  return `<div class="vh"><div class="vh-left"><h1>Risk Register</h1><div class="sub">${risks.length} risks tracked</div></div><button class="btn btn-primary" onclick="openModal('risk')">+ Add Risk</button></div>
+  ${filterBar(['track','status'])}
+  <div class="stat-row">
+    <div class="stat-card r"><div class="stat-num">${risks.filter(r=>r.status==='Open').length}</div><div class="stat-lbl">Open</div></div>
+    <div class="stat-card a"><div class="stat-num">${risks.filter(r=>r.status==='Mitigated').length}</div><div class="stat-lbl">Mitigated</div></div>
+    <div class="stat-card g"><div class="stat-num">${risks.filter(r=>r.status==='Closed').length}</div><div class="stat-lbl">Closed</div></div>
+    <div class="stat-card r"><div class="stat-num">${risks.filter(r=>(r.likelihood||1)*(r.impact||1)>=15).length}</div><div class="stat-lbl">Critical (Score≥15)</div></div>
+  </div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt"><thead><tr><th>Risk</th><th>Project</th><th>Track</th><th>Score</th><th>Likelihood</th><th>Impact</th><th>Owner</th><th>Status</th><th>Mitigation</th><th></th></tr></thead><tbody>
+  ${filtered.length?filtered.map(r=>{const score=(r.likelihood||1)*(r.impact||1);const cls=score>=15?'score-h':score>=8?'score-m':'score-l';return`<tr>
+    <td style="font-weight:700;max-width:180px">${r.title}</td>
+    <td style="font-size:11px">${r.project||'—'}</td>
+    <td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${tColor(r.track)}18;color:${tColor(r.track)}">${r.track||'—'}</span></td>
+    <td><div class="risk-score ${cls}">${score}</div></td>
+    <td style="text-align:center;font-size:12px;font-weight:700">${r.likelihood||'—'}/5</td>
+    <td style="text-align:center;font-size:12px;font-weight:700">${r.impact||'—'}/5</td>
+    <td style="font-size:11px">${teamName(r.owner)}</td>
+    <td>${sbadge(r.status)}</td>
+    <td style="font-size:11px;max-width:200px;color:var(--mid)">${r.mitigation||'—'}</td>
+    <td><button class="btn-icon" onclick="openModal('risk','${r.id}')">✏️</button><button class="btn-icon" onclick="delItem('risks','${r.id}')">🗑</button></td>
+  </tr>`;}).join(''):`<tr><td colspan="10" class="empty">No risks found.</td></tr>`}
+  </tbody></table></div></div>`;
+},
+
+/* ─── ESCALATIONS ─────────────────────────────────────── */
+escalations(params) {
+  const {escalations}=getState();
+  const filtered=filterItems(escalations);
+  return `<div class="vh"><div class="vh-left"><h1>Escalations</h1><div class="sub">${escalations.filter(e=>e.status==='Open').length} open escalations</div></div><button class="btn btn-primary" onclick="openModal('escalation')">+ Add Escalation</button></div>
+  ${filterBar(['track','priority'])}
+  ${filtered.length?filtered.map(e=>`<div style="background:var(--white);border:1px solid var(--border);border-left:4px solid ${e.status==='Resolved'?'var(--green)':'var(--red)'};border-radius:var(--rs);padding:14px 16px;margin-bottom:10px;box-shadow:var(--sh)">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px">${e.title}</div>
+        <div style="font-size:11px;color:var(--lt)">${e.project||'—'} · ${fmtDate(e.date)} · Raised by ${teamName(e.raisedBy)}</div>
+        ${e.notes?`<div style="font-size:12px;color:var(--mid);margin-top:6px">${e.notes}</div>`:''}
+        ${e.resolution?`<div style="font-size:12px;color:var(--green);margin-top:6px">✅ ${e.resolution}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        ${sbadge(e.priority)}${sbadge(e.status)}
+        <div style="display:flex;gap:4px"><button class="btn-icon" onclick="openModal('escalation','${e.id}')">✏️</button><button class="btn-icon" onclick="delItem('escalations','${e.id}')">🗑</button></div>
+      </div>
+    </div>
+  </div>`).join(''):'<div class="empty">No escalations found.</div>'}`;
+},
+
+/* ─── LEADERSHIP REPORT ───────────────────────────────── */
+leadership(params) {
+  const {projects,milestones:allMs,risks,escalations,teamMembers}=getState();
+  const inProg=projects.filter(p=>p.status==='In Progress').length;
+  const completed=projects.filter(p=>p.status==='Completed').length;
+  const onHold=projects.filter(p=>p.status==='On Hold').length;
+  const allMilestones=projects.flatMap(p=>(p.milestones||[]).map(m=>({...m,projectName:p.name})));
+  const overdueMsCount=allMilestones.filter(m=>m.status==='Overdue').length;
+  const openRisks=risks.filter(r=>r.status==='Open').length;
+  const openEsc=escalations.filter(e=>e.status==='Open').length;
+  return `<div class="vh"><div class="vh-left"><h1>Leadership Report</h1><div class="sub">Portfolio health at a glance — ${fmtDate(today())}</div></div><button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print</button></div>
+  ${tabNote('<strong>Leadership Report</strong> — printable single-page roll-up for execs. KPIs, status mix, hot risks, open escalations.')}
+  <div class="stat-row">
+    <div class="stat-card b"><div class="stat-num">${projects.length}</div><div class="stat-lbl">Total Projects</div></div>
+    <div class="stat-card t"><div class="stat-num">${inProg}</div><div class="stat-lbl">In Progress</div></div>
+    <div class="stat-card g"><div class="stat-num">${completed}</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat-card a"><div class="stat-num">${onHold}</div><div class="stat-lbl">On Hold</div></div>
+    <div class="stat-card r"><div class="stat-num">${overdueMsCount}</div><div class="stat-lbl">Overdue Milestones</div></div>
+    <div class="stat-card r"><div class="stat-num">${openRisks}</div><div class="stat-lbl">Open Risks</div></div>
+  </div>
+  <div class="report-section"><h2>Project Status Summary</h2><div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Status</th><th>Progress</th><th>End Date</th><th>Lead</th><th>Milestones</th></tr></thead><tbody>
+  ${projects.map(p=>{const pMs=p.milestones||[];const ov=pMs.filter(m=>m.status==='Overdue').length;return`<tr class="clk" onclick="V('project-detail',{id:'${p.id}',col:'projects'})"><td style="font-weight:700">${p.name}</td><td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${tColor(p.track)}18;color:${tColor(p.track)}">${p.track||'—'}</span></td><td>${sbadge(p.status)}</td><td style="min-width:100px">${pBar(p.progress||0)}<div style="font-size:10px;color:var(--lt)">${p.progress||0}%</div></td><td style="font-size:11px;color:${isOverdue(p.endDate)&&p.status!=='Completed'?'var(--red)':'var(--lt)'}">${fmtDate(p.endDate)}</td><td style="font-size:11px">${teamName(p.devLead)}</td><td>${pMs.length}${ov?`<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:#fef2f2;color:#dc2626;margin-left:4px">${ov} overdue</span>`:''}</td></tr>`;}).join('')}
+  </tbody></table></div></div></div>
+  <div class="report-section"><h2>Open Escalations</h2>${escalations.filter(e=>e.status==='Open').length?escalations.filter(e=>e.status==='Open').map(e=>`<div style="background:var(--white);border:1px solid var(--border);border-left:4px solid var(--red);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px"><div style="font-size:13px;font-weight:700;color:var(--navy)">${e.title}</div><div style="font-size:11px;color:var(--lt)">${e.project||'—'} · ${fmtDate(e.date)} · ${sbadge(e.priority)}</div>${e.notes?`<div style="font-size:11px;color:var(--mid);margin-top:5px">${e.notes}</div>`:''}</div>`).join(''):'<div class="empty">No open escalations.</div>'}</div>
+  <div class="report-section"><h2>Top Risks</h2>${risks.filter(r=>r.status==='Open').map(r=>{const score=(r.likelihood||1)*(r.impact||1);const cls=score>=15?'score-h':score>=8?'score-m':'score-l';return`<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px"><div class="risk-score ${cls}">${score}</div><div><div style="font-size:13px;font-weight:700;color:var(--navy)">${r.title}</div><div style="font-size:11px;color:var(--lt)">${r.project||'—'} · Owner: ${teamName(r.owner)}</div><div style="font-size:11px;color:var(--mid);margin-top:4px">${r.mitigation||'—'}</div></div></div>`;}).join('')||'<div class="empty">No open risks.</div>'}`;
+},
+
+/* ─── IMPACT TRACKER ──────────────────────────────────── */
+impacts(params) {
+  const {impacts}=getState();
+  return `<div class="vh"><div class="vh-left"><h1>Impact Tracker</h1><div class="sub">Quantified outcomes from completed and in-progress work</div></div><button class="btn btn-primary" onclick="openModal('impact')">+ Add Impact</button></div>
+  <div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Metric</th><th>Baseline</th><th>Current</th><th>Target</th><th>Improvement</th><th>Notes</th><th></th></tr></thead><tbody>
+  ${impacts.length?impacts.map(i=>`<tr>
+    <td style="font-weight:700">${i.project||'—'}</td>
+    <td style="font-weight:600;color:var(--navy)">${i.metric||'—'}</td>
+    <td style="font-size:11px;color:var(--lt)">${i.baseline||'—'}</td>
+    <td style="font-size:12px;font-weight:600">${i.current||'—'}</td>
+    <td style="font-size:11px;color:var(--lt)">${i.target||'—'}</td>
+    <td><span style="font-size:13px;font-weight:800;color:var(--green)">${i.improvement||'—'}</span></td>
+    <td style="font-size:11px;color:var(--mid)">${i.notes||'—'}</td>
+    <td><button class="btn-icon" onclick="openModal('impact','${i.id}')">✏️</button><button class="btn-icon" onclick="delItem('impacts','${i.id}')">🗑</button></td>
+  </tr>`).join(''):`<tr><td colspan="8" class="empty">No impact data yet.</td></tr>`}
+  </tbody></table></div></div>`;
+},
+
+/* ─── CHARTERS ────────────────────────────────────────── */
+charters(params) {
+  const {charters,projects}=getState();
+  return `<div class="vh"><div class="vh-left"><h1>Charters</h1><div class="sub">${charters.length} project charters</div></div><button class="btn btn-primary" onclick="openModal('charter')">+ New Charter</button></div>
+  ${charters.length?charters.map(c=>`<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px">
+      <div><div style="font-size:16px;font-weight:800;color:var(--navy)">${c.projectName||'—'}</div><div style="font-size:11px;color:var(--lt)">Sponsor: ${c.sponsor||'—'} · Budget: ${c.budget||'—'} · ${fmtDate(c.startDate)} → ${fmtDate(c.endDate)}</div></div>
+      <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="openModal('charter','${c.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="delItem('charters','${c.id}')">Delete</button></div>
+    </div>
+    <div class="det-meta-grid">
+      <div class="det-meta-item"><span class="lbl">Objectives</span><span class="val" style="font-size:12px">${c.objectives||'—'}</span></div>
+      <div class="det-meta-item"><span class="lbl">Scope (In)</span><span class="val" style="font-size:12px">${c.scope||'—'}</span></div>
+      <div class="det-meta-item"><span class="lbl">Out of Scope</span><span class="val" style="font-size:12px">${c.outOfScope||'—'}</span></div>
+      <div class="det-meta-item"><span class="lbl">Success Criteria</span><span class="val" style="font-size:12px">${c.successCriteria||'—'}</span></div>
+    </div>
+  </div>`).join(''):'<div class="empty">No charters yet. Create one for a project.</div>'}`;
+},
+
+/* ─── KNOWLEDGE ───────────────────────────────────────── */
+knowledge(params) {
+  const {documents=[]}=getState();
+  const type=curParams.docType||'All';
+  const filtered=type==='All'?documents:documents.filter(d=>d.type===type);
+  const types=['Strategy','Technical','Report','Brief','Design','Other'];
+  const icons={'Strategy':'📋','Technical':'⚙️','Report':'📊','Brief':'📝','Design':'🎨','Other':'📄'};
+  const colors={'Strategy':'#eff6ff','Technical':'#f0fdf4','Report':'#fdf4ff','Brief':'#fff7ed','Design':'#fdf2f8','Other':'#f8fafc'};
+  const textColors={'Strategy':'#2563eb','Technical':'#16a34a','Report':'#9333ea','Brief':'#c2410c','Design':'#be185d','Other':'#64748b'};
+  return `<div class="vh"><div class="vh-left"><h1>Knowledge Base</h1><div class="sub">Documents, briefs, strategies and references</div></div><button class="btn btn-primary" onclick="openModal('document')">+ Add Document</button></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+    <button class="gvt ${type==='All'?'active':''}" onclick="curParams.docType='All';_render()">All (${documents.length})</button>
+    ${types.map(t=>`<button class="gvt ${type===t?'active':''}" onclick="curParams.docType='${t}';_render()">${icons[t]} ${t} (${documents.filter(d=>d.type===t).length})</button>`).join('')}
+  </div>
+  <div class="doc-grid">${filtered.length?filtered.map(d=>`<div class="doc-card">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="padding:6px 10px;border-radius:6px;background:${colors[d.type]||'#f8fafc'};color:${textColors[d.type]||'#64748b'};font-size:10px;font-weight:700">${icons[d.type]||'📄'} ${d.type}</div>
+      <button class="btn-icon" onclick="delItem('documents','${d.id}')">🗑</button>
+    </div>
+    <div class="doc-title">${d.title}</div>
+    ${d.description?`<div class="doc-desc">${d.description}</div>`:''}
+    <div class="doc-meta"><span>📅 ${fmtDate(d.date)}</span><span>👤 ${teamName(d.uploadedBy)||d.uploadedBy||'—'}</span></div>
+    ${(d.tags||[]).length?`<div style="display:flex;gap:4px;flex-wrap:wrap">${d.tags.map(t=>`<span class="doc-tag">${t}</span>`).join('')}</div>`:''}
+    <div style="margin-top:auto">${d.url&&d.url!=='#'?`<a href="${d.url}" target="_blank" style="font-size:12px;font-weight:600;color:var(--teal);text-decoration:none">Open ↗</a>`:'<span style="font-size:11px;color:var(--lt)">No link</span>'}</div>
+  </div>`).join(''):'<div class="empty" style="grid-column:1/-1">No documents found.</div>'}</div>`;
+},
+
+/* ─── FEATURE DETAIL ──────────────────────────────────── */
+'feature-detail'(params) {
+  const {features,settings}=getState();
+  const f=features.find(x=>x.id===params.id);
+  if(!f) return '<div class="empty">Feature not found.</div>';
+  const SC={'Idea':'#7c3aed','Brief Draft':'#3b82f6','3-Way Scope':'#f59e0b','Ready to Build':'#10b981','In Progress':'#0ea5e9','Released':'#22c55e','Observation':'#8b5cf6'};
+  const sc=SC[f.stage]||'#94a3b8';
+  const milestones=f.milestones||[];
+
+  function msRow(ms) {
+    const owners=(ms.owners||[]).map(id=>teamName(id));
+    const mc={Achieved:'#22c55e',Pending:'#f59e0b',Missed:'#ef4444'}[ms.status]||'#94a3b8';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="width:10px;height:10px;border-radius:50%;background:${mc};flex-shrink:0"></div>
+      <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--navy)">${ms.title}</div><div style="font-size:10px;color:var(--lt)">${fmtDate(ms.date||ms.dueDate)}</div></div>
+      ${owners.length?`<div class="chip-row">${owners.map(n=>`<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:#eff6ff;color:#2563eb">${n.split(' ')[0]}</span>`).join('')}</div>`:''}
+      <select class="ms-status-select" style="font-size:10px;padding:3px 6px;border:1px solid var(--border-dk);border-radius:4px;font-family:'DM Sans',sans-serif" onchange="updateFeatureMs('${f.id}','${ms.id}',this.value)">
+        ${['Pending','Achieved','Missed'].map(s=>`<option value="${s}" ${ms.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <button class="btn-icon" onclick="delFeatureMs('${f.id}','${ms.id}')">×</button>
+    </div>`;
+  }
+
+  return `<button class="btn btn-ghost btn-sm" onclick="goBack()" style="margin-bottom:12px">← Back</button>
+  <div class="det-layout">
+    <div>
+      <div class="det-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
+          <div>
+            <div class="chip-row" style="margin-bottom:6px">
+              <span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;background:${sc}18;color:${sc}">${f.stage}</span>
+              ${f.jiraKey?`<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe">${f.jiraKey}</span>`:''}
+            </div>
+            <div class="det-title">${f.title}</div>
+            ${f.description?`<div style="font-size:13px;color:var(--mid);margin-top:4px">${f.description}</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('editFeature','${f.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="delItem('features','${f.id}',true)">Delete</button>
+          </div>
+        </div>
+        ${f.note?`<div class="note-block">↳ ${f.note}</div>`:''}
+        <hr class="divider"/>
+        <div class="section-lbl">ADVANCE STAGE</div>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px">
+          ${settings.stages.map((s,i)=>{const isCur=s===f.stage,isPast=i<settings.stages.indexOf(f.stage),c=SC[s]||'#94a3b8';return`<div style="padding:5px 11px;border-radius:20px;font-size:10px;font-weight:600;border:1.5px solid ${isCur?c:'var(--border-dk)'};background:${isCur?c:'transparent'};color:${isCur?'#fff':isPast?c+'90':'var(--mid)'};cursor:pointer;white-space:nowrap" onclick="advStage('${f.id}','${s}')">${s}</div>→`;}).join('').slice(0,-1)}
+        </div>
+      </div>
+      <div class="det-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0">Milestones</div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('addFeatureMs','${f.id}')">+ Milestone</button>
+        </div>
+        ${milestones.length?milestones.map(msRow).join(''):'<div class="empty" style="padding:20px 0">No milestones. Add one to track delivery checkpoints.</div>'}
+      </div>
+    </div>
+    <div>
+      <div class="det-card" style="position:sticky;top:20px">
+        <div class="section-lbl">DETAILS</div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">PM Owner</div><div style="font-size:12px;margin-top:2px">${teamName(f.pm)}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Segment</div><div style="font-size:12px;margin-top:2px">${f.segment||'—'}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Track</div><div style="font-size:12px;margin-top:2px;font-weight:600;color:${tColor(f.track)}">${f.track||'—'}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Start Date</div><div style="font-size:12px;margin-top:2px">${fmtDate(f.startDate)}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">End Date</div><div style="font-size:12px;margin-top:2px">${fmtDate(f.endDate)}</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Days in Stage</div><div style="font-size:12px;margin-top:2px">${f.daysInStage||0}d</div></div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--lt);text-transform:uppercase">Created</div><div style="font-size:12px;margin-top:2px">${fmtDate(f.createdAt)}</div></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+},
+
+/* ─── ADMIN ───────────────────────────────────────────── */
+admin(params) {
+  const {settings,teamMembers}=getState();
+  const tabs=[{id:'general',label:'General'},{id:'stages',label:'Stages'},{id:'segments',label:'Segments'},{id:'tracks',label:'Tracks'},{id:'statuses',label:'Statuses'},{id:'phases',label:'Phases'},{id:'team',label:'Team Members'},{id:'jira',label:'Jira Integration'},{id:'data',label:'Data & Reset'}];
+
+  function panelContent() {
+    switch(adminTab) {
+      case 'general': return `<div class="admin-sec-title">General Settings</div><div class="admin-sec-desc">Basic app identity and fiscal year.</div>
+        <div class="form-group"><label class="form-label">App / Org Name</label><input class="a-input" id="a-orgname" value="${settings.orgName||'Klarion'}"/></div>
+        <div class="form-group"><label class="form-label">Fiscal Year Label</label><input class="a-input" id="a-fy" value="${settings.fiscalYear||'FY2026–27'}"/></div>
+        <button class="admin-save" onclick="adminSave('general')">Save Settings</button>`;
+
+      case 'stages': return `<div class="admin-sec-title">Stages & Pipeline</div><div class="admin-sec-desc">Define the lifecycle stages features move through.</div>
+        <div id="a-stages-list">${(settings.stages||[]).map((s,i)=>`<div class="admin-list-item"><div style="width:10px;height:10px;border-radius:50%;background:#94a3b8;flex-shrink:0"></div><input class="a-input" style="flex:1" id="as-name-${i}" value="${s}"/><input class="a-input" style="flex:2" id="as-desc-${i}" value="${settings.stageDescriptions?.[s]||''}" placeholder="Description"/><button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button></div>`).join('')}</div>
+        <button class="admin-add" onclick="addAdminListItem('a-stages-list','as-name','as-desc')">+ Add Stage</button>
+        <button class="admin-save" onclick="adminSave('stages')">Save Stages</button>`;
+
+      case 'segments': return `<div class="admin-sec-title">Segments</div><div class="admin-sec-desc">Product areas for grouping features on the Roadmap.</div>
+        <div id="a-segs-list">${(settings.segments||[]).map((s,i)=>`<div class="admin-list-item"><input class="a-input" style="flex:1" id="asegs-${i}" value="${s}"/><button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button></div>`).join('')}</div>
+        <button class="admin-add" onclick="addAdminSimpleItem('a-segs-list','asegs')">+ Add Segment</button>
+        <button class="admin-save" onclick="adminSave('segments')">Save Segments</button>`;
+
+      case 'tracks': return `<div class="admin-sec-title">Tracks</div><div class="admin-sec-desc">Engineering streams or team tracks.</div>
+        <div id="a-tracks-list">${(settings.trackNames||[]).map((t,i)=>`<div class="admin-list-item"><div style="width:14px;height:14px;border-radius:3px;background:${tColor(t)};flex-shrink:0"></div><input class="a-input" style="flex:1" id="atrack-${i}" value="${t}"/><button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button></div>`).join('')}</div>
+        <button class="admin-add" onclick="addAdminSimpleItem('a-tracks-list','atrack')">+ Add Track</button>
+        <button class="admin-save" onclick="adminSave('tracks')">Save Tracks</button>`;
+
+      case 'statuses': return `<div class="admin-sec-title">Status Options</div><div class="admin-sec-desc">Available status values for projects and onboarding.</div>
+        <div id="a-status-list">${(settings.statusOptions||[]).map((s,i)=>`<div class="admin-list-item"><input class="a-input" style="flex:1" id="astat-${i}" value="${s}"/><button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button></div>`).join('')}</div>
+        <button class="admin-add" onclick="addAdminSimpleItem('a-status-list','astat')">+ Add Status</button>
+        <button class="admin-save" onclick="adminSave('statuses')">Save Statuses</button>`;
+
+      case 'phases': return `<div class="admin-sec-title">Phase Options</div><div class="admin-sec-desc">Project phases visible in the project form.</div>
+        <div id="a-phase-list">${(settings.phaseOptions||[]).map((p,i)=>`<div class="admin-list-item"><input class="a-input" style="flex:1" id="aphase-${i}" value="${p}"/><button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button></div>`).join('')}</div>
+        <button class="admin-add" onclick="addAdminSimpleItem('a-phase-list','aphase')">+ Add Phase</button>
+        <button class="admin-save" onclick="adminSave('phases')">Save Phases</button>`;
+
+      case 'team': return `<div class="admin-sec-title">Team Members</div><div class="admin-sec-desc">Manage team members. These appear in dropdowns throughout the app.</div>
+        <div id="a-team-list">${teamMembers.map((m,i)=>`<div class="admin-list-item"><div class="av av-sm">${avatar(m.name)}</div><input class="a-input" style="flex:2" id="atm-name-${i}" value="${m.name}"/><input class="a-input" style="flex:1" id="atm-role-${i}" value="${m.role||''}"/><input class="a-input" style="flex:1" id="atm-email-${i}" value="${m.email||''}"/><button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button></div>`).join('')}</div>
+        <button class="admin-add" onclick="addAdminTeamItem()">+ Add Member</button>
+        <button class="admin-save" onclick="adminSave('team')">Save Team</button>`;
+
+      case 'jira': return `<div class="admin-sec-title">Jira Integration</div><div class="admin-sec-desc">Connect to your Jira instance for live ticket data.</div>
+        <div class="form-group"><label class="form-label">Jira Base URL</label><input class="a-input" id="a-jira-url" value="${settings.jiraBaseUrl||''}" placeholder="https://yourcompany.atlassian.net"/></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="a-input" id="a-jira-email" value="${settings.jiraEmail||''}" placeholder="you@company.com"/></div>
+        <div class="form-group"><label class="form-label">API Token</label><input type="password" class="a-input" id="a-jira-token" value="${settings.jiraToken||''}" placeholder="API token"/></div>
+        <div style="display:flex;gap:10px;align-items:center"><button class="admin-save" onclick="adminSave('jira')">Save & Test</button><span id="jira-test-result"></span></div>
+        <div class="admin-note" style="margin-top:12px">ℹ️ Credentials stored in localStorage. Jira API requires hosted deployment (not local file).</div>`;
+
+      case 'data': return `<div class="admin-sec-title">Data Management</div><div class="admin-sec-desc">Export or reset all Klarion data.</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px"><div style="font-weight:700;margin-bottom:5px">Export Data</div><div style="font-size:12px;color:var(--mid);margin-bottom:10px">Download all data as JSON for backup.</div><button class="admin-save" onclick="adminExport()">Download JSON</button></div>
+        <div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:var(--r);padding:16px"><div style="font-weight:700;color:#dc2626;margin-bottom:5px">Reset to Seed Data</div><div style="font-size:12px;color:var(--mid);margin-bottom:10px">Wipes all data and restores the built-in sample dataset.</div><button style="background:#dc2626;color:#fff;border:none;border-radius:var(--rs);padding:9px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif" onclick="adminReset()">Reset All Data</button></div>`;
+      default: return '';
+    }
+  }
+
+  return `<div class="vh"><div class="vh-left"><h1>Admin Panel</h1><div class="sub">Configure every aspect of Klarion</div></div></div>
+  <div class="admin-layout">
+    <div class="admin-nav">${tabs.map(t=>`<button class="admin-tab ${adminTab===t.id?'active':''}" onclick="setAdminTab('${t.id}')">${t.label}</button>`).join('')}</div>
+    <div class="admin-panel">${panelContent()}</div>
+  </div>`;
+}
+
+}; // end VIEWS
+
+/* ══════════════════════════════════════════════════════════
+   GLOBAL HELPERS exposed to onclick handlers
+══════════════════════════════════════════════════════════ */
+window.setGanttMode = (m) => { ganttMode=m; _render(); };
+window.setPulseTab = (t) => { pulseTab=t; _render(); };
+window.setAdminTab = (t) => { adminTab=t; _render(); };
+window.setWeekOffset = (n) => { curParams.weekOffset=n; _render(); };
+
+window.delItem = (col, id, back=false) => {
+  if(!confirm('Delete? This cannot be undone.')) return;
+  removeItem(col, id);
+  if(back) goBack(); else _render();
+};
+
+window.toggleMs = (bodyId, hdr) => {
+  const el=document.getElementById(bodyId);
+  if(!el) return;
+  el.classList.toggle('open');
+  hdr.querySelector('.ms-chevron')?.classList.toggle('open');
+};
+
+window.toggleTask = (col, projId, msId, taskId, checked) => {
+  updateTask(col, projId, msId, taskId, { status: checked?'Done':'Yet to Start' });
+  _render(); // keep same view
+};
+
+window.updTaskField = (col, projId, msId, taskId, field, value) => {
+  updateTask(col, projId, msId, taskId, { [field]: value });
+  _render();
+};
+
+window.delMilestone = (col, projId, msId) => {
+  if(!confirm('Delete milestone?')) return;
+  removeMilestone(col, projId, msId);
+  _render();
+};
+
+window.delTask = (col, projId, msId, taskId) => {
+  if(!confirm('Delete task?')) return;
+  removeTask(col, projId, msId, taskId);
+  _render();
+};
+
+window.advStage = (featureId, stage) => {
+  updateItem('features', featureId, { stage });
+  _render();
+};
+
+window.updateFeatureMs = (fId, msId, status) => {
+  const s=getState();
+  const f=s.features.find(x=>x.id===fId);
+  if(f){const ms=(f.milestones||[]).find(m=>m.id===msId);if(ms){ms.status=status;persist();}}
+};
+
+window.delFeatureMs = (fId, msId) => {
+  if(!confirm('Delete milestone?')) return;
+  const s=getState();
+  const f=s.features.find(x=>x.id===fId);
+  if(f){f.milestones=(f.milestones||[]).filter(m=>m.id!==msId);persist();_render();}
+};
+
+/* Admin helpers */
+window.addAdminListItem = (listId, namePrefix, descPrefix) => {
+  const list=document.getElementById(listId);
+  const i=list.querySelectorAll('.admin-list-item').length;
+  const div=document.createElement('div'); div.className='admin-list-item';
+  div.innerHTML=`<div style="width:10px;height:10px;border-radius:50%;background:#94a3b8;flex-shrink:0"></div><input class="a-input" style="flex:1" id="${namePrefix}-${i}" placeholder="Name"/>${descPrefix?`<input class="a-input" style="flex:2" id="${descPrefix}-${i}" placeholder="Description"/>`:''}  <button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button>`;
+  list.appendChild(div);
+};
+window.addAdminSimpleItem = (listId, prefix) => {
+  const list=document.getElementById(listId);
+  const i=list.querySelectorAll('.admin-list-item').length;
+  const div=document.createElement('div'); div.className='admin-list-item';
+  div.innerHTML=`<input class="a-input" style="flex:1" id="${prefix}-${i}" placeholder="Value"/><button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button>`;
+  list.appendChild(div);
+};
+window.addAdminTeamItem = () => {
+  const list=document.getElementById('a-team-list');
+  const i=list.querySelectorAll('.admin-list-item').length;
+  const div=document.createElement('div'); div.className='admin-list-item';
+  div.innerHTML=`<div class="av av-sm">?</div><input class="a-input" style="flex:2" id="atm-name-${i}" placeholder="Name"/><input class="a-input" style="flex:1" id="atm-role-${i}" placeholder="Role"/><input class="a-input" style="flex:1" id="atm-email-${i}" placeholder="Email"/><button class="admin-remove" onclick="this.closest('.admin-list-item').remove()">Remove</button>`;
+  list.appendChild(div);
+};
+
+window.adminSave = (tab) => {
+  const s=getState();
+  switch(tab) {
+    case 'general':
+      updateSettings({ orgName:document.getElementById('a-orgname')?.value||'Klarion', fiscalYear:document.getElementById('a-fy')?.value||'FY2026–27' });
+      document.getElementById('sb-name').textContent=(document.getElementById('a-orgname')?.value||'Klarion').toUpperCase();
+      break;
+    case 'stages': {
+      const list=document.getElementById('a-stages-list');
+      const items=list?.querySelectorAll('.admin-list-item')||[];
+      const stages=[],descs={};
+      items.forEach((_,i)=>{const n=document.getElementById(`as-name-${i}`)?.value?.trim();const d=document.getElementById(`as-desc-${i}`)?.value?.trim()||'';if(n){stages.push(n);descs[n]=d;}});
+      updateSettings({stages,stageDescriptions:descs}); break;
+    }
+    case 'segments': {
+      const list=document.getElementById('a-segs-list');
+      const items=list?.querySelectorAll('.admin-list-item')||[];
+      const segs=[];items.forEach((_,i)=>{const v=document.getElementById(`asegs-${i}`)?.value?.trim();if(v)segs.push(v);});
+      updateSettings({segments:segs}); break;
+    }
+    case 'tracks': {
+      const list=document.getElementById('a-tracks-list');
+      const items=list?.querySelectorAll('.admin-list-item')||[];
+      const tracks=[];items.forEach((_,i)=>{const v=document.getElementById(`atrack-${i}`)?.value?.trim();if(v)tracks.push(v);});
+      updateSettings({trackNames:tracks}); break;
+    }
+    case 'statuses': {
+      const list=document.getElementById('a-status-list');
+      const items=list?.querySelectorAll('.admin-list-item')||[];
+      const opts=[];items.forEach((_,i)=>{const v=document.getElementById(`astat-${i}`)?.value?.trim();if(v)opts.push(v);});
+      updateSettings({statusOptions:opts}); break;
+    }
+    case 'phases': {
+      const list=document.getElementById('a-phase-list');
+      const items=list?.querySelectorAll('.admin-list-item')||[];
+      const opts=[];items.forEach((_,i)=>{const v=document.getElementById(`aphase-${i}`)?.value?.trim();if(v)opts.push(v);});
+      updateSettings({phaseOptions:opts}); break;
+    }
+    case 'team': {
+      const list=document.getElementById('a-team-list');
+      const items=list?.querySelectorAll('.admin-list-item')||[];
+      const team=[];items.forEach((_,i)=>{const name=document.getElementById(`atm-name-${i}`)?.value?.trim();const role=document.getElementById(`atm-role-${i}`)?.value?.trim()||'';const email=document.getElementById(`atm-email-${i}`)?.value?.trim()||'';if(name)team.push({id:'tm'+Date.now()+i,name,role,email,availability:100});});
+      s.teamMembers=team; persist(); break;
+    }
+    case 'jira': {
+      const url=document.getElementById('a-jira-url')?.value?.trim()||'';
+      const email=document.getElementById('a-jira-email')?.value?.trim()||'';
+      const token=document.getElementById('a-jira-token')?.value?.trim()||'';
+      updateSettings({jiraBaseUrl:url,jiraEmail:email,jiraToken:token});
+      const res=document.getElementById('jira-test-result');
+      if(!url||!token){if(res)res.innerHTML='<span style="font-size:11px;color:#d97706">Fill in all fields first.</span>';return;}
+      if(res)res.innerHTML='<span style="font-size:11px;color:var(--lt)">Testing…</span>';
+      fetch(`${url}/rest/api/3/myself`,{headers:{Authorization:'Basic '+btoa(`${email}:${token}`),'Content-Type':'application/json'}})
+        .then(r=>r.ok?r.json():Promise.reject(r.status))
+        .then(d=>{if(res)res.innerHTML=`<span style="font-size:11px;color:#22c55e">✅ Connected as ${d.displayName||d.emailAddress}</span>`;})
+        .catch(()=>{if(res)res.innerHTML='<span style="font-size:11px;color:#d97706">⚠️ CORS error — config saved, works when deployed.</span>';});
+      return;
+    }
+  }
+  showToast('Saved ✓');
+  _render();
+};
+
+window.adminExport = () => {
+  const blob=new Blob([JSON.stringify(getState(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='klarion-export.json';a.click();
+};
+window.adminReset = () => {
+  if(!confirm('Reset all data to seed?')) return;
+  resetToSeed(); showToast('Data reset ✓'); _render();
+};
+
+/* ══════════════════════════════════════════════════════════
+   MODAL SYSTEM
+══════════════════════════════════════════════════════════ */
+function showModal(html) {
+  document.getElementById('modal-root').innerHTML=`<div class="mo" onclick="if(event.target===this)closeM()">${html}</div>`;
+}
+window.closeM = () => { document.getElementById('modal-root').innerHTML=''; };
+
+window.openModal = function(type, ...args) {
+  const modals = {
+    newFeature: () => modalNewFeature(),
+    editFeature: (id) => modalEditFeature(id),
+    project: (id, col='projects') => modalProject(id, col),
+    onboarding: (id) => modalOnboarding(id),
+    teamMember: (id) => modalTeamMember(id),
+    risk: (id) => modalRisk(id),
+    escalation: (id) => modalEscalation(id),
+    impact: (id) => modalImpact(id),
+    charter: (id) => modalCharter(id),
+    pledge: (id) => modalPledge(id),
+    document: () => modalDocument(),
+    addMilestone: (projId, col) => modalAddMilestone(projId, col),
+    milestoneEdit: (msId, projId, col) => modalEditMilestone(msId, projId, col),
+    addTask: (msId, projId, col) => modalAddTask(msId, projId, col),
+    editTask: (msId, projId, col, taskId) => modalEditTask(msId, projId, col, taskId),
+    addFeatureMs: (fId) => modalAddFeatureMs(fId),
+    addNote: (entityId, col) => modalAddNote(entityId, col),
+    resource: () => modalResource(),
+    resourceDay: (mid, date) => modalResourceDay(mid, date),
+    capacity: () => modalCapacity()
+  };
+  const fn = modals[type];
+  if(fn) showModal(fn(...args));
+  else console.warn('Unknown modal:', type);
+};
+
+/* ── TYPEAHEAD MULTI-SELECT ── */
+function typeaheadMulti(inputId, selectedId, hiddenId, selectedIds=[]) {
+  const {teamMembers}=getState();
+  let selected=[...selectedIds];
+  function render() {
+    const input=document.getElementById(inputId);const selDiv=document.getElementById(selectedId);
+    if(!input||!selDiv) return;
+    input.oninput=function(){
+      const q=this.value.toLowerCase();
+      const dd=document.getElementById(inputId+'-dd');
+      if(!dd) return;
+      const matches=teamMembers.filter(m=>m.name.toLowerCase().includes(q)&&!selected.includes(m.id));
+      dd.innerHTML=matches.map(m=>`<div class="ta-opt" onclick="taSelect('${inputId}','${selectedId}','${hiddenId}','${m.id}','${m.name}')">${m.name}<span style="font-size:10px;color:var(--lt);margin-left:4px">${m.role||''}</span></div>`).join('');
+      dd.classList.toggle('open', q.length>0&&matches.length>0);
+    };
+    selDiv.innerHTML=selected.map(id=>{const m=teamMembers.find(t=>t.id===id);return m?`<div class="ta-chip">${m.name}<button onclick="taRemove('${inputId}','${selectedId}','${hiddenId}','${id}')">×</button></div>`:''}).join('');
+    const h=document.getElementById(hiddenId);if(h) h.value=selected.join(',');
+  }
+  window[`taSelect_${inputId}`]=function(id){if(!selected.includes(id)){selected.push(id);render();}};
+  window[`taRemove_${inputId}`]=function(id){selected=selected.filter(s=>s!==id);render();};
+  // Expose globally
+  window.taSelect=function(inp,sel,hid,id){window[`taSelect_${inp}`]?.(id)||null; window['taSelect_'+inp]?.(id); const s=getState().teamMembers.find(m=>m.id===id); if(!s) return; selected.push(id); render();};
+  window.taRemove=function(inp,sel,hid,id){selected=selected.filter(x=>x!==id);render();};
+  setTimeout(render,0);
+  return selected;
+}
+
+/* ── MODAL: PROJECT ── */
+function modalProject(id, col='projects') {
+  const p=id?getItem(col,id):null;
+  const {settings}=getState();
+  return `<div class="mo-box lg"><div class="mo-hdr"><div class="mo-title">${p?'Edit Project':'New Project'}</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-row"><div class="form-group form-row-full"><label class="form-label">Project Name *</label><input class="form-control" id="p-name" value="${p?.name||''}"/></div></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Track</label>${trackSelect('p-track',p?.track)}</div>
+      <div class="form-group"><label class="form-label">Phase</label>${phaseSelect('p-phase',p?.phase)}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Status</label>${statusSelect('p-status',p?.status)}</div>
+      <div class="form-group"><label class="form-label">Priority</label>${prioritySelect('p-priority',p?.priority||'Medium')}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-control" id="p-start" value="${p?.startDate||''}"/></div>
+      <div class="form-group"><label class="form-label">End Date</label><input type="date" class="form-control" id="p-end" value="${p?.endDate||''}"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Dev Lead</label>${tmSelect('p-lead',p?.devLead)}</div>
+      <div class="form-group"><label class="form-label">Jira Key</label><input class="form-control" id="p-jira" value="${p?.jiraKey||''}" placeholder="e.g. RSE"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Segment</label><select class="form-control" id="p-segment"><option value="">—</option>${settings.segments.map(s=>`<option value="${s}" ${p?.segment===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Progress (%)</label><input type="number" class="form-control" id="p-progress" min="0" max="100" value="${p?.progress||0}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Team Members</label>
+      <div class="ta-wrap"><input class="ta-input" id="p-team-input" placeholder="Type name to search…"/><div class="ta-dropdown" id="p-team-input-dd"></div></div>
+      <div class="ta-selected" id="p-team-selected"></div><input type="hidden" id="p-team-hidden" value="${(p?.team||[]).join(',')}"/>
+    </div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-control" id="p-desc">${p?.description||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Short Note (visible on boards)</label><textarea class="form-control" id="p-note" style="min-height:52px">${p?.note||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Objectives</label><textarea class="form-control" id="p-obj">${p?.objectives||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Stakeholders</label><input class="form-control" id="p-stake" value="${p?.stakeholders||''}"/></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveProject('${id||''}','${col}')">Save Project</button></div>
+  </div>`;
+}
+window.saveProject = (id, col='projects') => {
+  const name=v('p-name'); if(!name){alert('Name required');return;}
+  const teamRaw=document.getElementById('p-team-hidden')?.value||'';
+  const team=teamRaw.split(',').filter(Boolean);
+  const data={name,track:v('p-track'),phase:v('p-phase'),status:v('p-status'),priority:v('p-priority'),startDate:v('p-start'),endDate:v('p-end'),devLead:v('p-lead'),jiraKey:v('p-jira'),segment:v('p-segment'),progress:n('p-progress'),team,description:v('p-desc'),note:v('p-note'),objectives:v('p-obj'),stakeholders:v('p-stake')};
+  if(id) updateItem(col,id,data); else addItem(col,data);
+  closeM(); _render();
+};
+// Init typeahead after modal opens
+setTimeout(()=>{
+  if(document.getElementById('p-team-input')){
+    const hidden=document.getElementById('p-team-hidden');
+    const existing=(hidden?.value||'').split(',').filter(Boolean);
+    typeaheadMulti('p-team-input','p-team-selected','p-team-hidden',existing);
+  }
+},100);
+
+/* ── MODAL: ONBOARDING ── */
+function modalOnboarding(id) {
+  const p=id?getItem('onboardingProjects',id):null;
+  const {settings}=getState();
+  return `<div class="mo-box lg"><div class="mo-hdr"><div class="mo-title">${p?'Edit Onboarding':'New Onboarding Project'}</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Customer Name *</label><input class="form-control" id="ob-cust" value="${p?.customerName||''}"/></div>
+      <div class="form-group"><label class="form-label">Project Name *</label><input class="form-control" id="ob-name" value="${p?.name||''}"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Track</label>${trackSelect('ob-track',p?.track)}</div>
+      <div class="form-group"><label class="form-label">Phase</label>${phaseSelect('ob-phase',p?.phase)}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Status</label>${statusSelect('ob-status',p?.status)}</div>
+      <div class="form-group"><label class="form-label">Dev Lead</label>${tmSelect('ob-lead',p?.devLead)}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-control" id="ob-start" value="${p?.startDate||''}"/></div>
+      <div class="form-group"><label class="form-label">End Date</label><input type="date" class="form-control" id="ob-end" value="${p?.endDate||''}"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Jira Key</label><input class="form-control" id="ob-jira" value="${p?.jiraKey||''}"/></div>
+      <div class="form-group"><label class="form-label">Progress (%)</label><input type="number" class="form-control" id="ob-prog" min="0" max="100" value="${p?.progress||0}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-control" id="ob-desc">${p?.description||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Short Note</label><textarea class="form-control" id="ob-note" style="min-height:52px">${p?.note||''}</textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveOnboarding('${id||''}')">Save</button></div>
+  </div>`;
+}
+window.saveOnboarding = (id) => {
+  const cust=v('ob-cust'),name=v('ob-name');if(!cust||!name){alert('Customer and project name required');return;}
+  const data={customerName:cust,name,track:v('ob-track'),phase:v('ob-phase'),status:v('ob-status'),devLead:v('ob-lead'),startDate:v('ob-start'),endDate:v('ob-end'),jiraKey:v('ob-jira'),progress:n('ob-prog'),description:v('ob-desc'),note:v('ob-note')};
+  if(id) updateItem('onboardingProjects',id,data); else addItem('onboardingProjects',data);
+  closeM(); _render();
+};
+
+/* ── MODAL: TEAM MEMBER ── */
+function modalTeamMember(id) {
+  const m=id?getItem('teamMembers',id):null;
+  const {settings}=getState();
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">${m?'Edit Member':'Add Team Member'}</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Full Name *</label><input class="form-control" id="tm-name" value="${m?.name||''}"/></div>
+      <div class="form-group"><label class="form-label">Role</label><input class="form-control" id="tm-role" value="${m?.role||''}"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Track</label>${trackSelect('tm-track',m?.track)}</div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-control" id="tm-email" value="${m?.email||m?.jiraId||''}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Availability (%)</label><input type="number" class="form-control" id="tm-avail" min="0" max="100" value="${m?.availability||100}"/></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveTeamMember('${id||''}')">Save</button></div>
+  </div>`;
+}
+window.saveTeamMember = (id) => {
+  const name=v('tm-name');if(!name){alert('Name required');return;}
+  const data={name,role:v('tm-role'),track:v('tm-track'),email:v('tm-email'),jiraId:v('tm-email'),availability:n('tm-avail')||100};
+  if(id) updateItem('teamMembers',id,data); else addItem('teamMembers',data);
+  closeM(); _render();
+};
+
+/* ── MODAL: MILESTONE (add to project) ── */
+function modalAddMilestone(projId, col='projects') {
+  const {settings,teamMembers}=getState();
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Add Milestone</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Title *</label><input class="form-control" id="ms-title"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Due Date *</label><input type="date" class="form-control" id="ms-due"/></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="ms-status"><option>Yet to Start</option><option>On Track</option><option>At Risk</option><option>Overdue</option><option>Completed</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Owners (multiple)</label>
+      <div class="ta-wrap"><input class="ta-input" id="ms-owners-input" placeholder="Type to search team members…"/><div class="ta-dropdown" id="ms-owners-input-dd"></div></div>
+      <div class="ta-selected" id="ms-owners-selected"></div><input type="hidden" id="ms-owners-hidden"/>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="ms-notes"></textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveMilestone('${projId}','${col}')">Add Milestone</button></div>
+  </div>`;
+}
+window.saveMilestone = (projId, col) => {
+  const title=v('ms-title');if(!title){alert('Title required');return;}
+  const owners=(document.getElementById('ms-owners-hidden')?.value||'').split(',').filter(Boolean);
+  addMilestone(col, projId, {title,dueDate:v('ms-due'),status:v('ms-status')||'Yet to Start',owners,notes:v('ms-notes'),tasks:[]});
+  closeM(); _render();
+};
+
+/* ── MODAL: EDIT MILESTONE ── */
+function modalEditMilestone(msId, projId, col) {
+  const proj=getItem(col,projId);
+  const ms=(proj?.milestones||[]).find(m=>m.id===msId);
+  if(!ms) return '<div class="mo-box"><div class="mo-body">Not found</div></div>';
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Edit Milestone</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Title *</label><input class="form-control" id="mse-title" value="${ms.title||''}"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Due Date</label><input type="date" class="form-control" id="mse-due" value="${ms.dueDate||''}"/></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="mse-status"><option ${ms.status==='Yet to Start'?'selected':''}>Yet to Start</option><option ${ms.status==='On Track'?'selected':''}>On Track</option><option ${ms.status==='At Risk'?'selected':''}>At Risk</option><option ${ms.status==='Overdue'?'selected':''}>Overdue</option><option ${ms.status==='Completed'?'selected':''}>Completed</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Revised ETA (if delayed)</label><input type="date" class="form-control" id="mse-revised" value="${ms.revisedETA||''}"/></div>
+      <div class="form-group"><label class="form-label">Delay Reason</label><input class="form-control" id="mse-delay" value="${ms.delayReason||''}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Owners (multiple)</label>
+      <div class="ta-wrap"><input class="ta-input" id="mse-owners-input" placeholder="Type to search…"/><div class="ta-dropdown" id="mse-owners-input-dd"></div></div>
+      <div class="ta-selected" id="mse-owners-selected"></div><input type="hidden" id="mse-owners-hidden" value="${(ms.owners||[]).join(',')}"/>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="mse-notes">${ms.notes||''}</textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveMilestoneEdit('${msId}','${projId}','${col}')">Save</button></div>
+  </div>`;
+}
+window.saveMilestoneEdit = (msId, projId, col) => {
+  const title=v('mse-title');if(!title){alert('Title required');return;}
+  const owners=(document.getElementById('mse-owners-hidden')?.value||'').split(',').filter(Boolean);
+  updateMilestone(col, projId, msId, {title,dueDate:v('mse-due'),status:v('mse-status'),revisedETA:v('mse-revised'),delayReason:v('mse-delay'),owners,notes:v('mse-notes')});
+  closeM(); _render();
+};
+
+/* ── MODAL: ADD TASK ── */
+function modalAddTask(msId, projId, col) {
+  const proj=getItem(col,projId);
+  const ms=(proj?.milestones||[]).find(m=>m.id===msId);
+  const otherTasks=(ms?.tasks||[]);
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Add Task</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Task Title *</label><input class="form-control" id="t-title"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Owner</label>${tmSelect('t-assignee','')}</div>
+      <div class="form-group"><label class="form-label">Due Date</label><input type="date" class="form-control" id="t-due"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="t-status"><option>Yet to Start</option><option>In Progress</option><option>Blocked</option><option>Done</option></select></div>
+      <div class="form-group"><label class="form-label">Priority</label><select class="form-control" id="t-priority"><option value="">—</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Depends on (other task in this milestone)</label><select class="form-control" id="t-dependsOn"><option value="">—</option>${otherTasks.map(x=>`<option value="${x.id}">${x.title}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="t-notes" rows="2" placeholder="Optional context, blockers, links…"></textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveTask('${msId}','${projId}','${col}')">Add Task</button></div>
+  </div>`;
+}
+window.saveTask = (msId, projId, col) => {
+  const title=v('t-title');if(!title){alert('Title required');return;}
+  addTask(col, projId, msId, {
+    title, assignee:v('t-assignee'), dueDate:v('t-due'),
+    status:v('t-status')||'Yet to Start',
+    priority:v('t-priority'), dependsOn:v('t-dependsOn'),
+    notes:v('t-notes')
+  });
+  closeM(); _render();
+};
+
+/* ── MODAL: EDIT TASK ── */
+function modalEditTask(msId, projId, col, taskId) {
+  const proj=getItem(col,projId);
+  const ms=(proj?.milestones||[]).find(m=>m.id===msId);
+  const t=(ms?.tasks||[]).find(x=>x.id===taskId);
+  if(!t) return '<div class="mo-box">Task not found.</div>';
+  const otherTasks=(ms?.tasks||[]).filter(x=>x.id!==taskId);
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Edit Task</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Task Title *</label><input class="form-control" id="te-title" value="${t.title||''}"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Owner</label>${tmSelect('te-assignee',t.assignee||'')}</div>
+      <div class="form-group"><label class="form-label">Due Date</label><input type="date" class="form-control" id="te-due" value="${t.dueDate||''}"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="te-status">${['Yet to Start','In Progress','Blocked','Done'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Priority</label><select class="form-control" id="te-priority"><option value="">—</option>${['Low','Medium','High','Critical'].map(p=>`<option ${t.priority===p?'selected':''}>${p}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Depends on</label><select class="form-control" id="te-dependsOn"><option value="">—</option>${otherTasks.map(x=>`<option value="${x.id}" ${t.dependsOn===x.id?'selected':''}>${x.title}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="te-notes" rows="2">${t.notes||''}</textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveEditTask('${msId}','${projId}','${col}','${taskId}')">Save</button></div>
+  </div>`;
+}
+window.saveEditTask = (msId, projId, col, taskId) => {
+  const title=v('te-title');if(!title){alert('Title required');return;}
+  updateTask(col, projId, msId, taskId, {
+    title, assignee:v('te-assignee'), dueDate:v('te-due'),
+    status:v('te-status'), priority:v('te-priority'),
+    dependsOn:v('te-dependsOn'), notes:v('te-notes')
+  });
+  closeM(); _render();
+};
+
+/* ── MODAL: FEATURE MILESTONE ── */
+function modalAddFeatureMs(fId) {
+  const {teamMembers}=getState();
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Add Milestone</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Title *</label><input class="form-control" id="fms-title"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-control" id="fms-date"/></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="fms-status"><option>Pending</option><option>Achieved</option><option>Missed</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Owners (multiple)</label>
+      <div class="ta-wrap"><input class="ta-input" id="fms-owners-input" placeholder="Type name…"/><div class="ta-dropdown" id="fms-owners-input-dd"></div></div>
+      <div class="ta-selected" id="fms-owners-selected"></div><input type="hidden" id="fms-owners-hidden"/>
+    </div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveFeatureMs('${fId}')">Add</button></div>
+  </div>`;
+}
+window.saveFeatureMs = (fId) => {
+  const title=v('fms-title');if(!title){alert('Title required');return;}
+  const owners=(document.getElementById('fms-owners-hidden')?.value||'').split(',').filter(Boolean);
+  const s=getState();const f=s.features.find(x=>x.id===fId);
+  if(!f) return;
+  if(!f.milestones) f.milestones=[];
+  const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  f.milestones.push({id:uid(),title,date:v('fms-date'),status:v('fms-status')||'Pending',owners});
+  persist(); closeM(); _render();
+};
+
+/* ── MODAL: RISK ── */
+function modalRisk(id) {
+  const r=id?getItem('risks',id):null;
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">${r?'Edit Risk':'Add Risk'}</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Title *</label><input class="form-control" id="r-title" value="${r?.title||''}"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Project</label><input class="form-control" id="r-proj" value="${r?.project||''}"/></div>
+      <div class="form-group"><label class="form-label">Track</label>${trackSelect('r-track',r?.track)}</div>
+    </div>
+    <div class="form-row-3">
+      <div class="form-group"><label class="form-label">Likelihood (1-5)</label><input type="number" class="form-control" id="r-l" min="1" max="5" value="${r?.likelihood||3}"/></div>
+      <div class="form-group"><label class="form-label">Impact (1-5)</label><input type="number" class="form-control" id="r-i" min="1" max="5" value="${r?.impact||3}"/></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="r-status"><option ${r?.status==='Open'?'selected':''}>Open</option><option ${r?.status==='Mitigated'?'selected':''}>Mitigated</option><option ${r?.status==='Closed'?'selected':''}>Closed</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Owner</label>${tmSelect('r-owner',r?.owner)}</div>
+    <div class="form-group"><label class="form-label">Mitigation Plan</label><textarea class="form-control" id="r-mit">${r?.mitigation||''}</textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveRisk('${id||''}')">Save</button></div>
+  </div>`;
+}
+window.saveRisk = (id) => {
+  const title=v('r-title');if(!title){alert('Title required');return;}
+  const data={title,project:v('r-proj'),track:v('r-track'),likelihood:n('r-l')||3,impact:n('r-i')||3,status:v('r-status'),owner:v('r-owner'),mitigation:v('r-mit')};
+  if(id) updateItem('risks',id,data); else addItem('risks',data);
+  closeM(); _render();
+};
+
+/* ── MODAL: ESCALATION ── */
+function modalEscalation(id) {
+  const e=id?getItem('escalations',id):null;
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">${e?'Edit Escalation':'Add Escalation'}</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Title *</label><input class="form-control" id="esc-title" value="${e?.title||''}"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Project</label><input class="form-control" id="esc-proj" value="${e?.project||''}"/></div>
+      <div class="form-group"><label class="form-label">Track</label>${trackSelect('esc-track',e?.track)}</div>
+    </div>
+    <div class="form-row-3">
+      <div class="form-group"><label class="form-label">Raised By</label>${tmSelect('esc-by',e?.raisedBy)}</div>
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-control" id="esc-date" value="${e?.date||today()}"/></div>
+      <div class="form-group"><label class="form-label">Priority</label>${prioritySelect('esc-pri',e?.priority||'High')}</div>
+    </div>
+    <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="esc-status"><option ${e?.status==='Open'?'selected':''}>Open</option><option ${e?.status==='In Progress'?'selected':''}>In Progress</option><option ${e?.status==='Resolved'?'selected':''}>Resolved</option></select></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="esc-notes">${e?.notes||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Resolution</label><textarea class="form-control" id="esc-res">${e?.resolution||''}</textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveEscalation('${id||''}')">Save</button></div>
+  </div>`;
+}
+window.saveEscalation = (id) => {
+  const title=v('esc-title');if(!title){alert('Title required');return;}
+  const data={title,project:v('esc-proj'),track:v('esc-track'),raisedBy:v('esc-by'),date:v('esc-date'),priority:v('esc-pri'),status:v('esc-status'),notes:v('esc-notes'),resolution:v('esc-res')};
+  if(id) updateItem('escalations',id,data); else addItem('escalations',data);
+  closeM(); _render();
+};
+
+/* ── MODAL: IMPACT ── */
+function modalImpact(id) {
+  const i=id?getItem('impacts',id):null;
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">${i?'Edit Impact':'Add Impact'}</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Project *</label><input class="form-control" id="imp-proj" value="${i?.project||''}"/></div>
+      <div class="form-group"><label class="form-label">Metric *</label><input class="form-control" id="imp-metric" value="${i?.metric||''}"/></div>
+    </div>
+    <div class="form-row-3">
+      <div class="form-group"><label class="form-label">Baseline</label><input class="form-control" id="imp-base" value="${i?.baseline||''}"/></div>
+      <div class="form-group"><label class="form-label">Current</label><input class="form-control" id="imp-cur" value="${i?.current||''}"/></div>
+      <div class="form-group"><label class="form-label">Target</label><input class="form-control" id="imp-target" value="${i?.target||''}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Improvement %</label><input class="form-control" id="imp-imp" value="${i?.improvement||''}"/></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="imp-notes">${i?.notes||''}</textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveImpact('${id||''}')">Save</button></div>
+  </div>`;
+}
+window.saveImpact = (id) => {
+  const proj=v('imp-proj'),metric=v('imp-metric');if(!proj||!metric){alert('Project and metric required');return;}
+  const data={project:proj,metric,baseline:v('imp-base'),current:v('imp-cur'),target:v('imp-target'),improvement:v('imp-imp'),notes:v('imp-notes')};
+  if(id) updateItem('impacts',id,data); else addItem('impacts',data);
+  closeM(); _render();
+};
+
+/* ── MODAL: PLEDGE ── */
+function modalPledge(id) {
+  const p = id ? getItem('pledges',id) : null;
+  const {settings,projects,onboardingProjects,teamMembers}=getState();
+  const allProjects=[...projects,...onboardingProjects];
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">${p?'Edit':'New'} Pledge</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Commitment *</label><input class="form-control" id="pl-title" value="${p?.title||''}" placeholder="e.g. Ship MVP to internal users by Q2"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Deadline *</label><input type="date" class="form-control" id="pl-deadline" value="${p?.deadline||''}"/></div>
+      <div class="form-group"><label class="form-label">Date Committed</label><input type="date" class="form-control" id="pl-commitDate" value="${p?.commitDate||today()}"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Committed To *</label><input class="form-control" id="pl-commitTo" value="${p?.commitTo||''}" placeholder="e.g. CTO + Customer Success"/></div>
+      <div class="form-group"><label class="form-label">Owner</label>${tmSelect('pl-commitOwner', p?.commitOwner||'')}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="pl-status">${['Yet to Start','In Progress','At Risk','Honored','Broken'].map(s=>`<option ${p?.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Track</label>${trackSelect('pl-track', p?.track||'')}</div>
+    </div>
+    <div class="form-group"><label class="form-label">Linked Project</label><select class="form-control" id="pl-project"><option value="">—</option>${allProjects.map(pr=>`<option ${p?.project===pr.name?'selected':''}>${pr.name}</option>`).join('')}<option ${p?.project==='(Hiring)'?'selected':''}>(Hiring)</option><option ${p?.project==='(Other)'?'selected':''}>(Other)</option></select></div>
+    <div class="form-group"><label class="form-label">Context / Direct Quote</label><textarea class="form-control" id="pl-context" rows="3" placeholder="Where & how the commitment was made — paste the slack/email/meeting context.">${p?.context||''}</textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="savePledge('${id||''}')">${p?'Save':'Add'} Pledge</button></div>
+  </div>`;
+}
+window.savePledge = (id) => {
+  const title=v('pl-title'); if(!title){alert('Commitment required');return;}
+  const data={
+    title, deadline:v('pl-deadline'), commitDate:v('pl-commitDate'),
+    commitTo:v('pl-commitTo'), commitOwner:v('pl-commitOwner'),
+    status:v('pl-status')||'Yet to Start', track:v('pl-track'),
+    project:v('pl-project'), context:v('pl-context')
+  };
+  if(id) updateItem('pledges',id,data); else addItem('pledges',data);
+  closeM(); _render();
+};
+
+/* ── MODAL: CHARTER ── */
+function modalCharter(id) {
+  const c=id?getItem('charters',id):null;
+  const {projects}=getState();
+  return `<div class="mo-box lg"><div class="mo-hdr"><div class="mo-title">${c?'Edit Charter':'New Charter'}</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Project *</label><select class="form-control" id="ch-proj"><option value="">—</option>${projects.map(p=>`<option value="${p.id}" data-name="${p.name}" ${c?.projectId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Sponsor</label><input class="form-control" id="ch-sponsor" value="${c?.sponsor||''}"/></div>
+      <div class="form-group"><label class="form-label">Budget</label><input class="form-control" id="ch-budget" value="${c?.budget||''}"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-control" id="ch-start" value="${c?.startDate||''}"/></div>
+      <div class="form-group"><label class="form-label">End Date</label><input type="date" class="form-control" id="ch-end" value="${c?.endDate||''}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Objectives</label><textarea class="form-control" id="ch-obj">${c?.objectives||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Scope (In)</label><textarea class="form-control" id="ch-scope">${c?.scope||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Out of Scope</label><textarea class="form-control" id="ch-oos">${c?.outOfScope||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Success Criteria</label><textarea class="form-control" id="ch-succ">${c?.successCriteria||''}</textarea></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveCharter('${id||''}')">Save Charter</button></div>
+  </div>`;
+}
+window.saveCharter = (id) => {
+  const sel=document.getElementById('ch-proj');const projId=sel?.value;if(!projId){alert('Select a project');return;}
+  const projectName=sel.options[sel.selectedIndex]?.dataset?.name||'';
+  const data={projectId:projId,projectName,sponsor:v('ch-sponsor'),budget:v('ch-budget'),startDate:v('ch-start'),endDate:v('ch-end'),objectives:v('ch-obj'),scope:v('ch-scope'),outOfScope:v('ch-oos'),successCriteria:v('ch-succ')};
+  if(id) updateItem('charters',id,data); else addItem('charters',data);
+  closeM(); _render();
+};
+
+/* ── MODAL: DOCUMENT ── */
+function modalDocument() {
+  const {teamMembers}=getState();
+  const types=['Strategy','Technical','Report','Brief','Design','Other'];
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Add Document</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Title *</label><input class="form-control" id="doc-title"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Type</label><select class="form-control" id="doc-type">${types.map(t=>`<option>${t}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Uploaded By</label>${tmSelect('doc-by','')}</div>
+    </div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-control" id="doc-desc"/></div>
+    <div class="form-group"><label class="form-label">URL / Link</label><input class="form-control" id="doc-url" placeholder="https://…"/></div>
+    <div class="form-group"><label class="form-label">Tags (comma-separated)</label><input class="form-control" id="doc-tags" placeholder="e.g. strategy, Q2"/></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveDocument()">Add Document</button></div>
+  </div>`;
+}
+window.saveDocument = () => {
+  const title=v('doc-title');if(!title){alert('Title required');return;}
+  const tags=(v('doc-tags')||'').split(',').map(t=>t.trim()).filter(Boolean);
+  addItem('documents',{title,type:v('doc-type'),uploadedBy:v('doc-by'),description:v('doc-desc'),url:v('doc-url')||'#',tags,date:today()});
+  closeM(); _render();
+};
+
+/* ── MODAL: ADD NOTE ── */
+function modalAddNote(entityId, col) {
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Add Note</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Note *</label><textarea class="form-control" id="note-text" style="min-height:80px" placeholder="Type your comment or update…"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Author</label>${tmSelect('note-author','')}</div>
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-control" id="note-date" value="${today()}"/></div>
+    </div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveNote('${entityId}','${col}')">Add Note</button></div>
+  </div>`;
+}
+window.saveNote = (entityId, col) => {
+  const text=v('note-text');if(!text){alert('Note required');return;}
+  addItem('notes',{entityId,col,text,author:v('note-author'),date:v('note-date')});
+  closeM();
+};
+
+/* ── MODAL: RESOURCE ── */
+function modalResource() {
+  const {teamMembers}=getState();
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Log Hours</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Member *</label>${tmSelect('res-member','')}</div>
+      <div class="form-group"><label class="form-label">Date *</label><input type="date" class="form-control" id="res-date" value="${today()}"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hours</label><input type="number" class="form-control" id="res-hours" min="0.5" max="16" step="0.5" value="8"/></div>
+      <div class="form-group"><label class="form-label">Track</label>${trackSelect('res-track','')}</div>
+    </div>
+    <div class="form-group"><label class="form-label">Activity</label><input class="form-control" id="res-activity" placeholder="e.g. API development, Sprint planning"/></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveResource()">Log Hours</button></div>
+  </div>`;
+}
+window.saveResource = () => {
+  const memberId=v('res-member'),date=v('res-date');if(!memberId||!date){alert('Member and date required');return;}
+  addItem('resources',{memberId,date,hours:parseFloat(document.getElementById('res-hours')?.value)||8,track:v('res-track'),activity:v('res-activity')});
+  closeM(); _render();
+};
+
+function modalResourceDay(memberId, date) {
+  const {resources}=getState();
+  const logs=resources.filter(r=>r.memberId===memberId&&r.date===date);
+  const member=getItem('teamMembers',memberId);
+  const dayStr=new Date(date).toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  return `<div class="mo-box"><div class="mo-hdr"><div class="mo-title">Hours — ${member?.name||'Member'}</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div style="font-size:12px;color:var(--lt);margin-bottom:14px">📅 ${dayStr}</div>
+    ${logs.length?`<div style="margin-bottom:14px">${logs.map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:${tColor(l.track)||'#1B2B5E'}10;border:1px solid ${tColor(l.track)||'#1B2B5E'}20;border-radius:var(--rs);margin-bottom:5px"><div style="width:8px;height:8px;border-radius:50%;background:${tColor(l.track)||'#1B2B5E'}"></div><span style="font-weight:700;color:${tColor(l.track)||'#1B2B5E'}">${l.hours}h</span><span style="flex:1;font-size:11px">${l.track||'—'}${l.activity?` · ${l.activity}`:''}</span><button class="btn-icon" onclick="delItem('resources','${l.id}');openModal('resourceDay','${memberId}','${date}')">🗑</button></div>`).join('')}<div style="font-size:11px;color:var(--lt)">Total: ${logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0)}h</div></div><hr class="divider"/>`:''}
+    <div class="form-label" style="margin-bottom:10px">Add Entry</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Track</label>${trackSelect('rd-track','')}</div>
+      <div class="form-group"><label class="form-label">Hours</label><input type="number" class="form-control" id="rd-hours" min="0.5" max="16" step="0.5" value="8"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Activity</label><input class="form-control" id="rd-activity" placeholder="What did they work on?"/></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Close</button><button class="btn btn-primary" onclick="saveResourceDay('${memberId}','${date}')">+ Add Entry</button></div>
+  </div>`;
+}
+window.saveResourceDay = (memberId, date) => {
+  const track=v('rd-track'),hours=parseFloat(document.getElementById('rd-hours')?.value);
+  if(!track){alert('Select a track');return;}if(!hours||hours<=0){alert('Enter valid hours');return;}
+  addItem('resources',{memberId,date,hours,track,activity:v('rd-activity')});
+  openModal('resourceDay',memberId,date);
+};
+
+/* ── MODAL: NEW FEATURE ── */
+function modalNewFeature() {
+  const {settings}=getState();
+  return `<div class="mo-box lg"><div class="mo-hdr"><div class="mo-title">New Feature</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Feature Title *</label><input class="form-control" id="nf-title" placeholder="e.g. Author Revision Tracking"/></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-control" id="nf-desc" placeholder="One-liner description"/></div>
+    <div class="form-group"><label class="form-label">Short Note (shown below card on boards)</label><textarea class="form-control" id="nf-note" style="min-height:52px" placeholder="Context, blockers, next steps…"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Segment</label><select class="form-control" id="nf-segment">${settings.segments.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Track</label><select class="form-control" id="nf-track">${settings.trackNames.map(t=>`<option>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Stage</label><select class="form-control" id="nf-stage">${settings.stages.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">PM Owner</label>${tmSelect('nf-pm','')}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-control" id="nf-start"/></div>
+      <div class="form-group"><label class="form-label">End Date</label><input type="date" class="form-control" id="nf-end"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Jira Key</label><input class="form-control" id="nf-jira" placeholder="e.g. KP-1234"/></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveNewFeature()">Create Feature</button></div>
+  </div>`;
+}
+window.saveNewFeature = () => {
+  const title=v('nf-title');if(!title){alert('Title required');return;}
+  addItem('features',{title,description:v('nf-desc'),note:v('nf-note'),segment:v('nf-segment'),track:v('nf-track'),stage:v('nf-stage')||'Idea',pm:v('nf-pm'),startDate:v('nf-start'),endDate:v('nf-end'),jiraKey:v('nf-jira'),daysInStage:0,milestones:[],createdAt:today()});
+  closeM(); _render();
+};
+
+/* ── MODAL: EDIT FEATURE ── */
+function modalEditFeature(id) {
+  const f=getItem('features',id);if(!f)return'<div>Not found</div>';
+  const {settings}=getState();
+  return `<div class="mo-box lg"><div class="mo-hdr"><div class="mo-title">Edit Feature</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div class="form-group"><label class="form-label">Title *</label><input class="form-control" id="ef-title" value="${f.title||''}"/></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-control" id="ef-desc" value="${f.description||''}"/></div>
+    <div class="form-group"><label class="form-label">Short Note</label><textarea class="form-control" id="ef-note" style="min-height:52px">${f.note||''}</textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Segment</label><select class="form-control" id="ef-segment">${settings.segments.map(s=>`<option value="${s}" ${f.segment===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Track</label><select class="form-control" id="ef-track">${settings.trackNames.map(t=>`<option value="${t}" ${f.track===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Stage</label><select class="form-control" id="ef-stage">${settings.stages.map(s=>`<option value="${s}" ${f.stage===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">PM Owner</label>${tmSelect('ef-pm',f.pm)}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-control" id="ef-start" value="${f.startDate||''}"/></div>
+      <div class="form-group"><label class="form-label">End Date</label><input type="date" class="form-control" id="ef-end" value="${f.endDate||''}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Jira Key</label><input class="form-control" id="ef-jira" value="${f.jiraKey||''}"/></div>
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveEditFeature('${id}')">Save Changes</button></div>
+  </div>`;
+}
+window.saveEditFeature = (id) => {
+  const title=v('ef-title');if(!title){alert('Title required');return;}
+  updateItem('features',id,{title,description:v('ef-desc'),note:v('ef-note'),segment:v('ef-segment'),track:v('ef-track'),stage:v('ef-stage'),pm:v('ef-pm'),startDate:v('ef-start'),endDate:v('ef-end'),jiraKey:v('ef-jira')});
+  closeM(); _render();
+};
+
+/* ── MODAL: CAPACITY ── */
+function modalCapacity() {
+  const {teamMembers,projects}=getState();
+  const active=projects.filter(p=>p.status!=='Completed');
+  return `<div class="mo-box lg"><div class="mo-hdr"><div class="mo-title">Edit Capacity Allocations</div><button class="mo-close" onclick="closeM()">×</button></div>
+  <div class="mo-body">
+    <div style="font-size:11px;color:var(--mid);margin-bottom:14px">Set % allocation per team member per project. Total should not exceed availability.</div>
+    ${teamMembers.map(m=>`<div class="card" style="margin-bottom:10px;padding:12px"><div style="font-weight:700;color:var(--navy);margin-bottom:8px">${m.name} <span style="font-size:10px;color:var(--lt)">(Available: ${m.availability||100}%)</span></div>${active.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="flex:1;font-size:12px">${p.name}</span><input type="number" style="width:70px;padding:4px 8px;border:1px solid var(--border-dk);border-radius:4px;font-size:12px" min="0" max="100" value="${(m.allocations||{})[p.id]||0}" id="ca-${m.id}-${p.id}"/><span style="font-size:11px;color:var(--lt)">%</span></div>`).join('')}</div>`).join('')}
+  </div>
+  <div class="mo-foot"><button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-primary" onclick="saveCapacity()">Save Allocations</button></div>
+  </div>`;
+}
+window.saveCapacity = () => {
+  const s=getState();const active=s.projects.filter(p=>p.status!=='Completed');
+  s.teamMembers.forEach(m=>{const allocs={...m.allocations||{}};active.forEach(p=>{const el=document.getElementById(`ca-${m.id}-${p.id}`);if(el)allocs[p.id]=parseInt(el.value)||0;});m.allocations=allocs;});
+  persist(); closeM(); _render();
+};
+
+/* ══════════════════════════════════════════════════════════
+   TOAST & INIT
+══════════════════════════════════════════════════════════ */
+window.showToast = (msg) => {
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:22px;right:22px;background:#1a1040;color:#fff;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:opacity .3s';
+  t.textContent=msg;document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},2200);
+};
+
+// Delegate typeahead from modal events
+document.addEventListener('click', e => {
+  document.querySelectorAll('.ta-dropdown.open').forEach(dd=>{
+    if(!dd.closest('.ta-wrap')?.contains(e.target)) dd.classList.remove('open');
+  });
+});
+
+getState();
+_render();
+</script>
+</body>
+</html>
