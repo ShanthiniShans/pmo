@@ -13,25 +13,25 @@ import {
 
 // ─── VIEW MAP ─────────────────────────────────────────────
 const VIEWS = {
-  dashboard:      { title: 'Dashboard',          render: renderDashboard },
+  dashboard:      { title: 'Pulse',              render: renderDashboard },
   tracks:         { title: 'Tracks',             render: renderTracks },
   roadmap:        { title: 'Roadmap',            render: renderRoadmap },
   milestones:     { title: 'Milestones',         render: renderMilestones },
-  projects:       { title: 'All Projects',       render: renderProjects },
+  projects:       { title: 'Projects',           render: renderProjects },
   'project-detail':{ title: 'Project Detail',   render: renderProjectDetail },
-  onboarding:     { title: 'Onboarding Projects',render: renderOnboarding },
+  onboarding:     { title: 'Onboarding',         render: renderOnboarding },
   workflows:      { title: 'Workflows',          render: renderWorkflows },
   team:           { title: 'Team',               render: renderTeam },
-  capacity:       { title: 'Capacity Planning',  render: renderCapacity },
-  resources:      { title: 'Resource Tracking',  render: renderResources },
+  capacity:       { title: 'Capacity',           render: renderCapacity },
+  resources:      { title: 'Resources',          render: renderResources },
   risks:          { title: 'Risk Register',      render: renderRisks },
   escalations:    { title: 'Escalations',        render: renderEscalations },
   leadership:     { title: 'Leadership Report',  render: renderLeadership },
   impacts:        { title: 'Impact Tracker',     render: renderImpacts },
   charters:       { title: 'Charters',           render: renderCharters },
   settings:       { title: 'Admin Settings',     render: renderSettings },
-  pledges:        { title: 'Commitments',        render: renderPledges },
-  knowledge:      { title: 'Knowledge Base',     render: renderKnowledge }
+  pledges:        { title: 'Pledges',            render: renderPledges },
+  knowledge:      { title: 'Knowledge',          render: renderKnowledge }
 };
 
 // ─── NAV ──────────────────────────────────────────────────

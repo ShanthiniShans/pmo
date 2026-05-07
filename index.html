@@ -44,15 +44,15 @@
   <div class="sidebar-scroll">
 
     <div class="nav-group">
-      <div class="nav-group-lbl">Overview</div>
+      <div class="nav-group-lbl">Dashboard</div>
       <div class="nav-item active" onclick="nav('dashboard')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1,9 4,9 6,3 8,14 10,7 12,11 14,9 17,9"/></svg>
-        <span>Dashboard</span>
+        <span>Pulse</span>
       </div>
     </div>
 
     <div class="nav-group">
-      <div class="nav-group-lbl">Planning</div>
+      <div class="nav-group-lbl">Product</div>
       <div class="nav-item" onclick="nav('tracks')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="11" y="1" width="6" height="6" rx="1"/><rect x="1" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>
         <span>Tracks</span>
@@ -61,21 +61,21 @@
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="5" width="5" height="3" rx="1"/><rect x="7" y="9" width="5" height="3" rx="1"/><rect x="3" y="13" width="6" height="3" rx="1"/><line x1="1" y1="2" x2="1" y2="16"/></svg>
         <span>Roadmap</span>
       </div>
-      <div class="nav-item" onclick="nav('milestones')">
-        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><polyline points="9,5 9,9 12,11"/></svg>
-        <span>Milestones</span>
-      </div>
       <div class="nav-item" onclick="nav('pledges')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 2h12v14l-6-3-6 3z"/><polyline points="6,7 8,9 12,5"/></svg>
-        <span>Commitments</span>
+        <span>Pledges</span>
       </div>
     </div>
 
     <div class="nav-group">
-      <div class="nav-group-lbl">Execution</div>
+      <div class="nav-group-lbl">Planning</div>
       <div class="nav-item" onclick="nav('projects')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="14" height="12" rx="2"/><line x1="2" y1="7" x2="16" y2="7"/><line x1="6" y1="3" x2="6" y2="7"/><line x1="12" y1="3" x2="12" y2="7"/></svg>
-        <span>All Projects</span>
+        <span>Projects</span>
+      </div>
+      <div class="nav-item" onclick="nav('milestones')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><polyline points="9,5 9,9 12,11"/></svg>
+        <span>Milestones</span>
       </div>
       <div class="nav-item" onclick="nav('onboarding')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 2L2 7v9h14V7L9 2z"/><rect x="6" y="11" width="6" height="6"/></svg>
@@ -88,7 +88,7 @@
     </div>
 
     <div class="nav-group">
-      <div class="nav-group-lbl">People</div>
+      <div class="nav-group-lbl">Execution</div>
       <div class="nav-item" onclick="nav('team')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="7" cy="6" r="3"/><path d="M1 16c0-3.3 2.7-6 6-6"/><circle cx="14" cy="8" r="2.5"/><path d="M10.5 16c0-2.5 1.6-4.5 3.5-4.5s3.5 2 3.5 4.5"/></svg>
         <span>Team</span>
@@ -99,7 +99,7 @@
       </div>
       <div class="nav-item" onclick="nav('resources')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="16" height="12" rx="2"/><line x1="1" y1="7" x2="17" y2="7"/><line x1="5" y1="3" x2="5" y2="15"/></svg>
-        <span>Resource Tracking</span>
+        <span>Resources</span>
       </div>
     </div>
 
@@ -149,7 +149,7 @@
 
 <div id="main">
   <div class="top-bar">
-    <div class="top-bar-title" id="topBarTitle">Dashboard</div>
+    <div class="top-bar-title" id="topBarTitle">Pulse</div>
     <div class="top-bar-actions">
       <span class="top-timestamp" id="topTimestamp"></span>
     </div>
