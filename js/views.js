@@ -99,6 +99,18 @@ function filterBar() {
 
 const TRACK_COLORS = {'Track 1':'#1B2B5E','Track 2':'#00A896','Track 3':'#E8452C'};
 
+// ─── IMPORT BUTTON HELPER ─────────────────────────────────
+function importButtons(key) {
+  return `<button class="btn btn-ghost btn-sm" onclick="window._triggerImport('${key}')">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/><polyline points="5,6 8,3 11,6"/><line x1="8" y1="3" x2="8" y2="11"/></svg>
+    Import
+  </button>
+  <button class="btn btn-ghost btn-sm" onclick="window._downloadTemplate('${key}')">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/><polyline points="5,8 8,11 11,8"/><line x1="8" y1="3" x2="8" y2="11"/></svg>
+    Template
+  </button>`;
+}
+
 // ─── DASHBOARD ────────────────────────────────────────────
 export function renderDashboard() {
   const projects = APP_STATE.projects.map(p=>({...p, name:p.name||p.title||'Unnamed', status:normaliseStatus(p.status||p.rag||'')}));
@@ -174,7 +186,23 @@ export function renderDashboard() {
         </div>`;
       }).join('')}
     </div>
-  </div>`;
+  </div>
+  ${(()=>{
+    const pledgeAlerts = (APP_STATE.pledges||[]).filter(pl=>{
+      if (normaliseStatus(pl.status)==='Breached') return true;
+      if (pl.dueDate && new Date(pl.dueDate) < new Date() && normaliseStatus(pl.status)!=='On Track') return true;
+      return false;
+    });
+    if (!pledgeAlerts.length) return '';
+    return `<div class="card" style="border-left:4px solid var(--red);background:#fff8f8">
+      <div class="card-header"><div class="card-title" style="color:var(--red)">⚠ Commitment Alerts (${pledgeAlerts.length})</div><a class="btn btn-ghost btn-sm" onclick="nav('pledges')">View All</a></div>
+      ${pledgeAlerts.map(pl=>`
+      <div class="alert-card">
+        <div class="alert-card-title">${pl.title||'Unnamed'}</div>
+        <div class="alert-card-meta">${pl.customer||'—'} · Due ${DateHelpers.fmt(pl.dueDate)} · ${ragBadge(pl.status)}</div>
+      </div>`).join('')}
+    </div>`;
+  })()}`;
 }
 
 // ─── TRACKS ───────────────────────────────────────────────
@@ -435,7 +463,10 @@ export function renderProjects() {
   ${filterBar()}
   <div class="view-header">
     <h1 class="view-title">All Projects</h1>
-    <button class="btn btn-primary" onclick="openModal('project')">+ New Project</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${importButtons('projects')}
+      <button class="btn btn-primary" onclick="openModal('project')">+ New Project</button>
+    </div>
   </div>
   <div class="card" style="padding:0">
     <div class="table-wrap">
@@ -643,7 +674,10 @@ export function renderTeam() {
   return `
   <div class="view-header">
     <h1 class="view-title">Team <span class="view-subtitle">${members.length} member${members.length!==1?'s':''}</span></h1>
-    <button class="btn btn-primary" onclick="openModal('teamMember')">+ Add Member</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${importButtons('team')}
+      <button class="btn btn-primary" onclick="openModal('teamMember')">+ Add Member</button>
+    </div>
   </div>
   <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
     ${tracks.map(t=>{
@@ -902,7 +936,10 @@ export function renderRisks() {
   ${filterBar()}
   <div class="view-header">
     <h1 class="view-title">Risk Register</h1>
-    <button class="btn btn-primary" onclick="openModal('risk')">+ Add Risk</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${importButtons('risks')}
+      <button class="btn btn-primary" onclick="openModal('risk')">+ Add Risk</button>
+    </div>
   </div>
   <div class="card" style="padding:0">
     <div class="table-wrap">
@@ -1086,6 +1123,153 @@ export function renderCharters() {
   </div>`;
 }
 
+// ─── PLEDGES ──────────────────────────────────────────────
+export function renderPledges() {
+  const all = APP_STATE.pledges || [];
+  const sf = APP_STATE._pledgeStatus || '';
+  const cf = APP_STATE._pledgeCustomer || '';
+  const of = APP_STATE._pledgeOwner || '';
+  const pledges = all.filter(pl => {
+    if (sf && normaliseStatus(pl.status) !== sf) return false;
+    if (cf && (pl.customer||'').toLowerCase().indexOf(cf.toLowerCase()) < 0) return false;
+    if (of && (pl.owner||'').toLowerCase().indexOf(of.toLowerCase()) < 0) return false;
+    return true;
+  });
+
+  function countdown(pl) {
+    if (normaliseStatus(pl.status) === 'Breached') return `<span class="countdown urgent">BREACHED</span>`;
+    if (!pl.dueDate) return '';
+    const days = DateHelpers.daysBetween(DateHelpers.today(), pl.dueDate);
+    if (days < 0) return `<span class="countdown past">OVERDUE ${Math.abs(days)}d</span>`;
+    if (days <= 7)  return `<span class="countdown urgent">${days}d left</span>`;
+    if (days <= 30) return `<span class="countdown soon">${days}d left</span>`;
+    return `<span class="countdown fine">${days}d left</span>`;
+  }
+
+  function cardCls(pl) {
+    const s = normaliseStatus(pl.status);
+    if (s === 'Breached') return 'breached';
+    if (s === 'At Risk')  return 'at-risk';
+    return 'on-track';
+  }
+
+  const linkedProject = (id) => {
+    const p = APP_STATE.projects.find(x => x.id === id);
+    return p ? p.name : '';
+  };
+
+  const customers = [...new Set(all.map(p=>p.customer).filter(Boolean))];
+  const owners    = [...new Set(all.map(p=>p.owner).filter(Boolean))];
+
+  return `
+  <div class="view-header">
+    <div><h1 class="view-title">Commitments</h1><span class="view-subtitle">${pledges.length} of ${all.length} shown</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${importButtons('pledges')}
+      <button class="btn btn-primary" onclick="openModal('pledge')">+ New Commitment</button>
+    </div>
+  </div>
+  <div class="filter-bar no-print">
+    <div class="filter-group">
+      <label>Status</label>
+      <select onchange="APP_STATE._pledgeStatus=this.value;window._nav('pledges')">
+        <option value="">All</option>
+        ${['On Track','At Risk','Breached'].map(s=>`<option value="${s}" ${sf===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Customer</label>
+      <select onchange="APP_STATE._pledgeCustomer=this.value;window._nav('pledges')">
+        <option value="">All</option>
+        ${customers.map(c=>`<option value="${c}" ${cf===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Owner</label>
+      <select onchange="APP_STATE._pledgeOwner=this.value;window._nav('pledges')">
+        <option value="">All</option>
+        ${owners.map(o=>`<option value="${o}" ${of===o?'selected':''}>${o}</option>`).join('')}
+      </select>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="APP_STATE._pledgeStatus='';APP_STATE._pledgeCustomer='';APP_STATE._pledgeOwner='';window._nav('pledges')">Reset</button>
+  </div>
+  ${pledges.length ? `
+  <div class="pledge-grid">
+    ${pledges.map(pl=>`
+    <div class="pledge-card ${cardCls(pl)}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <div class="pledge-customer">${pl.customer||'—'}</div>
+          <div class="pledge-title">${pl.title||'Unnamed'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          ${countdown(pl)}
+        </div>
+      </div>
+      <div class="pledge-meta">
+        ${ragBadge(pl.status)}
+        ${pl.priority?`${ragBadge(pl.priority)}`:''}
+        ${pl.owner?`<span>👤 ${pl.owner}</span>`:''}
+        ${pl.linkedProjectId?`<span>📁 ${linkedProject(pl.linkedProjectId)}</span>`:''}
+        ${pl.dueDate?`<span>📅 ${DateHelpers.fmt(pl.dueDate)}</span>`:''}
+      </div>
+      ${pl.notes?`<div class="small text-lt" style="font-style:italic">${pl.notes}</div>`:''}
+      <div class="pledge-actions">
+        <button class="btn btn-ghost btn-xs" onclick="openModal('pledge','${pl.id}')">Edit</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteItem('pledges','${pl.id}')">Delete</button>
+      </div>
+    </div>`).join('')}
+  </div>` : `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No commitments found</div></div>`}`;
+}
+
+// ─── KNOWLEDGE BASE ────────────────────────────────────────
+export function renderKnowledge() {
+  const q = APP_STATE._kbSearch || '';
+  const all = APP_STATE.documents || [];
+  const docs = q ? all.filter(d => {
+    const tags = (d.tags||'').toLowerCase();
+    return (d.title||'').toLowerCase().includes(q.toLowerCase()) || tags.includes(q.toLowerCase());
+  }) : all;
+
+  const linkedProject = (id) => {
+    const p = APP_STATE.projects.find(x => x.id === id);
+    return p ? p.name : '';
+  };
+
+  return `
+  <div class="view-header">
+    <h1 class="view-title">Knowledge Base</h1>
+    <button class="btn btn-primary" onclick="openModal('knowledge')">+ New Document</button>
+  </div>
+  <input class="kb-search" placeholder="Search by title or tags…" value="${q}"
+    oninput="APP_STATE._kbSearch=this.value;window._nav('knowledge')"/>
+  ${docs.length ? `
+  <div class="doc-grid">
+    ${docs.map(d=>{
+      const tags = (d.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+      const proj = d.linkedProjectId ? linkedProject(d.linkedProjectId) : '';
+      const preview = (d.content||'').slice(0, 120) + ((d.content||'').length > 120 ? '…' : '');
+      return `
+      <div class="doc-card" onclick="toggleDocExpand('${d.id}')">
+        <div class="doc-title">${d.title||'Untitled'}</div>
+        ${preview ? `<div class="doc-desc">${preview}</div>` : ''}
+        <div id="doc-full-${d.id}" style="display:none">
+          <div class="doc-content-full">${(d.content||'').replace(/</g,'&lt;')}</div>
+        </div>
+        ${tags.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px">${tags.map(t=>`<span class="doc-tag">${t}</span>`).join('')}</div>` : ''}
+        <div class="doc-meta">
+          ${proj ? `<span>📁 ${proj}</span>` : ''}
+          ${d.updatedAt ? `<span>Updated ${DateHelpers.fmt(d.updatedAt?.seconds ? new Date(d.updatedAt.seconds*1000).toISOString().split('T')[0] : d.updatedAt)}</span>` : ''}
+        </div>
+        <div class="doc-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-ghost btn-xs" onclick="openModal('knowledge','${d.id}')">Edit</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteItem('documents','${d.id}')">Delete</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>` : `<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-text">${q ? 'No documents match your search' : 'No documents yet'}</div></div>`}`;
+}
+
 // ─── SETTINGS ─────────────────────────────────────────────
 export function renderSettings() {
   const s = APP_STATE.settings;
@@ -1190,3 +1374,97 @@ export function renderSettings() {
     </div>
   </div>`;
 }
+
+// ─── EXCEL IMPORT & DOWNLOAD TEMPLATES ───────────────────
+window.toggleDocExpand = function(id) {
+  const el = document.getElementById(`doc-full-${id}`);
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+};
+
+const _IMPORT_TEMPLATES = {
+  projects: {
+    headers: ['Name','Track','Priority','Phase','Start Date','End Date','Progress%','Status','Description'],
+    collection: 'projects',
+    map: r => ({ name:r['Name']||'', track:r['Track']||'', priority:r['Priority']||'',
+      phase:r['Phase']||'', startDate:r['Start Date']||'', endDate:r['End Date']||'',
+      progress:parseInt(r['Progress%'])||0, status:r['Status']||'Yet to Start',
+      description:r['Description']||'' })
+  },
+  pledges: {
+    headers: ['Customer','Commitment Title','Due Date','Owner','Priority','Status','Notes'],
+    collection: 'pledges',
+    map: r => ({ customer:r['Customer']||'', title:r['Commitment Title']||'',
+      dueDate:r['Due Date']||'', owner:r['Owner']||'',
+      priority:r['Priority']||'Medium', status:r['Status']||'On Track', notes:r['Notes']||'' })
+  },
+  risks: {
+    headers: ['Title','Project','Probability','Impact','Status','Owner','Mitigation'],
+    collection: 'risks',
+    map: r => ({ title:r['Title']||'', project:r['Project']||'',
+      likelihood:parseInt(r['Probability'])||3, impact:parseInt(r['Impact'])||3,
+      status:r['Status']||'Open', owner:r['Owner']||'', mitigation:r['Mitigation']||'' })
+  },
+  team: {
+    headers: ['Name','Role','Track','Email','Availability%'],
+    collection: 'teamMembers',
+    map: r => ({ name:r['Name']||'', role:r['Role']||'', track:r['Track']||'',
+      jiraId:r['Email']||'', availability:parseInt(r['Availability%'])||100 })
+  }
+};
+
+window._triggerImport = function(key) {
+  let inp = document.getElementById('_xlsx_inp');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.id = '_xlsx_inp';
+    inp.accept = '.xlsx,.xls,.csv'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+  }
+  inp.onchange = e => window._handleImport(e, key);
+  inp.value = '';
+  inp.click();
+};
+
+window._handleImport = function(event, key) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      if (typeof XLSX === 'undefined') { alert('SheetJS not loaded'); return; }
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      const tmpl = _IMPORT_TEMPLATES[key];
+      window._importRows = tmpl ? rows.map(tmpl.map) : rows;
+      window._importRawRows = rows;
+      window._importCollection = tmpl ? tmpl.collection : key;
+      openModal('importPreview', key, rows);
+    } catch(err) { alert('Error reading file: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+window._downloadTemplate = function(key) {
+  if (typeof XLSX === 'undefined') { alert('SheetJS not loaded'); return; }
+  const tmpl = _IMPORT_TEMPLATES[key];
+  if (!tmpl) return;
+  const ws = XLSX.utils.aoa_to_sheet([tmpl.headers]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Template');
+  XLSX.writeFile(wb, `${key}_template.xlsx`);
+};
+
+window._showToast = function(msg) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1a1040;color:#fff;padding:12px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:1;transition:opacity .4s;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+};

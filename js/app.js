@@ -7,7 +7,8 @@ import {
   renderDashboard, renderTracks, renderRoadmap, renderMilestones,
   renderProjects, renderProjectDetail, renderOnboarding, renderWorkflows,
   renderTeam, renderCapacity, renderResources, renderRisks, renderEscalations,
-  renderLeadership, renderImpacts, renderCharters, renderSettings
+  renderLeadership, renderImpacts, renderCharters, renderSettings,
+  renderPledges, renderKnowledge
 } from './views.js';
 
 // ─── VIEW MAP ─────────────────────────────────────────────
@@ -28,7 +29,9 @@ const VIEWS = {
   leadership:     { title: 'Leadership Report',  render: renderLeadership },
   impacts:        { title: 'Impact Tracker',     render: renderImpacts },
   charters:       { title: 'Charters',           render: renderCharters },
-  settings:       { title: 'Admin Settings',     render: renderSettings }
+  settings:       { title: 'Admin Settings',     render: renderSettings },
+  pledges:        { title: 'Commitments',        render: renderPledges },
+  knowledge:      { title: 'Knowledge Base',     render: renderKnowledge }
 };
 
 // ─── NAV ──────────────────────────────────────────────────
