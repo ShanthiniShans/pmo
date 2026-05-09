@@ -276,11 +276,6 @@ export function renderTracks() {
     </div>
   </div>
 
-  <div class="tab-note">
-    <div class="tab-note-icon">i</div>
-    <div><strong>Clarity</strong> — Organise your portfolio into delivery tracks. Assign projects and people to each track.</div>
-  </div>
-
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
     ${tracks.map((t,i)=>{
       const tProj = projects.filter(p=>p.track===t.name);
@@ -827,11 +822,6 @@ export function renderTeam() {
     </div>
   </div>
 
-  <div class="tab-note">
-    <div class="tab-note-icon">i</div>
-    <div><strong>Team</strong> — Manage team members, roles, and track assignments. Step 1 of the execution chain.</div>
-  </div>
-
   <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
     ${tracks.map(t=>{
       const isActive = activeTrack===t;
@@ -903,11 +893,6 @@ export function renderCapacity() {
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('capacity')">Edit Allocations</button>
     </div>
-  </div>
-
-  <div class="tab-note">
-    <div class="tab-note-icon">i</div>
-    <div><strong>Completion %</strong> is auto-calculated from milestones. <strong>Availability</strong> is set per member. Allocation is entered manually via Edit Allocations.</div>
   </div>
 
   <div class="card" style="padding:0">
@@ -985,6 +970,11 @@ export function renderCapacity() {
         </tbody>
       </table>
     </div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--lt)">
+    <span>💡 Completion % is calculated from milestones</span>
+    <span>📊 Availability is set per member in Team</span>
+    <span>✏️ Allocations are entered via Edit Allocations</span>
   </div>`;
 }
 
@@ -1024,11 +1014,6 @@ export function renderResources() {
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('resource')">+ Log Hours</button>
     </div>
-  </div>
-
-  <div class="tab-note">
-    <div class="tab-note-icon">i</div>
-    <div><strong>Resources</strong> — Log and review weekly hours per person. Click any cell to add or edit a log entry.</div>
   </div>
 
   <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:12px">
@@ -1481,11 +1466,6 @@ export function renderPledges() {
     </div>
   </div>
 
-  <div class="tab-note">
-    <div class="tab-note-icon">i</div>
-    <div><strong>Pledges</strong> are commitments made to customers or stakeholders with a deadline. Track status, ownership and countdown to due date.</div>
-  </div>
-
   <div class="filter-row">
     <div class="fg"><label>Status</label>
       <select onchange="APP_STATE._pledgeFilter=this.value;nav('pledges')">
@@ -1570,11 +1550,6 @@ export function renderKnowledge() {
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('knowledge')">+ New Document</button>
     </div>
-  </div>
-
-  <div class="tab-note">
-    <div class="tab-note-icon">i</div>
-    <div><strong>Knowledge Base</strong> stores team documents, SOPs, meeting notes and reference material. Search by title or tag.</div>
   </div>
 
   <div class="filter-row" style="margin-bottom:16px">
