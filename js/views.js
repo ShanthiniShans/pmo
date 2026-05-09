@@ -231,7 +231,7 @@ export function renderTracks() {
 // ─── ROADMAP ──────────────────────────────────────────────
 export function renderRoadmap() {
   const f = APP_STATE.filters;
-  const year = parseInt(f.year) || new Date().getFullYear();
+  const year = parseInt(f.year) || 2025;
   const projects = filterProjects(APP_STATE.projects);
   const milestones = APP_STATE.milestones;
 
