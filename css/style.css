@@ -38,7 +38,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 #sidebar { width: var(--sb-w); min-height: 100vh; background: var(--sb); position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 100; }
 
 .sb-logo { padding: 14px 14px 12px; border-bottom: 1px solid rgba(255,255,255,.07); display: flex; align-items: center; gap: 9px; text-decoration: none; }
-.sb-logo-icon { width: 34px; height: 34px; flex-shrink: 0; }
+.sb-logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg,#7c3aed,#00A896); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; color: #fff; flex-shrink: 0; }
 .sb-logo-text { font-size: 14px; font-weight: 800; color: #fff; letter-spacing: -.3px; line-height: 1.2; }
 .sb-logo-sub { font-size: 9px; color: rgba(255,255,255,.35); font-weight: 400; display: block; margin-top: 1px; }
 
