@@ -35,7 +35,7 @@ export const APP_STATE = {
   impacts: [],
   charters: [],
   pledges: [],
-  documents: [],
+  knowledge: [],
   settings: {
     statusOptions: ['Yet to Start','In Progress','On Hold','Completed'],
     phaseOptions: ['Requirements','Design','Configuration','Development','UAT','Monitoring','Go-Live'],
@@ -300,8 +300,7 @@ async function seedIfEmpty() {
 
 // ─── LISTENERS ────────────────────────────────────────────
 const COLLECTIONS = ['projects','milestones','tracks','teamMembers','workflows',
-                     'resources','onboardingProjects','notes','risks','escalations','impacts','charters',
-                     'pledges','documents'];
+                     'resources','onboardingProjects','notes','risks','escalations','impacts','charters','pledges','knowledge'];
 
 export function startListeners(onUpdate) {
   const unsubs = [];
@@ -326,6 +325,6 @@ export function startListeners(onUpdate) {
 }
 
 export async function initData(onUpdate) {
-  // await seedIfEmpty();
+
   return startListeners(onUpdate);
 }
