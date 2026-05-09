@@ -1,175 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kriyadocs | Engineering PMO</title>
-  <link rel="icon" type="image/png" href="https://cdn.prod.website-files.com/64c256f26c291b57a5177179/67b5b648b28d25e903b5f6ec_favicon.png"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap"/>
-  <link rel="stylesheet" href="css/style.css?v=2"/>
-  <style>
-    #sidebar { display: flex; flex-direction: column; height: 100vh; position: fixed; overflow: hidden; }
-    .sidebar-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
-    .sidebar-scroll::-webkit-scrollbar { width: 3px; }
-    .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
-    .nav-settings-fixed { flex-shrink: 0; border-top: 1px solid rgba(255,255,255,.1); padding: 6px 0; background: #111c3e; }
-    .sidebar-logo { flex-shrink: 0; padding: 16px 16px 14px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 10px; background: #111c3e; text-decoration: none; }
-    .sidebar-logo-icon { flex-shrink: 0; width: 36px; height: 36px; }
-    .sidebar-logo-text { display: flex; flex-direction: column; gap: 1px; }
-    .sidebar-logo-wordmark { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; line-height: 1; }
-    .sidebar-logo-sub { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 500; color: rgba(255,255,255,.45); letter-spacing: 0.3px; line-height: 1.3; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Kriyadocs | Engineering PMO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap"/>
+<link rel="stylesheet" href="css/style.css"/>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
 <nav id="sidebar">
-
-  <!-- Kriyadocs logo + wordmark -->
-  <div class="sidebar-logo">
-    <svg class="sidebar-logo-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- LOGO -->
+  <a class="sb-logo" href="#">
+    <svg class="sb-logo-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M20 30 A20 20 0 0 1 60 30" stroke="#F5C518" stroke-width="9" stroke-linecap="round" fill="none"/>
       <circle cx="40" cy="30" r="7" fill="#29B6D6"/>
       <path d="M26 44 L40 58 L54 44" stroke="#7B3FA0" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       <rect x="24" y="67" width="32" height="7" rx="3.5" fill="#5DB85A"/>
     </svg>
-    <div class="sidebar-logo-text">
-      <span class="sidebar-logo-wordmark">kriyadocs<sup style="font-size:8px;vertical-align:super">®</sup></span>
-      <span class="sidebar-logo-sub">Engineering PMO</span>
+    <div>
+      <div class="sb-logo-text">kriyadocs<sup style="font-size:8px;vertical-align:super">®</sup></div>
+      <span class="sb-logo-sub">Engineering PMO</span>
     </div>
-  </div>
+  </a>
 
-  <!-- Scrollable nav -->
-  <div class="sidebar-scroll">
-
+  <div class="nav-scroll">
+    <!-- DASHBOARD -->
     <div class="nav-group">
       <div class="nav-group-lbl">Dashboard</div>
-      <div class="nav-item active" onclick="nav('dashboard')">
+      <div class="nav-item active" data-view="dashboard" onclick="nav('dashboard')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1,9 4,9 6,3 8,14 10,7 12,11 14,9 17,9"/></svg>
-        <span>Pulse</span>
+        Pulse
       </div>
     </div>
 
+    <!-- PRODUCT -->
     <div class="nav-group">
       <div class="nav-group-lbl">Product</div>
-      <div class="nav-item" onclick="nav('tracks')">
-        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="11" y="1" width="6" height="6" rx="1"/><rect x="1" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>
-        <span>Tracks</span>
-      </div>
-      <div class="nav-item" onclick="nav('roadmap')">
+      <div class="nav-item" data-view="roadmap" onclick="nav('roadmap')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="5" width="5" height="3" rx="1"/><rect x="7" y="9" width="5" height="3" rx="1"/><rect x="3" y="13" width="6" height="3" rx="1"/><line x1="1" y1="2" x2="1" y2="16"/></svg>
-        <span>Roadmap</span>
+        Product Roadmap
       </div>
-      <div class="nav-item" onclick="nav('pledges')">
+      <div class="nav-item" data-view="tracks" onclick="nav('tracks')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="1" width="3" height="16" rx="1"/><rect x="6" y="3" width="3" height="12" rx="1"/><rect x="11" y="5" width="3" height="8" rx="1"/><rect x="16" y="7" width="1" height="4" rx="0.5"/></svg>
+        Clarity
+      </div>
+      <div class="nav-item" data-view="pledges" onclick="nav('pledges')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 2h12v14l-6-3-6 3z"/><polyline points="6,7 8,9 12,5"/></svg>
-        <span>Pledges</span>
+        Pledges
       </div>
     </div>
 
+    <!-- PLANNING -->
     <div class="nav-group">
       <div class="nav-group-lbl">Planning</div>
-      <div class="nav-item" onclick="nav('projects')">
+      <div class="nav-item" data-view="projects" onclick="nav('projects')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="14" height="12" rx="2"/><line x1="2" y1="7" x2="16" y2="7"/><line x1="6" y1="3" x2="6" y2="7"/><line x1="12" y1="3" x2="12" y2="7"/></svg>
-        <span>Projects</span>
+        Projects
       </div>
-      <div class="nav-item" onclick="nav('milestones')">
+      <div class="nav-item" data-view="milestones" onclick="nav('milestones')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><polyline points="9,5 9,9 12,11"/></svg>
-        <span>Milestones</span>
+        Milestones
       </div>
-      <div class="nav-item" onclick="nav('onboarding')">
+      <div class="nav-item" data-view="onboarding" onclick="nav('onboarding')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 2L2 7v9h14V7L9 2z"/><rect x="6" y="11" width="6" height="6"/></svg>
-        <span>Onboarding</span>
+        Onboarding
       </div>
-      <div class="nav-item" onclick="nav('workflows')">
-        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="4" cy="4" r="2"/><circle cx="14" cy="4" r="2"/><circle cx="9" cy="14" r="2"/><path d="M6 4h6"/><path d="M4 6v4a5 5 0 0 0 10 0V6"/></svg>
-        <span>Workflows</span>
+      <div class="nav-item" data-view="workflows" onclick="nav('workflows')">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="4" cy="4" r="2"/><circle cx="14" cy="9" r="2"/><circle cx="4" cy="14" r="2"/><line x1="6" y1="4" x2="12" y2="8"/><line x1="6" y1="14" x2="12" y2="10"/></svg>
+        Workflows
       </div>
     </div>
 
-    <div class="nav-group">
-      <div class="nav-group-lbl">Execution</div>
-      <div class="nav-item" onclick="nav('team')">
+    <!-- EXECUTION -->
+    <div class="nav-group nav-group-exec">
+      <div class="nav-group-lbl">Execution · Connected</div>
+      <div class="nav-item exec-item" data-view="team" onclick="nav('team')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="7" cy="6" r="3"/><path d="M1 16c0-3.3 2.7-6 6-6"/><circle cx="14" cy="8" r="2.5"/><path d="M10.5 16c0-2.5 1.6-4.5 3.5-4.5s3.5 2 3.5 4.5"/></svg>
-        <span>Team</span>
+        Team <span class="exec-step">1</span>
       </div>
-      <div class="nav-item" onclick="nav('capacity')">
+      <div class="nav-item exec-item" data-view="capacity" onclick="nav('capacity')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="10" width="3" height="7"/><rect x="5" y="6" width="3" height="11"/><rect x="9" y="2" width="3" height="15"/><rect x="13" y="7" width="3" height="10"/></svg>
-        <span>Capacity</span>
+        Capacity <span class="exec-step">2</span>
       </div>
-      <div class="nav-item" onclick="nav('resources')">
+      <div class="nav-item exec-item" data-view="resources" onclick="nav('resources')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="16" height="12" rx="2"/><line x1="1" y1="7" x2="17" y2="7"/><line x1="5" y1="3" x2="5" y2="15"/></svg>
-        <span>Resources</span>
+        Resources <span class="exec-step">3</span>
       </div>
     </div>
 
+    <!-- HEALTH -->
     <div class="nav-group">
       <div class="nav-group-lbl">Health</div>
-      <div class="nav-item" onclick="nav('risks')">
+      <div class="nav-item" data-view="risks" onclick="nav('risks')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 2L1 16h16L9 2z"/><line x1="9" y1="8" x2="9" y2="11"/><circle cx="9" cy="13.5" r=".5" fill="currentColor"/></svg>
-        <span>Risk Register</span>
+        Risk Register
       </div>
-      <div class="nav-item" onclick="nav('escalations')">
+      <div class="nav-item" data-view="escalations" onclick="nav('escalations')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 1v10M9 14v3"/><path d="M4 5l5-4 5 4"/></svg>
-        <span>Escalations</span>
+        Escalations
       </div>
     </div>
 
+    <!-- REPORTS -->
     <div class="nav-group">
       <div class="nav-group-lbl">Reports</div>
-      <div class="nav-item" onclick="nav('leadership')">
+      <div class="nav-item" data-view="leadership" onclick="nav('leadership')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="2"/><line x1="5" y1="6" x2="13" y2="6"/><line x1="5" y1="9" x2="10" y2="9"/><line x1="5" y1="12" x2="8" y2="12"/></svg>
-        <span>Leadership Report</span>
+        Leadership Report
       </div>
-      <div class="nav-item" onclick="nav('impacts')">
+      <div class="nav-item" data-view="impacts" onclick="nav('impacts')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1,13 5,8 8,11 12,4 17,7"/><line x1="1" y1="16" x2="17" y2="16"/></svg>
-        <span>Impact Tracker</span>
+        Impact Tracker
       </div>
-      <div class="nav-item" onclick="nav('charters')">
+      <div class="nav-item" data-view="charters" onclick="nav('charters')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 2h10l2 3v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5l2-3z"/><line x1="5" y1="8" x2="13" y2="8"/><line x1="5" y1="11" x2="10" y2="11"/></svg>
-        <span>Charters</span>
+        Charters
       </div>
-      <div class="nav-item" onclick="nav('knowledge')">
+      <div class="nav-item" data-view="knowledge" onclick="nav('knowledge')">
         <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h14v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3z"/><line x1="2" y1="3" x2="16" y2="3"/><line x1="5" y1="8" x2="13" y2="8"/><line x1="5" y1="11" x2="10" y2="11"/></svg>
-        <span>Knowledge</span>
+        Knowledge
       </div>
     </div>
-
   </div>
 
-  <!-- Admin Settings — pinned at bottom -->
-  <div class="nav-settings-fixed">
-    <div class="nav-item" onclick="nav('settings')">
+  <div class="sb-bottom">
+    <div class="nav-item" data-view="settings" onclick="nav('settings')">
       <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.2 3.2l1.4 1.4M13.4 13.4l1.4 1.4M3.2 14.8l1.4-1.4M13.4 4.6l1.4-1.4"/></svg>
-      <span>Admin Settings</span>
+      Admin Settings
     </div>
+    <div class="sb-crumb">Kriyadocs · Engineering PMO</div>
   </div>
-
 </nav>
 
 <div id="main">
-  <div class="top-bar">
-    <div class="top-bar-title" id="topBarTitle">Pulse</div>
-    <div class="top-bar-actions">
-      <span class="top-timestamp" id="topTimestamp"></span>
+  <div class="topbar" id="topbar">
+    <div class="topbar-left">
+      <span class="topbar-title" id="topBarTitle">Pulse</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-time" id="topTimestamp"></span>
     </div>
   </div>
-  <div class="content-area" id="content">
-    <div class="loading">Loading…</div>
+  <div class="content" id="content">
+    <div class="loading">Loading Kriyadocs PMO…</div>
   </div>
 </div>
-
 <div id="modal-root"></div>
 
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-<script type="module">
-  import { initApp } from './js/app.js?v=2';
-  window.addEventListener('DOMContentLoaded', initApp);
-</script>
-<script>
-  function nav(view, params) {
-    if (window._nav) window._nav(view, params);
-  }
-</script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
