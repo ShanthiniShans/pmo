@@ -9,7 +9,13 @@ function show(html) {
   root.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">${html}</div>`;
 }
 
-export function closeModal() {
+export function closeModal(id) {
+  if (id) {
+    const el = document.getElementById(id);
+    if (el) { el.remove(); return; }
+  }
+  // Also remove any body-inserted modals
+  document.querySelectorAll('.mo').forEach(m => m.remove());
   document.getElementById('modal-root').innerHTML = '';
 }
 
@@ -86,11 +92,11 @@ export function openModal(type, id, extra) {
     case 'onboarding':    return modalOnboarding(id);
     case 'capacity':      return modalCapacity();
     case 'track':         return modalTrack(id);
+    case 'pledge':        return openPledgeModal(id);
+    case 'knowledge':     return openKnowledgeModal(id);
+    case 'knowledge-view': return openKnowledgeViewModal(id);
     case 'assignTrackProject': return modalAssignTrackProject(id, extra);
     case 'assignTrackMember':  return modalAssignTrackMember(id, extra);
-    case 'pledge':             return modalPledge(id);
-    case 'knowledge':          return modalKnowledge(id);
-    case 'importPreview':      return modalImportPreview(id, extra);
     default: console.warn('Unknown modal type:', type);
   }
 }
@@ -1080,178 +1086,214 @@ window.deleteResourceLog = async function(logId, memberId, date) {
     openModal('resourceDay', memberId, date);
   } catch(e) { alert('Error: ' + e.message); }
 };
+// ============================================================
+// PLEDGE MODAL
+// ============================================================
+async function openPledgeModal(id) {
+  const pledge = id ? APP_STATE.pledges.find(p => p.id === id) : null;
+  const projects = APP_STATE.projects || [];
+  const isEdit = !!pledge;
 
-// ─── PLEDGE ───────────────────────────────────────────────
-async function modalPledge(id) {
-  const pl = id ? (APP_STATE.pledges||[]).find(x=>x.id===id) : null;
-  show(`<div class="modal modal-lg">
-    <div class="modal-header">
-      <div class="modal-title">${pl ? 'Edit Commitment' : 'New Commitment'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
+  const html = `<div class="mo" id="pledgeMo">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${isEdit ? 'Edit Pledge' : 'New Pledge'}</span>
+        <button class="mo-close" onclick="closeModal('pledgeMo')">×</button>
+      </div>
+      <div class="mo-body">
+        <div class="form-row">
+          <div class="form-group form-row-full">
+            <label class="form-label">Commitment Title *</label>
+            <input id="pl-title" class="form-control" placeholder="What was committed?" value="${pledge?.title||''}"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Customer / Stakeholder *</label>
+            <input id="pl-customer" class="form-control" placeholder="Customer or org name" value="${pledge?.customer||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Owner</label>
+            <input id="pl-owner" class="form-control" placeholder="Who is accountable?" value="${pledge?.owner||''}"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Due Date *</label>
+            <input id="pl-due" type="date" class="form-control" value="${pledge?.dueDate||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Linked Project</label>
+            <select id="pl-project" class="form-control">
+              <option value="">— None —</option>
+              ${projects.map(p => `<option value="${p.id}" ${pledge?.linkedProjectId===p.id?'selected':''}>${p.name}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select id="pl-priority" class="form-control">
+              ${['Critical','High','Medium','Low'].map(o => `<option ${pledge?.priority===o?'selected':''}>${o}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="pl-status" class="form-control">
+              ${['On Track','At Risk','Breached','Honored'].map(o => `<option ${pledge?.status===o?'selected':''}>${o}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes / Context</label>
+          <textarea id="pl-notes" class="form-control" placeholder="Any additional context or context quote…">${pledge?.notes||''}</textarea>
+        </div>
+      </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal('pledgeMo')">Cancel</button>
+        <button class="btn btn-primary" onclick="savePledge('${id||''}')">
+          ${isEdit ? 'Save Changes' : 'Add Pledge'}
+        </button>
+      </div>
     </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Customer *</label>
-          <input class="form-control" id="plCustomer" value="${pl?.customer||''}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Commitment Title *</label>
-          <input class="form-control" id="plTitle" value="${pl?.title||''}"/>
-        </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Due Date</label>
-          <input type="date" class="form-control" id="plDue" value="${pl?.dueDate||''}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Owner</label>
-          <input class="form-control" id="plOwner" value="${pl?.owner||''}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Linked Project</label>
-          <select class="form-control" id="plProject">
-            <option value="">—</option>
-            ${APP_STATE.projects.map(p=>`<option value="${p.id}" ${pl?.linkedProjectId===p.id?'selected':''}>${p.name}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-control" id="plStatus">
-            ${['On Track','At Risk','Breached'].map(s=>`<option value="${s}" ${(pl?.status||'On Track')===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Priority</label>
-          <select class="form-control" id="plPriority">
-            ${['High','Medium','Low'].map(p=>`<option value="${p}" ${(pl?.priority||'Medium')===p?'selected':''}>${p}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-control" id="plNotes">${pl?.notes||''}</textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="savePledge('${id||''}')">Save Commitment</button>
-    </div>
-  </div>`);
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
-window.savePledge = async function(id) {
+async function savePledge(id) {
   const data = {
-    customer: val('plCustomer'), title: val('plTitle'),
-    dueDate: val('plDue'), owner: val('plOwner'),
-    linkedProjectId: val('plProject'),
-    status: val('plStatus'), priority: val('plPriority'),
-    notes: val('plNotes')
+    title:           document.getElementById('pl-title')?.value?.trim() || '',
+    customer:        document.getElementById('pl-customer')?.value?.trim() || '',
+    owner:           document.getElementById('pl-owner')?.value?.trim() || '',
+    dueDate:         document.getElementById('pl-due')?.value || '',
+    linkedProjectId: document.getElementById('pl-project')?.value || '',
+    priority:        document.getElementById('pl-priority')?.value || 'Medium',
+    status:          document.getElementById('pl-status')?.value || 'On Track',
+    notes:           document.getElementById('pl-notes')?.value?.trim() || '',
+    updatedAt:       new Date().toISOString().split('T')[0]
   };
-  if (!data.customer || !data.title) return alert('Customer and title required');
+
+  if (!data.title) { alert('Please enter a commitment title.'); return; }
+  if (!data.dueDate) { alert('Please set a due date.'); return; }
+
   try {
-    if (id) await DB.update('pledges', id, data);
-    else await DB.add('pledges', data);
-    closeModal();
-  } catch(e) { alert('Error: '+e.message); }
-};
-
-// ─── KNOWLEDGE ────────────────────────────────────────────
-async function modalKnowledge(id) {
-  const d = id ? (APP_STATE.documents||[]).find(x=>x.id===id) : null;
-  show(`<div class="modal modal-lg">
-    <div class="modal-header">
-      <div class="modal-title">${d ? 'Edit Document' : 'New Document'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Title *</label>
-        <input class="form-control" id="kbTitle" value="${d?.title||''}"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Content</label>
-        <textarea class="form-control" id="kbContent" style="min-height:160px">${d?.content||''}</textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Tags (comma-separated)</label>
-          <input class="form-control" id="kbTags" value="${d?.tags||''}" placeholder="e.g. onboarding, api, process"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Linked Project</label>
-          <select class="form-control" id="kbProject">
-            <option value="">—</option>
-            ${APP_STATE.projects.map(p=>`<option value="${p.id}" ${d?.linkedProjectId===p.id?'selected':''}>${p.name}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveKnowledge('${id||''}')">Save Document</button>
-    </div>
-  </div>`);
-}
-
-window.saveKnowledge = async function(id) {
-  const data = {
-    title: val('kbTitle'), content: val('kbContent'),
-    tags: val('kbTags'), linkedProjectId: val('kbProject'),
-    updatedAt: new Date().toISOString().split('T')[0]
-  };
-  if (!data.title) return alert('Title required');
-  try {
-    if (id) await DB.update('documents', id, data);
-    else await DB.add('documents', data);
-    closeModal();
-  } catch(e) { alert('Error: '+e.message); }
-};
-
-// ─── IMPORT PREVIEW ───────────────────────────────────────
-async function modalImportPreview(key, rawRows) {
-  const rows = Array.isArray(rawRows) ? rawRows : [];
-  const preview = rows.slice(0, 20);
-  const headers = preview.length > 0 ? Object.keys(preview[0]) : [];
-
-  show(`<div class="modal modal-lg">
-    <div class="modal-header">
-      <div class="modal-title">Import Preview — ${rows.length} row${rows.length!==1?'s':''} found</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="small text-lt" style="margin-bottom:12px">
-        Showing ${Math.min(preview.length,20)} of ${rows.length} rows.
-        ${rows.length>20?'All rows will be imported.':''}
-      </div>
-      <div style="overflow:auto;max-height:340px;border:1px solid var(--border);border-radius:var(--rs)">
-        <table class="import-preview-table">
-          <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-          <tbody>
-            ${preview.map(row=>`<tr>${headers.map(h=>`<td title="${(row[h]||'').toString().replace(/"/g,'&quot;')}">${(row[h]||'').toString().slice(0,40)}</td>`).join('')}</tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="doImport('${key}')">Import ${rows.length} item${rows.length!==1?'s':''}</button>
-    </div>
-  </div>`);
-}
-
-window.doImport = async function(key) {
-  const rows = window._importRows || [];
-  const collection = window._importCollection || key;
-  if (!rows.length) { closeModal(); return; }
-  try {
-    for (const row of rows) {
-      await DB.add(collection, row);
+    if (id) {
+      await DB.update('pledges', id, data);
+    } else {
+      data.createdAt = new Date().toISOString().split('T')[0];
+      await DB.add('pledges', data);
     }
-    closeModal();
-    window._showToast && window._showToast(`${rows.length} item${rows.length!==1?'s':''} imported successfully`);
-  } catch(e) { alert('Import error: ' + e.message); }
-};
+    closeModal('pledgeMo');
+    if (typeof showToast !== 'undefined') showToast(id ? 'Pledge updated' : 'Pledge added');
+  } catch(e) {
+    alert('Error saving pledge: ' + e.message);
+  }
+}
+
+// Make available globally
+window.savePledge = savePledge;
+
+// ============================================================
+// KNOWLEDGE MODAL
+// ============================================================
+async function openKnowledgeModal(id) {
+  const doc = id ? APP_STATE.knowledge?.find(d => d.id === id) : null;
+  const projects = APP_STATE.projects || [];
+
+  const html = `<div class="mo" id="knowledgeMo">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${doc ? 'Edit Document' : 'New Document'}</span>
+        <button class="mo-close" onclick="closeModal('knowledgeMo')">×</button>
+      </div>
+      <div class="mo-body">
+        <div class="form-group">
+          <label class="form-label">Title *</label>
+          <input id="kn-title" class="form-control" placeholder="Document title" value="${doc?.title||''}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Content</label>
+          <textarea id="kn-content" class="form-control" style="min-height:120px" placeholder="Document content, notes, or reference material…">${doc?.content||''}</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tags (comma separated)</label>
+            <input id="kn-tags" class="form-control" placeholder="e.g. SOP, QA, Process" value="${doc?.tags||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Linked Project</label>
+            <select id="kn-project" class="form-control">
+              <option value="">— None —</option>
+              ${projects.map(p => `<option value="${p.id}" ${doc?.linkedProjectId===p.id?'selected':''}>${p.name}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal('knowledgeMo')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveKnowledge('${id||''}')">
+          ${doc ? 'Save Changes' : 'Add Document'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function openKnowledgeViewModal(id) {
+  const doc = APP_STATE.knowledge?.find(d => d.id === id);
+  if (!doc) return;
+  const tags = (doc.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+  const proj = APP_STATE.projects?.find(p => p.id === doc.linkedProjectId);
+
+  const html = `<div class="mo" id="knowledgeViewMo">
+    <div class="mo-box lg">
+      <div class="mo-hdr">
+        <span class="mo-title">${doc.title}</span>
+        <button class="mo-close" onclick="closeModal('knowledgeViewMo')">×</button>
+      </div>
+      <div class="mo-body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          ${tags.map(t => `<span class="doc-tag">${t}</span>`).join('')}
+          ${proj ? `<span class="badge badge-navy">${proj.name}</span>` : ''}
+        </div>
+        <div style="font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap">${doc.content || '—'}</div>
+      </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal('knowledgeViewMo')">Close</button>
+        <button class="btn btn-primary" onclick="closeModal('knowledgeViewMo');openModal('knowledge','${id}')">Edit</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveKnowledge(id) {
+  const data = {
+    title:           document.getElementById('kn-title')?.value?.trim() || '',
+    content:         document.getElementById('kn-content')?.value?.trim() || '',
+    tags:            document.getElementById('kn-tags')?.value?.trim() || '',
+    linkedProjectId: document.getElementById('kn-project')?.value || '',
+    updatedAt:       new Date().toISOString().split('T')[0]
+  };
+
+  if (!data.title) { alert('Please enter a title.'); return; }
+
+  try {
+    if (id) {
+      await DB.update('knowledge', id, data);
+    } else {
+      data.createdAt = new Date().toISOString().split('T')[0];
+      await DB.add('knowledge', data);
+    }
+    closeModal('knowledgeMo');
+    if (typeof showToast !== 'undefined') showToast(id ? 'Document updated' : 'Document added');
+  } catch(e) {
+    alert('Error saving document: ' + e.message);
+  }
+}
+
+window.saveKnowledge = saveKnowledge;
