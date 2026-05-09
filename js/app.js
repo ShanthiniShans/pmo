@@ -94,7 +94,7 @@ window._filterChange = function(key, value) {
 };
 
 window._filterReset = function() {
-  APP_STATE.filters = { year: new Date().getFullYear(), quarter: '', month: '', track: '', startDate: '', endDate: '' };
+  APP_STATE.filters = { year: 2025, quarter: '', month: '', track: '', startDate: '', endDate: '' };
   navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
 };
 
@@ -308,3 +308,6 @@ window.testJiraConfig = async function() {
     if (result) result.innerHTML = `<span style="font-size:11px;color:var(--amber)">⚠️ CORS — works when hosted, not on localhost</span>`;
   }
 };
+
+// ─── BOOT ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => { initApp(); });
