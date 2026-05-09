@@ -94,7 +94,7 @@ window._filterChange = function(key, value) {
 };
 
 window._filterReset = function() {
-  APP_STATE.filters = { year: 2026, quarter: '', month: '', track: '', startDate: '', endDate: '' };
+  APP_STATE.filters = { year: new Date().getFullYear(), quarter: '', month: '', track: '', startDate: '', endDate: '' };
   navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
 };
 
