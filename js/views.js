@@ -134,6 +134,76 @@ export function renderDashboard() {
   const highRisks = openRisks.filter(r=>(r.likelihood||1)*(r.impact||1)>=12);
   const medRisks  = openRisks.filter(r=>{ const s=(r.likelihood||1)*(r.impact||1); return s>=6&&s<12; });
   const activeTab = APP_STATE._dashTab || 'flags';
+  const overdueMilestones = milestones.filter(m=>m.status==='Overdue');
+
+  const PIPELINE = [
+    {label:'Yet to Start',color:'#94A3B8'},{label:'In Progress',color:'#1282a0'},
+    {label:'On Track',color:'#1e8a4a'},{label:'At Risk',color:'#D97706'},
+    {label:'On Hold',color:'#6B7280'},{label:'Completed',color:'#065F46'},
+  ];
+
+  function sumBlock(n, lbl, sub, col) {
+    const on = n > 0;
+    return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 8px;gap:3px;border-right:1px solid var(--border)">
+      <span style="font-size:28px;font-weight:800;color:${on?col:'#D1C9E0'};line-height:1">${n}</span>
+      <span style="font-size:11px;font-weight:700;color:${on?col:'#D1C9E0'}">${lbl}</span>
+      <span style="font-size:9px;color:var(--lt);text-align:center;line-height:1.3">${sub}</span>
+    </div>`;
+  }
+
+  function fSection(title, subtitle, accent, items, renderItem) {
+    return `<div class="card" style="overflow:hidden;padding:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 18px;border-bottom:1px solid var(--border);background:#FAFAFA;border-left:4px solid ${accent}">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px;font-weight:700;color:var(--navy)">${title}</span>
+            <span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:980px;background:${items.length>0?accent+'20':'rgba(0,0,0,.05)'};color:${items.length>0?accent:'var(--lt)'}">${items.length}</span>
+          </div>
+          <div style="font-size:11px;color:var(--lt);margin-top:2px">${subtitle}</div>
+        </div>
+      </div>
+      <div style="padding:8px 18px">
+        ${items.length===0?`<p style="font-size:12px;color:var(--lt);padding:6px 0">All clear</p>`:`<div style="display:flex;flex-direction:column;gap:1px">${items.map(renderItem).join('')}</div>`}
+      </div>
+    </div>`;
+  }
+
+  function fRow(title, sub, detail, detailColor, action) {
+    return `<div onclick="${action}" style="display:flex;align-items:center;gap:12px;padding:8px 8px;border-radius:6px;cursor:pointer;transition:background .1s" onmouseover="this.style.background='#F8F6FC'" onmouseout="this.style.background=''">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${title}</div>
+        ${sub?`<div style="font-size:11px;color:var(--lt);margin-top:1px">${sub}</div>`:''}
+      </div>
+      ${detail?`<span style="font-size:11px;font-weight:600;color:${detailColor};white-space:nowrap;background:${detailColor}12;padding:2px 8px;border-radius:4px">${detail}</span>`:''}
+      <span style="font-size:11px;color:var(--lt);flex-shrink:0">→</span>
+    </div>`;
+  }
+
+  function fGroup(label, accent, count, children) {
+    if (count === 0) return '';
+    return `<div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${accent}"></div>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${accent}">${label}</span>
+        <span style="font-size:10px;padding:1px 8px;border-radius:980px;background:${accent}15;color:${accent};font-weight:600">${count} item${count!==1?'s':''}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding-left:18px;border-left:2px solid ${accent}20">
+        ${children}
+      </div>
+    </div>`;
+  }
+
+  const activeCnt   = projects.filter(p=>['In Progress','On Track'].includes(normaliseStatus(p.status||''))).length;
+  const attentionCnt= projects.filter(p=>['At Risk','On Hold'].includes(normaliseStatus(p.status||''))).length;
+  const pipelineBoxes = PIPELINE.map(s=>{
+    const cnt = projects.filter(p=>normaliseStatus(p.status||'')===s.label).length;
+    return `<div style="flex:1;display:flex;flex-direction:column;gap:4px;align-items:center">
+      <div onclick="nav('projects')" style="width:100%;height:36px;border-radius:4px;background:${cnt>0?s.color+'18':'#F7F5FC'};border:1px solid ${cnt>0?s.color+'30':'#EDE6F7'};display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <span style="font-size:${cnt>9?14:18}px;font-weight:700;color:${cnt>0?s.color:'#D1C9E0'}">${cnt}</span>
+      </div>
+      <span style="font-size:9px;text-align:center;line-height:1.25;color:${cnt>0?s.color:'var(--lt)'};font-weight:${cnt>0?600:400}">${s.label}</span>
+    </div>`;
+  }).join('');
 
   return `
   <div class="vh">
@@ -146,13 +216,32 @@ export function renderDashboard() {
     </div>
   </div>
 
-  <div class="stat-row">
-    <div class="stat-card n"><div class="stat-num">${total}</div><div class="stat-lbl">Total Projects</div></div>
-    <div class="stat-card b"><div class="stat-num">${inProg}</div><div class="stat-lbl">In Progress</div></div>
-    <div class="stat-card g"><div class="stat-num">${completed}</div><div class="stat-lbl">Completed</div></div>
-    <div class="stat-card a"><div class="stat-num">${atRisk}</div><div class="stat-lbl">At Risk</div></div>
-    <div class="stat-card r"><div class="stat-num">${overdue}</div><div class="stat-lbl">Overdue</div></div>
-    <div class="stat-card r"><div class="stat-num">${openRisks.length}</div><div class="stat-lbl">Open Risks</div></div>
+  <div class="card" style="margin-bottom:20px;overflow:hidden;padding:0">
+    <div style="padding:8px 20px 0;display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lt)">Portfolio snapshot</span>
+      <span style="font-size:10px;color:var(--lt)">· ${DateHelpers.fmt(DateHelpers.today())}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border)">
+      ${sumBlock(total,'Total','all projects','var(--navy)')}
+      ${sumBlock(activeCnt,'Active','in progress or on track','#1282a0')}
+      ${sumBlock(attentionCnt,'Attention','at risk or on hold','#D97706')}
+      ${sumBlock(completed,'Completed','done and delivered','#065F46')}
+    </div>
+    <div style="padding:10px 20px 0;display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lt)">Status breakdown</span>
+      <span style="font-size:10px;color:var(--lt)">· click to filter projects</span>
+    </div>
+    <div style="padding:10px 20px 14px">
+      <div style="display:flex;gap:4px;align-items:stretch">${pipelineBoxes}</div>
+      <div style="display:flex;gap:4px;margin-top:3px">
+        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
+        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
+        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
+        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
+        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
+        <div style="flex:1"></div>
+      </div>
+    </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;margin-bottom:16px;align-items:start">
@@ -197,35 +286,23 @@ export function renderDashboard() {
       <button class="pt ${activeTab==='health'?'active':''}" onclick="APP_STATE._dashTab='health';nav('dashboard')">❤️ Health</button>
       <button class="pt ${activeTab==='activity'?'active':''}" onclick="APP_STATE._dashTab='activity';nav('dashboard')">⚡ Activity</button>
     </div>
+    <div style="padding:10px 16px;background:rgba(27,43,94,.03);border-bottom:1px solid rgba(27,43,94,.06);font-size:12px;color:var(--lt);line-height:1.6">
+      ${activeTab==='flags'?'Ordered by urgency — address critical and overdue items first. Each flag links directly to the relevant view.':activeTab==='health'?'Project health by track — RAG status at a glance across all delivery streams.':'Recent completions and milestone activity across the programme.'}
+    </div>
 
     ${activeTab==='flags' ? `
     <div>
-      ${!highRisks.length && !medRisks.length && !openEsc.length ? `<div class="empty"><div class="empty-icon">✅</div>No high-priority flags</div>` : ''}
-      ${highRisks.map(r=>`
-      <div class="flag-card high" onclick="nav('risks')" style="cursor:pointer">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="flag-type" style="background:#fee2e2;color:#dc2626">RISK</span>
-          <span style="font-size:13px;font-weight:600;color:var(--navy);flex:1">${r.title}</span>
-          <span class="risk-score score-h">${(r.likelihood||1)*(r.impact||1)}</span>
-        </div>
-        ${r.mitigation?`<div style="font-size:11px;color:var(--mid);margin-top:6px">${r.mitigation}</div>`:''}
-      </div>`).join('')}
-      ${medRisks.map(r=>`
-      <div class="flag-card med" onclick="nav('risks')" style="cursor:pointer">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="flag-type" style="background:#fef9c3;color:#a16207">RISK</span>
-          <span style="font-size:13px;font-weight:600;color:var(--navy);flex:1">${r.title}</span>
-          <span class="risk-score score-m">${(r.likelihood||1)*(r.impact||1)}</span>
-        </div>
-      </div>`).join('')}
-      ${openEsc.map(e=>`
-      <div class="flag-card ${['High','Critical'].includes(normaliseStatus(e.priority))?'high':'med'}" onclick="nav('escalations')" style="cursor:pointer">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="flag-type" style="background:#e0e7ff;color:#1B2B5E">ESC</span>
-          <span style="font-size:13px;font-weight:600;color:var(--navy);flex:1">${e.title||'Unnamed'}</span>
-          ${ragBadge(e.priority)}
-        </div>
-      </div>`).join('')}
+      ${!overdueMilestones.length && !highRisks.length && !medRisks.length && !openEsc.length ? `<div class="empty"><div class="empty-icon">✅</div>No flags — everything is moving.</div>` : ''}
+      ${fGroup('Critical — act now','#DC2626', overdueMilestones.length + highRisks.length,
+        (overdueMilestones.length ? fSection('Overdue Milestones','Past their due date — needs immediate attention','#DC2626',overdueMilestones,m=>fRow(m.title,m.projectName||'—',DateHelpers.fmt(m.dueDate),'#DC2626',`nav('milestones')`)) : '') +
+        (highRisks.length ? fSection('High Risks','Score ≥12 — escalation required','#DC2626',highRisks,r=>fRow(r.title,r.mitigation||'','Score '+(r.likelihood||1)*(r.impact||1),'#DC2626',`nav('risks')`)) : '')
+      )}
+      ${fGroup('At risk','#D97706', medRisks.length,
+        fSection('Medium Risks','Score 6–11 — monitor and plan mitigation','#D97706',medRisks,r=>fRow(r.title,r.mitigation||'','Score '+(r.likelihood||1)*(r.impact||1),'#D97706',`nav('risks')`))
+      )}
+      ${fGroup('Escalations','#1B2B5E', openEsc.length,
+        fSection('Open Escalations','Issues raised that need resolution','#1B2B5E',openEsc,e=>fRow(e.title||'Unnamed',`${e.project||'—'} · ${DateHelpers.fmt(e.date)}`,normaliseStatus(e.priority),['High','Critical'].includes(normaliseStatus(e.priority))?'#DC2626':'#D97706',`nav('escalations')`))
+      )}
     </div>` : ''}
 
     ${activeTab==='health' ? `
@@ -260,61 +337,76 @@ export function renderDashboard() {
 
 // ─── TRACKS ───────────────────────────────────────────────
 export function renderTracks() {
-  const tracks   = APP_STATE.tracks;
-  const projects = APP_STATE.projects;
-  const members  = APP_STATE.teamMembers;
-  const TC = ['#1B2B5E','#00A896','#E8452C'];
+  const projects    = APP_STATE.projects;
+  const tracks      = APP_STATE.settings.trackNames || ['Track 1','Track 2','Track 3'];
+  const f           = APP_STATE.filters;
+  const activeTrack = f.track || 'All';
+  const filtered    = activeTrack === 'All' ? projects : projects.filter(p => p.track === activeTrack);
+
+  const COLS = [
+    { label:'Yet to Start', color:'#94A3B8' },
+    { label:'In Progress',  color:'#1282a0' },
+    { label:'On Track',     color:'#1e8a4a' },
+    { label:'At Risk',      color:'#D97706' },
+    { label:'On Hold',      color:'#6B7280' },
+    { label:'Completed',    color:'#065F46' },
+  ];
 
   return `
   <div class="vh">
     <div class="vh-left">
       <h1>Clarity</h1>
-      <div class="sub">Track structure, projects and team assignments</div>
+      <div class="sub">Project pipeline · ${filtered.length} project${filtered.length!==1?'s':''}</div>
     </div>
     <div class="vh-right">
-      <button class="btn btn-primary" onclick="openModal('track')">+ Add Track</button>
+      <button class="btn btn-primary" onclick="openModal('project')">+ New Project</button>
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
-    ${tracks.map((t,i)=>{
-      const tProj = projects.filter(p=>p.track===t.name);
-      const tMem  = members.filter(m=>m.track===t.name);
-      const col   = TC[i % TC.length];
-      return `<div class="card" style="border-top:4px solid ${col};padding:0">
-        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <div style="font-size:15px;font-weight:800;color:var(--navy)">${t.name}</div>
-            ${t.description?`<div style="font-size:11px;color:var(--lt);margin-top:2px">${t.description}</div>`:''}
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="openModal('track','${t.id}')">Edit</button>
+  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+    ${['All',...tracks].map(t => {
+      const isActive = activeTrack === t;
+      const cnt = t==='All' ? projects.length : projects.filter(p=>p.track===t).length;
+      const col = t==='All' ? '#1B2B5E' : (TRACK_COLORS[t]||'#1B2B5E');
+      return `<button onclick="window._filterChange('track','${t==='All'?'':t}')"
+        style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${isActive?col:'var(--border)'};background:${isActive?col:'#fff'};color:${isActive?'#fff':col};font-family:'DM Sans',sans-serif;transition:all .15s">
+        ${t} (${cnt})
+      </button>`;
+    }).join('')}
+  </div>
+
+  <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:16px;align-items:flex-start">
+    ${COLS.map(col => {
+      const colProjects = filtered.filter(p => normaliseStatus(p.status||'') === col.label);
+      return `
+      <div style="min-width:220px;flex:0 0 220px;display:flex;flex-direction:column;gap:8px">
+        <div style="padding:10px 12px;border-radius:10px;background:#fff;border:1px solid var(--border);border-top:3px solid ${col.color};display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600;font-size:12px;color:var(--navy)">${col.label}</span>
+          <span style="font-size:11px;font-weight:700;color:${col.color};background:${col.color}18;border-radius:980px;padding:1px 8px">${colProjects.length}</span>
         </div>
-        <div style="padding:14px 16px">
-          <div class="section-lbl">Projects (${tProj.length})</div>
-          <div style="margin-bottom:10px">
-            ${tProj.length ? tProj.map(p=>`
-            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-              <span style="flex:1;font-size:12px;color:var(--text)">${p.name}</span>${ragBadge(p.status)}
-              <span style="font-size:11px;color:var(--lt)">${p.progress||0}%</span>
-            </div>`).join('') : '<div style="font-size:12px;color:var(--lt)">No projects assigned</div>'}
-          </div>
-          <hr class="divider"/>
-          <div class="section-lbl">Team Members (${tMem.length})</div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-            ${tMem.length ? tMem.map(m=>`
-            <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px">
-              <div class="av av-sm" style="background:${col}">${avatar(m.name)}</div>
-              <div>
-                <div style="font-size:12px;font-weight:600;color:var(--navy)">${m.name}</div>
-                <div style="font-size:10px;color:var(--lt)">${m.role||''}</div>
-              </div>
-            </div>`).join('') : '<div style="font-size:12px;color:var(--lt)">No members assigned</div>'}
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="openModal('assignTrackProject','${t.id}','${t.name}')">+ Assign Project</button>
-            <button class="btn btn-ghost btn-sm" onclick="openModal('assignTrackMember','${t.id}','${t.name}')">+ Assign Member</button>
-          </div>
-        </div>
+        ${colProjects.length === 0
+          ? `<div style="padding:16px 12px;border-radius:10px;background:rgba(0,0,0,.02);border:1px dashed var(--border);text-align:center"><span style="font-size:12px;color:var(--lt)">Empty</span></div>`
+          : colProjects.map(p => {
+              const devM = APP_STATE.teamMembers.find(m => m.id === p.devLead);
+              const daysInStatus = p.statusChangedAt
+                ? Math.floor((Date.now() - new Date(p.statusChangedAt).getTime()) / 86400000)
+                : null;
+              const stale = daysInStatus !== null && daysInStatus >= 14 && normaliseStatus(p.status||'') !== 'Completed';
+              return `<div class="card" style="padding:12px 14px;cursor:pointer;border-radius:10px;transition:box-shadow .15s" onclick="nav('project-detail',{id:'${p.id}'})" onmouseover="this.style.boxShadow='0 4px 16px rgba(27,43,94,.13)'" onmouseout="this.style.boxShadow=''">
+                <div style="font-weight:600;font-size:13px;color:var(--navy);margin-bottom:6px;line-height:1.3">${p.name||p.title||'Unnamed'}</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+                  ${p.track?`<span class="badge badge-navy" style="font-size:10px">${p.track}</span>`:''}
+                  ${p.phase?`<span class="badge badge-grey" style="font-size:10px">${p.phase}</span>`:''}
+                  ${stale?`<span class="badge badge-amber" style="font-size:10px" title="Days in current status">${daysInStatus}d</span>`:''}
+                </div>
+                ${progressBar(p.progress||0)}
+                <div style="display:flex;align-items:center;margin-top:6px;gap:6px">
+                  ${devM?`<div class="av av-sm" style="background:${TRACK_COLORS[devM.track]||'var(--navy)'}">${avatar(devM.name)}</div><span style="font-size:11px;color:var(--lt);flex:1">${devM.name}</span>`:'<span style="flex:1"></span>'}
+                  ${p.endDate?`<span style="font-size:10px;color:${DateHelpers.isOverdue(p.endDate)&&normaliseStatus(p.status||'')!=='Completed'?'#ef4444':'var(--lt)'}">${DateHelpers.fmt(p.endDate)}</span>`:''}
+                </div>
+              </div>`;
+            }).join('')
+        }
       </div>`;
     }).join('')}
   </div>`;
@@ -392,6 +484,34 @@ export function renderRoadmap() {
   </div>
 
   <div class="gantt-wrap">
+    ${(() => {
+      const now = new Date();
+      const todayQ = Math.floor(now.getMonth() / 3) + 1;
+      const isCurrentYear = year === now.getFullYear();
+      if (f.quarter) {
+        const qNum = parseInt(f.quarter.slice(1));
+        const isCurrent = isCurrentYear && qNum === todayQ;
+        return `<div class="gantt-hdr">
+          <div class="gantt-hdr-lbl"></div>
+          <div class="gantt-timeline" style="display:flex">
+            <div style="flex:1;text-align:center;font-size:11px;font-weight:800;color:${isCurrent?'#5F259F':'#555'};background:${isCurrent?'#F0EEF8':'#FAFAFA'};padding:6px 0;border-left:1px solid #EEF2F8">
+              ${f.quarter}${isCurrent?` <span style="font-size:9px;font-weight:700;color:#fff;background:#5F259F;padding:1px 5px;border-radius:4px;margin-left:4px">NOW</span>`:''}
+            </div>
+          </div>
+        </div>`;
+      }
+      return `<div class="gantt-hdr">
+        <div class="gantt-hdr-lbl"></div>
+        <div class="gantt-timeline" style="display:flex">
+          ${[1,2,3,4].map(q=>{
+            const isCurrent = isCurrentYear && q === todayQ;
+            return `<div style="flex:3;text-align:center;font-size:11px;font-weight:${isCurrent?800:700};color:${isCurrent?'#5F259F':'#555'};background:${isCurrent?'#F0EEF8':'#FAFAFA'};padding:6px 0;border-left:1px solid #EEF2F8">
+              Q${q}${isCurrent?` <span style="font-size:9px;font-weight:700;color:#fff;background:#5F259F;padding:1px 5px;border-radius:4px;margin-left:4px">NOW</span>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    })()}
     <div class="gantt-hdr">
       <div class="gantt-hdr-lbl">Project</div>
       <div class="gantt-timeline" style="display:flex">
@@ -402,8 +522,8 @@ export function renderRoadmap() {
       uniqueTracks.map((track,ti) => {
         const tc    = TC[ti % TC.length];
         const tProj = projects.filter(p=>(p.track||'Unassigned')===track);
-        return `<div class="gantt-seg-hdr">
-          <div class="gantt-seg-name" style="color:${tc}">${track} <span style="font-weight:400;color:${tc}88">(${tProj.length})</span></div>
+        return `<div class="gantt-seg-hdr" style="background:${tc}0D;border-left:4px solid ${tc};border-top:2px solid #F0EEF4;border-bottom:1px solid ${tc}28">
+          <div class="gantt-seg-name" style="color:${tc};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">${track} <span style="font-weight:400;color:${tc}88;text-transform:none;letter-spacing:0">— ${tProj.length} project${tProj.length!==1?'s':''}</span></div>
           <div style="border-left:1px solid var(--border);position:relative;min-height:32px">${gridLines}${todayLine}</div>
         </div>
         ${tProj.map((p,pi) => {
@@ -430,7 +550,7 @@ export function renderRoadmap() {
                 if (mp===null) return '';
                 const mc = MS_COLOR[normaliseStatus(ms.status)]||'#94A3B8';
                 return `<div title="${ms.title} · ${ms.status}" style="position:absolute;top:50%;left:${mp}%;transform:translate(-50%,-50%);z-index:6;cursor:default">
-                  <div style="width:11px;height:11px;background:${mc};transform:rotate(45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2)"></div>
+                  <div style="width:11px;height:11px;background:${mc};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)"></div>
                   <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:700;color:${mc};background:#fff;padding:2px 5px;border-radius:3px;border:1px solid ${mc}50;max-width:90px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(0,0,0,.1)">${ms.title}</div>
                 </div>`;
               }).join('')}
@@ -440,32 +560,7 @@ export function renderRoadmap() {
       }).join('')}
   </div>
 
-  <div class="card" style="margin-top:16px;padding:0">
-    <div style="padding:14px 20px;border-bottom:1px solid var(--border);font-size:14px;font-weight:700;color:var(--navy)">Timeline Summary</div>
-    <div class="tbl-wrap">
-      <table class="dt">
-        <thead><tr><th>Project</th><th>Track</th><th>Status</th><th>Start</th><th>End</th><th>Progress</th><th>Dev Lead</th><th>Milestones</th></tr></thead>
-        <tbody>
-          ${projects.map(p=>{
-            const pMs = milestones.filter(m=>m.projectId===p.id);
-            const ov  = pMs.filter(m=>normaliseStatus(m.status)==='Overdue').length;
-            return `<tr class="clk" onclick="nav('project-detail',{id:'${p.id}'})">
-              <td style="font-weight:600">${p.name}</td>
-              <td>${p.track?`<span class="badge badge-navy">${p.track}</span>`:'—'}</td>
-              <td>${ragBadge(p.status)}</td>
-              <td style="font-size:12px;color:var(--lt)">${DateHelpers.fmt(p.startDate)}</td>
-              <td style="font-size:12px;color:${DateHelpers.isOverdue(p.endDate)&&normaliseStatus(p.status)!=='Completed'?'#DC2626':'var(--lt)'}">${DateHelpers.fmt(p.endDate)}</td>
-              <td style="min-width:130px">
-                <div style="display:flex;align-items:center;gap:8px">${progressBar(p.progress||0)}<span style="font-size:11px;color:var(--lt)">${p.progress||0}%</span></div>
-              </td>
-              <td style="font-size:12px">${teamName(p.devLead)}</td>
-              <td><span style="font-size:12px">${pMs.length}</span>${ov>0?`<span class="badge badge-red" style="margin-left:4px">${ov} overdue</span>`:''}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
+`;
 }
 
 // ─── MILESTONES ───────────────────────────────────────────
