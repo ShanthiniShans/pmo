@@ -8,6 +8,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap"/>
 <link rel="stylesheet" href="css/style.css"/>
+<style>
+  /* Sidebar compact fix — reduce nav-item height so Admin is always visible */
+  #sidebar { height: 100vh; }
+  .nav-item { padding: 7px 12px !important; }
+  .nav-group-exec .exec-item { padding-left: 20px !important; }
+</style>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -22,7 +28,7 @@
     </div>
   </a>
 
-  <div class="nav-scroll">
+  <div class="nav-scroll" style="overflow-y:auto">
     <!-- DASHBOARD -->
     <div class="nav-group">
       <div class="nav-group-lbl">Dashboard</div>

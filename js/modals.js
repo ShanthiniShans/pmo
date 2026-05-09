@@ -6,7 +6,7 @@ import { APP_STATE, DB, DateHelpers } from './data.js';
 // ─── MODAL ENGINE ─────────────────────────────────────────
 function show(html) {
   const root = document.getElementById('modal-root');
-  root.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">${html}</div>`;
+  root.innerHTML = html;
 }
 
 export function closeModal(id) {
@@ -104,80 +104,82 @@ export function openModal(type, id, extra) {
 // ─── PROJECT ──────────────────────────────────────────────
 async function modalProject(id) {
   const p = id ? APP_STATE.projects.find(x=>x.id===id) : null;
-  show(`<div class="modal modal-lg">
-    <div class="modal-header">
-      <div class="modal-title">${p ? 'Edit Project' : 'New Project'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group" style="grid-column:1/-1">
-          <label class="form-label">Project Name *</label>
-          <input class="form-control" id="pName" value="${p?.name||''}"/>
-        </div>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box lg">
+      <div class="mo-hdr">
+        <span class="mo-title">${p ? 'Edit Project' : 'New Project'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <div class="form-row-3">
+      <div class="mo-body">
+        <div class="form-row">
+          <div class="form-group form-row-full">
+            <label class="form-label">Project Name *</label>
+            <input class="form-control" id="pName" value="${p?.name||''}"/>
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Track</label>
+            <select class="form-control" id="pTrack"><option value="">—</option>${trackOptions(p?.track)}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phase</label>
+            <select class="form-control" id="pPhase">${phaseOptions(p?.phase)}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" id="pStatus">${statusOptions(p?.status)}</select>
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-control" id="pPriority">${priorityOptions(p?.priority)}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-control" id="pStart" value="${p?.startDate||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input type="date" class="form-control" id="pEnd" value="${p?.endDate||''}"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Dev Lead</label>
+            <select class="form-control" id="pDevLead"><option value="">—</option>${memberOptions(p?.devLead)}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jira Project Key</label>
+            <input class="form-control" id="pJira" value="${p?.jiraKey||''}" placeholder="e.g. RSE"/>
+          </div>
+        </div>
         <div class="form-group">
-          <label class="form-label">Track</label>
-          <select class="form-control" id="pTrack"><option value="">—</option>${trackOptions(p?.track)}</select>
+          <label class="form-label">Progress (%)</label>
+          <input type="number" class="form-control" id="pProgress" min="0" max="100" value="${p?.progress||0}"/>
         </div>
         <div class="form-group">
-          <label class="form-label">Phase</label>
-          <select class="form-control" id="pPhase">${phaseOptions(p?.phase)}</select>
+          <label class="form-label">Description</label>
+          <textarea class="form-control" id="pDesc">${p?.description||''}</textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-control" id="pStatus">${statusOptions(p?.status)}</select>
-        </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Priority</label>
-          <select class="form-control" id="pPriority">${priorityOptions(p?.priority)}</select>
+          <label class="form-label">Objectives</label>
+          <textarea class="form-control" id="pObj">${p?.objectives||''}</textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">Start Date</label>
-          <input type="date" class="form-control" id="pStart" value="${p?.startDate||''}"/>
+          <label class="form-label">Stakeholders</label>
+          <input class="form-control" id="pStake" value="${p?.stakeholders||''}"/>
         </div>
         <div class="form-group">
-          <label class="form-label">End Date</label>
-          <input type="date" class="form-control" id="pEnd" value="${p?.endDate||''}"/>
+          <label class="form-label">Team Members</label>
+          <div style="display:flex;flex-direction:column;gap:4px">${memberCheckboxes(p?.team)}</div>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Dev Lead</label>
-          <select class="form-control" id="pDevLead"><option value="">—</option>${memberOptions(p?.devLead)}</select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Jira Project Key</label>
-          <input class="form-control" id="pJira" value="${p?.jiraKey||''}" placeholder="e.g. RSE"/>
-        </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveProject('${id||''}')">Save Project</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Progress (%)</label>
-        <input type="number" class="form-control" id="pProgress" min="0" max="100" value="${p?.progress||0}"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" id="pDesc">${p?.description||''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Objectives</label>
-        <textarea class="form-control" id="pObj">${p?.objectives||''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Stakeholders</label>
-        <input class="form-control" id="pStake" value="${p?.stakeholders||''}"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Team Members</label>
-        <div class="checkbox-group">${memberCheckboxes(p?.team)}</div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveProject('${id||''}')">Save Project</button>
     </div>
   </div>`);
 }
@@ -204,63 +206,65 @@ window.saveProject = async function(id) {
 async function modalMilestone(id, projectId) {
   const m = id ? APP_STATE.milestones.find(x=>x.id===id) : null;
   const statusOpts = ['On Track','At Risk','Overdue','Completed','Yet to Start'];
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">${m ? 'Edit Milestone' : 'New Milestone'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Title *</label>
-        <input class="form-control" id="msTitle" value="${m?.title||''}"/>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${m ? 'Edit Milestone' : 'New Milestone'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <div class="form-row">
+      <div class="mo-body">
         <div class="form-group">
-          <label class="form-label">Project</label>
-          <select class="form-control" id="msProject">
-            <option value="">—</option>
-            ${APP_STATE.projects.map(p=>`<option value="${p.id}" data-name="${p.name}" ${(m?.projectId===p.id||projectId===p.id)?'selected':''}>${p.name}</option>`).join('')}
-          </select>
+          <label class="form-label">Title *</label>
+          <input class="form-control" id="msTitle" value="${m?.title||''}"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Project</label>
+            <select class="form-control" id="msProject">
+              <option value="">—</option>
+              ${APP_STATE.projects.map(p=>`<option value="${p.id}" data-name="${p.name}" ${(m?.projectId===p.id||projectId===p.id)?'selected':''}>${p.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Track</label>
+            <select class="form-control" id="msTrack"><option value="">—</option>${trackOptions(m?.track)}</select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-control" id="msDue" value="${m?.dueDate||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" id="msStatus" onchange="toggleMsCompleted(this.value)">
+              ${statusOpts.map(s=>`<option value="${s}" ${m?.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="msCompletedGroup" style="${m?.status==='Completed'?'':'display:none'}">
+          <label class="form-label">Completion Date</label>
+          <input type="date" class="form-control" id="msCompleted" value="${m?.completedDate||''}"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Revised ETA (if delayed)</label>
+            <input type="date" class="form-control" id="msRevised" value="${m?.revisedETA||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Delay Reason</label>
+            <input class="form-control" id="msDelay" value="${m?.delayReason||''}" placeholder="Brief reason for delay"/>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Track</label>
-          <select class="form-control" id="msTrack"><option value="">—</option>${trackOptions(m?.track)}</select>
+          <label class="form-label">Notes</label>
+          <textarea class="form-control" id="msNotes">${m?.notes||''}</textarea>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Due Date</label>
-          <input type="date" class="form-control" id="msDue" value="${m?.dueDate||''}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-control" id="msStatus" onchange="toggleMsCompleted(this.value)">
-            ${statusOpts.map(s=>`<option value="${s}" ${m?.status===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveMilestone('${id||''}')">Save</button>
       </div>
-      <div class="form-group" id="msCompletedGroup" style="${m?.status==='Completed'?'':'display:none'}">
-        <label class="form-label">Completion Date</label>
-        <input type="date" class="form-control" id="msCompleted" value="${m?.completedDate||''}"/>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Revised ETA (if delayed)</label>
-          <input type="date" class="form-control" id="msRevised" value="${m?.revisedETA||''}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Delay Reason</label>
-          <input class="form-control" id="msDelay" value="${m?.delayReason||''}" placeholder="Brief reason for delay"/>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-control" id="msNotes">${m?.notes||''}</textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveMilestone('${id||''}')">Save</button>
     </div>
   </div>`);
 }
@@ -292,40 +296,42 @@ window.saveMilestone = async function(id) {
 // ─── TEAM MEMBER ──────────────────────────────────────────
 async function modalTeamMember(id) {
   const m = id ? APP_STATE.teamMembers.find(x=>x.id===id) : null;
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">${m ? 'Edit Team Member' : 'Add Team Member'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Full Name *</label>
-          <input class="form-control" id="tmName" value="${m?.name||''}"/>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${m ? 'Edit Team Member' : 'Add Team Member'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="mo-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input class="form-control" id="tmName" value="${m?.name||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <input class="form-control" id="tmRole" value="${m?.role||''}"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Track Assignment</label>
+            <select class="form-control" id="tmTrack"><option value="">—</option>${trackOptions(m?.track)}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jira User ID</label>
+            <input class="form-control" id="tmJira" value="${m?.jiraId||''}" placeholder="e.g. firstname.last"/>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Role</label>
-          <input class="form-control" id="tmRole" value="${m?.role||''}"/>
+          <label class="form-label">Availability (%)</label>
+          <input type="number" class="form-control" id="tmAvail" min="0" max="100" value="${m?.availability||100}"/>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Track Assignment</label>
-          <select class="form-control" id="tmTrack"><option value="">—</option>${trackOptions(m?.track)}</select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Jira User ID</label>
-          <input class="form-control" id="tmJira" value="${m?.jiraId||''}" placeholder="e.g. firstname.last"/>
-        </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTeamMember('${id||''}')">Save</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Availability (%)</label>
-        <input type="number" class="form-control" id="tmAvail" min="0" max="100" value="${m?.availability||100}"/>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveTeamMember('${id||''}')">Save</button>
     </div>
   </div>`);
 }
@@ -343,54 +349,56 @@ window.saveTeamMember = async function(id) {
 // ─── RISK ─────────────────────────────────────────────────
 async function modalRisk(id) {
   const r = id ? APP_STATE.risks.find(x=>x.id===id) : null;
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">${r ? 'Edit Risk' : 'Add Risk'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Risk Title *</label>
-        <input class="form-control" id="rTitle" value="${r?.title||''}"/>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${r ? 'Edit Risk' : 'Add Risk'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <div class="form-row">
+      <div class="mo-body">
         <div class="form-group">
-          <label class="form-label">Project</label>
-          <input class="form-control" id="rProject" value="${r?.project||''}"/>
+          <label class="form-label">Risk Title *</label>
+          <input class="form-control" id="rTitle" value="${r?.title||''}"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Project</label>
+            <input class="form-control" id="rProject" value="${r?.project||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Track</label>
+            <select class="form-control" id="rTrack"><option value="">—</option>${trackOptions(r?.track)}</select>
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Likelihood (1–5)</label>
+            <input type="number" class="form-control" id="rL" min="1" max="5" value="${r?.likelihood||3}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Impact (1–5)</label>
+            <input type="number" class="form-control" id="rI" min="1" max="5" value="${r?.impact||3}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" id="rStatus">
+              ${['Open','Mitigated','Closed'].map(s=>`<option value="${s}" ${r?.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Track</label>
-          <select class="form-control" id="rTrack"><option value="">—</option>${trackOptions(r?.track)}</select>
-        </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Likelihood (1–5)</label>
-          <input type="number" class="form-control" id="rL" min="1" max="5" value="${r?.likelihood||3}"/>
+          <label class="form-label">Owner</label>
+          <input class="form-control" id="rOwner" value="${r?.owner||''}"/>
         </div>
         <div class="form-group">
-          <label class="form-label">Impact (1–5)</label>
-          <input type="number" class="form-control" id="rI" min="1" max="5" value="${r?.impact||3}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-control" id="rStatus">
-            ${['Open','Mitigated','Closed'].map(s=>`<option value="${s}" ${r?.status===s?'selected':''}>${s}</option>`).join('')}
-          </select>
+          <label class="form-label">Mitigation Plan</label>
+          <textarea class="form-control" id="rMit">${r?.mitigation||''}</textarea>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Owner</label>
-        <input class="form-control" id="rOwner" value="${r?.owner||''}"/>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveRisk('${id||''}')">Save</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Mitigation Plan</label>
-        <textarea class="form-control" id="rMit">${r?.mitigation||''}</textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveRisk('${id||''}')">Save</button>
     </div>
   </div>`);
 }
@@ -408,60 +416,62 @@ window.saveRisk = async function(id) {
 // ─── ESCALATION ───────────────────────────────────────────
 async function modalEscalation(id) {
   const e = id ? APP_STATE.escalations.find(x=>x.id===id) : null;
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">${e ? 'Edit Escalation' : 'Add Escalation'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Title *</label>
-        <input class="form-control" id="escTitle" value="${e?.title||''}"/>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${e ? 'Edit Escalation' : 'Add Escalation'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <div class="form-row">
+      <div class="mo-body">
         <div class="form-group">
-          <label class="form-label">Project</label>
-          <input class="form-control" id="escProject" value="${e?.project||''}"/>
+          <label class="form-label">Title *</label>
+          <input class="form-control" id="escTitle" value="${e?.title||''}"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Project</label>
+            <input class="form-control" id="escProject" value="${e?.project||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Track</label>
+            <select class="form-control" id="escTrack"><option value="">—</option>${trackOptions(e?.track)}</select>
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Raised By</label>
+            <input class="form-control" id="escBy" value="${e?.raisedBy||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-control" id="escDate" value="${e?.date||DateHelpers.today()}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-control" id="escPriority">
+              ${['Low','Medium','High','Critical'].map(p=>`<option value="${p}" ${e?.priority===p?'selected':''}>${p}</option>`).join('')}
+            </select>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Track</label>
-          <select class="form-control" id="escTrack"><option value="">—</option>${trackOptions(e?.track)}</select>
-        </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Raised By</label>
-          <input class="form-control" id="escBy" value="${e?.raisedBy||''}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Date</label>
-          <input type="date" class="form-control" id="escDate" value="${e?.date||DateHelpers.today()}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Priority</label>
-          <select class="form-control" id="escPriority">
-            ${['Low','Medium','High','Critical'].map(p=>`<option value="${p}" ${e?.priority===p?'selected':''}>${p}</option>`).join('')}
+          <label class="form-label">Status</label>
+          <select class="form-control" id="escStatus">
+            ${['Open','In Progress','Resolved'].map(s=>`<option value="${s}" ${e?.status===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-control" id="escNotes">${e?.notes||''}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Resolution</label>
+          <textarea class="form-control" id="escRes">${e?.resolution||''}</textarea>
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-control" id="escStatus">
-          ${['Open','In Progress','Resolved'].map(s=>`<option value="${s}" ${e?.status===s?'selected':''}>${s}</option>`).join('')}
-        </select>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEscalation('${id||''}')">Save</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-control" id="escNotes">${e?.notes||''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Resolution</label>
-        <textarea class="form-control" id="escRes">${e?.resolution||''}</textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEscalation('${id||''}')">Save</button>
     </div>
   </div>`);
 }
@@ -479,59 +489,61 @@ window.saveEscalation = async function(id) {
 // ─── CHARTER ──────────────────────────────────────────────
 async function modalCharter(id, projectId) {
   const c = id ? APP_STATE.charters.find(x=>x.id===id) : null;
-  show(`<div class="modal modal-lg">
-    <div class="modal-header">
-      <div class="modal-title">${c ? 'Edit Charter' : 'New Charter'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Project *</label>
-        <select class="form-control" id="chProject">
-          <option value="">—</option>
-          ${APP_STATE.projects.map(p=>`<option value="${p.id}" data-name="${p.name}" ${(c?.projectId===p.id||projectId===p.id)?'selected':''}>${p.name}</option>`).join('')}
-        </select>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box lg">
+      <div class="mo-hdr">
+        <span class="mo-title">${c ? 'Edit Charter' : 'New Charter'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <div class="form-row">
+      <div class="mo-body">
         <div class="form-group">
-          <label class="form-label">Sponsor</label>
-          <input class="form-control" id="chSponsor" value="${c?.sponsor||''}"/>
+          <label class="form-label">Project *</label>
+          <select class="form-control" id="chProject">
+            <option value="">—</option>
+            ${APP_STATE.projects.map(p=>`<option value="${p.id}" data-name="${p.name}" ${(c?.projectId===p.id||projectId===p.id)?'selected':''}>${p.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Sponsor</label>
+            <input class="form-control" id="chSponsor" value="${c?.sponsor||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Budget</label>
+            <input class="form-control" id="chBudget" value="${c?.budget||''}"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-control" id="chStart" value="${c?.startDate||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input type="date" class="form-control" id="chEnd" value="${c?.endDate||''}"/>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Budget</label>
-          <input class="form-control" id="chBudget" value="${c?.budget||''}"/>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Start Date</label>
-          <input type="date" class="form-control" id="chStart" value="${c?.startDate||''}"/>
+          <label class="form-label">Objectives</label>
+          <textarea class="form-control" id="chObj">${c?.objectives||''}</textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">End Date</label>
-          <input type="date" class="form-control" id="chEnd" value="${c?.endDate||''}"/>
+          <label class="form-label">Scope (In)</label>
+          <textarea class="form-control" id="chScope">${c?.scope||''}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Out of Scope</label>
+          <textarea class="form-control" id="chOos">${c?.outOfScope||''}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Success Criteria</label>
+          <textarea class="form-control" id="chSuccess">${c?.successCriteria||''}</textarea>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Objectives</label>
-        <textarea class="form-control" id="chObj">${c?.objectives||''}</textarea>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCharter('${id||''}')">Save Charter</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Scope (In)</label>
-        <textarea class="form-control" id="chScope">${c?.scope||''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Out of Scope</label>
-        <textarea class="form-control" id="chOos">${c?.outOfScope||''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Success Criteria</label>
-        <textarea class="form-control" id="chSuccess">${c?.successCriteria||''}</textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveCharter('${id||''}')">Save Charter</button>
     </div>
   </div>`);
 }
@@ -552,46 +564,48 @@ window.saveCharter = async function(id) {
 // ─── IMPACT ───────────────────────────────────────────────
 async function modalImpact(id) {
   const i = id ? APP_STATE.impacts.find(x=>x.id===id) : null;
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">${i ? 'Edit Impact' : 'Add Impact'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Project *</label>
-        <input class="form-control" id="impProject" value="${i?.project||''}"/>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${i ? 'Edit Impact' : 'Add Impact'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Metric *</label>
-        <input class="form-control" id="impMetric" value="${i?.metric||''}"/>
-      </div>
-      <div class="form-row-3">
+      <div class="mo-body">
         <div class="form-group">
-          <label class="form-label">Baseline</label>
-          <input class="form-control" id="impBaseline" value="${i?.baseline||''}"/>
+          <label class="form-label">Project *</label>
+          <input class="form-control" id="impProject" value="${i?.project||''}"/>
         </div>
         <div class="form-group">
-          <label class="form-label">Current</label>
-          <input class="form-control" id="impCurrent" value="${i?.current||''}"/>
+          <label class="form-label">Metric *</label>
+          <input class="form-control" id="impMetric" value="${i?.metric||''}"/>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Baseline</label>
+            <input class="form-control" id="impBaseline" value="${i?.baseline||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current</label>
+            <input class="form-control" id="impCurrent" value="${i?.current||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target</label>
+            <input class="form-control" id="impTarget" value="${i?.target||''}"/>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Target</label>
-          <input class="form-control" id="impTarget" value="${i?.target||''}"/>
+          <label class="form-label">Improvement %</label>
+          <input class="form-control" id="impImprove" value="${i?.improvement||''}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-control" id="impNotes">${i?.notes||''}</textarea>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Improvement %</label>
-        <input class="form-control" id="impImprove" value="${i?.improvement||''}"/>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveImpact('${id||''}')">Save</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-control" id="impNotes">${i?.notes||''}</textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveImpact('${id||''}')">Save</button>
     </div>
   </div>`);
 }
@@ -610,29 +624,31 @@ window.saveImpact = async function(id) {
 async function modalWorkflow(id) {
   const w = id ? APP_STATE.workflows.find(x=>x.id===id) : null;
   const steps = w?.steps || [{ name:'', assignee:'', duration:1 }];
-  show(`<div class="modal modal-lg">
-    <div class="modal-header">
-      <div class="modal-title">${w ? 'Edit Workflow' : 'New Workflow'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Workflow Name *</label>
-        <input class="form-control" id="wfName" value="${w?.name||''}"/>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box lg">
+      <div class="mo-hdr">
+        <span class="mo-title">${w ? 'Edit Workflow' : 'New Workflow'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <div style="margin-top:8px">
-        <div class="flex-center gap-8 mb-8">
-          <div class="form-label flex-1">Steps</div>
-          <button class="btn btn-ghost btn-sm" onclick="addWfStep()">+ Add Step</button>
+      <div class="mo-body">
+        <div class="form-group">
+          <label class="form-label">Workflow Name *</label>
+          <input class="form-control" id="wfName" value="${w?.name||''}"/>
         </div>
-        <div id="wfSteps">
-          ${steps.map((s,i)=>wfStepRow(s,i)).join('')}
+        <div style="margin-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div class="form-label" style="flex:1;margin-bottom:0">Steps</div>
+            <button class="btn btn-ghost btn-sm" onclick="addWfStep()">+ Add Step</button>
+          </div>
+          <div id="wfSteps">
+            ${steps.map((s,i)=>wfStepRow(s,i)).join('')}
+          </div>
         </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveWorkflow('${id||''}')">Save</button>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveWorkflow('${id||''}')">Save</button>
+      </div>
     </div>
   </div>`);
 }
@@ -682,43 +698,45 @@ window.saveWorkflow = async function(id) {
 async function modalResource(memberId, date) {
   const existing = memberId && date ? APP_STATE.resources.find(r=>r.memberId===memberId&&r.date===date) : null;
   const members = APP_STATE.teamMembers;
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Log Hours</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Team Member *</label>
-          <select class="form-control" id="resMember">
-            <option value="">—</option>
-            ${members.map(m=>`<option value="${m.id}" ${memberId===m.id?'selected':''}>${m.name}</option>`).join('')}
-          </select>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">Log Hours</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="mo-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Team Member *</label>
+            <select class="form-control" id="resMember">
+              <option value="">—</option>
+              ${members.map(m=>`<option value="${m.id}" ${memberId===m.id?'selected':''}>${m.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date *</label>
+            <input type="date" class="form-control" id="resDate" value="${date||DateHelpers.today()}"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Hours</label>
+            <input type="number" class="form-control" id="resHours" min="0" max="24" step="0.5" value="${existing?.hours||8}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Track</label>
+            <select class="form-control" id="resTrack"><option value="">—</option>${trackOptions(existing?.track)}</select>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Date *</label>
-          <input type="date" class="form-control" id="resDate" value="${date||DateHelpers.today()}"/>
+          <label class="form-label">Project / Activity</label>
+          <input class="form-control" id="resActivity" value="${existing?.activity||''}" placeholder="What did they work on?"/>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Hours</label>
-          <input type="number" class="form-control" id="resHours" min="0" max="24" step="0.5" value="${existing?.hours||8}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Track</label>
-          <select class="form-control" id="resTrack"><option value="">—</option>${trackOptions(existing?.track)}</select>
-        </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveResource('${existing?.id||''}')">Save</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Project / Activity</label>
-        <input class="form-control" id="resActivity" value="${existing?.activity||''}" placeholder="What did they work on?"/>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveResource('${existing?.id||''}')">Save</button>
     </div>
   </div>`);
 }
@@ -736,38 +754,43 @@ window.saveResource = async function(id) {
 // ─── NOTES ────────────────────────────────────────────────
 async function modalNotes(entityId, entityType) {
   const existing = APP_STATE.notes.filter(n=>n.entityId===entityId);
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Notes & Comments</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="notes-feed mb-16">
-        ${existing.length ? existing.map(n=>`
-          <div class="note-item">
-            <div><span class="note-author">${n.author||'PM'}</span><span class="note-date">${DateHelpers.fmt(n.date)}</span></div>
-            <div class="note-text">${n.text}</div>
-          </div>`).join('') : '<div class="small text-lt">No notes yet</div>'}
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">Notes & Comments</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <hr class="divider"/>
-      <div class="form-group">
-        <label class="form-label">Add Note</label>
-        <textarea class="form-control" id="noteText" placeholder="Type your comment…" style="min-height:80px"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Author</label>
-          <input class="form-control" id="noteAuthor" value="PM"/>
+      <div class="mo-body">
+        <div style="margin-bottom:14px">
+          ${existing.length ? existing.map(n=>`
+          <div style="padding:10px;background:var(--bg);border-radius:var(--rs);margin-bottom:8px">
+            <div style="display:flex;gap:8px;margin-bottom:4px">
+              <span style="font-size:12px;font-weight:700;color:var(--navy)">${n.author||'PM'}</span>
+              <span style="font-size:11px;color:var(--lt)">${DateHelpers.fmt(n.date)}</span>
+            </div>
+            <div style="font-size:13px;color:var(--text)">${n.text}</div>
+          </div>`).join('') : '<div style="font-size:12px;color:var(--lt)">No notes yet</div>'}
         </div>
+        <hr class="divider"/>
         <div class="form-group">
-          <label class="form-label">Date</label>
-          <input type="date" class="form-control" id="noteDate" value="${DateHelpers.today()}"/>
+          <label class="form-label">Add Note</label>
+          <textarea class="form-control" id="noteText" placeholder="Type your comment…" style="min-height:80px"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Author</label>
+            <input class="form-control" id="noteAuthor" value="PM"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-control" id="noteDate" value="${DateHelpers.today()}"/>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-      <button class="btn btn-primary" onclick="saveNote('${entityId}','${entityType}')">Add Note</button>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="saveNote('${entityId}','${entityType}')">Add Note</button>
+      </div>
     </div>
   </div>`);
 }
@@ -784,72 +807,74 @@ window.saveNote = async function(entityId, entityType) {
 // ─── ONBOARDING ───────────────────────────────────────────
 async function modalOnboarding(id) {
   const p = id ? APP_STATE.onboardingProjects.find(x=>x.id===id) : null;
-  show(`<div class="modal modal-lg">
-    <div class="modal-header">
-      <div class="modal-title">${p ? 'Edit Onboarding Project' : 'New Onboarding Project'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Customer Name *</label>
-          <input class="form-control" id="obCustomer" value="${p?.customerName||''}"/>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box lg">
+      <div class="mo-hdr">
+        <span class="mo-title">${p ? 'Edit Onboarding Project' : 'New Onboarding Project'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="mo-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Customer Name *</label>
+            <input class="form-control" id="obCustomer" value="${p?.customerName||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project Name *</label>
+            <input class="form-control" id="obName" value="${p?.name||''}"/>
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Track</label>
+            <select class="form-control" id="obTrack"><option value="">—</option>${trackOptions(p?.track)}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phase</label>
+            <select class="form-control" id="obPhase">${phaseOptions(p?.phase)}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" id="obStatus">${statusOptions(p?.status)}</select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Dev Lead</label>
+            <select class="form-control" id="obLead"><option value="">—</option>${memberOptions(p?.devLead)}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jira Key</label>
+            <input class="form-control" id="obJira" value="${p?.jiraKey||''}"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-control" id="obStart" value="${p?.startDate||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input type="date" class="form-control" id="obEnd" value="${p?.endDate||''}"/>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Project Name *</label>
-          <input class="form-control" id="obName" value="${p?.name||''}"/>
+          <label class="form-label">Progress (%)</label>
+          <input type="number" class="form-control" id="obProgress" min="0" max="100" value="${p?.progress||0}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Team Members</label>
+          <div style="display:flex;flex-direction:column;gap:4px">${memberCheckboxes(p?.team)}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-control" id="obNotes">${p?.notes||''}</textarea>
         </div>
       </div>
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Track</label>
-          <select class="form-control" id="obTrack"><option value="">—</option>${trackOptions(p?.track)}</select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Phase</label>
-          <select class="form-control" id="obPhase">${phaseOptions(p?.phase)}</select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-control" id="obStatus">${statusOptions(p?.status)}</select>
-        </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveOnboarding('${id||''}')">Save</button>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Dev Lead</label>
-          <select class="form-control" id="obLead"><option value="">—</option>${memberOptions(p?.devLead)}</select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Jira Key</label>
-          <input class="form-control" id="obJira" value="${p?.jiraKey||''}"/>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Start Date</label>
-          <input type="date" class="form-control" id="obStart" value="${p?.startDate||''}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">End Date</label>
-          <input type="date" class="form-control" id="obEnd" value="${p?.endDate||''}"/>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Progress (%)</label>
-        <input type="number" class="form-control" id="obProgress" min="0" max="100" value="${p?.progress||0}"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Team Members</label>
-        <div class="checkbox-group">${memberCheckboxes(p?.team)}</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-control" id="obNotes">${p?.notes||''}</textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveOnboarding('${id||''}')">Save</button>
     </div>
   </div>`);
 }
@@ -868,27 +893,29 @@ window.saveOnboarding = async function(id) {
 async function modalCapacity() {
   const members = APP_STATE.teamMembers;
   const projects = APP_STATE.projects;
-  show(`<div class="modal modal-lg">
-    <div class="modal-header">
-      <div class="modal-title">Edit Capacity Allocations</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="small text-lt mb-16">Set allocation % per team member per project. Total should not exceed member availability.</div>
-      ${members.map(m=>`
-      <div class="card" style="margin-bottom:12px;padding:14px">
-        <div style="font-weight:700;color:var(--navy);margin-bottom:10px">${m.name} <span class="small text-lt">(Available: ${m.availability||100}%)</span></div>
-        ${projects.map(p=>`
-        <div class="alloc-row">
-          <label style="flex:1;font-size:13px">${p.name}</label>
-          <input type="number" class="form-control" style="width:80px" min="0" max="100" value="${(m.allocations||{})[p.id]||0}" id="alloc-${m.id}-${p.id}"/>
-          <span class="small text-lt">%</span>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box lg">
+      <div class="mo-hdr">
+        <span class="mo-title">Edit Capacity Allocations</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="mo-body">
+        <div style="font-size:12px;color:var(--lt);margin-bottom:14px">Set allocation % per team member per project. Total should not exceed member availability.</div>
+        ${members.map(m=>`
+        <div class="card" style="margin-bottom:12px;padding:14px">
+          <div style="font-weight:700;color:var(--navy);margin-bottom:10px">${m.name} <span style="font-size:11px;color:var(--lt)">(Available: ${m.availability||100}%)</span></div>
+          ${projects.map(p=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <label style="flex:1;font-size:13px;color:var(--text)">${p.name}</label>
+            <input type="number" class="form-control" style="width:80px" min="0" max="100" value="${(m.allocations||{})[p.id]||0}" id="alloc-${m.id}-${p.id}"/>
+            <span style="font-size:11px;color:var(--lt)">%</span>
+          </div>`).join('')}
         </div>`).join('')}
-      </div>`).join('')}
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveCapacity()">Save Allocations</button>
+      </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCapacity()">Save Allocations</button>
+      </div>
     </div>
   </div>`);
 }
@@ -912,24 +939,26 @@ window.saveCapacity = async function() {
 // ─── TRACK MODALS ─────────────────────────────────────────
 async function modalTrack(id) {
   const t = id ? APP_STATE.tracks.find(x=>x.id===id) : null;
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">${t ? 'Edit Track' : 'Add Track'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Track Name *</label>
-        <input class="form-control" id="tName" value="${t?.name||''}"/>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${t ? 'Edit Track' : 'Add Track'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <input class="form-control" id="tDesc" value="${t?.description||''}"/>
+      <div class="mo-body">
+        <div class="form-group">
+          <label class="form-label">Track Name *</label>
+          <input class="form-control" id="tName" value="${t?.name||''}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input class="form-control" id="tDesc" value="${t?.description||''}"/>
+        </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveTrack('${id||''}')">Save</button>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTrack('${id||''}')">Save</button>
+      </div>
     </div>
   </div>`);
 }
@@ -946,20 +975,22 @@ window.saveTrack = async function(id) {
 
 async function modalAssignTrackProject(trackId, trackName) {
   const projects = APP_STATE.projects.filter(p=>p.track!==trackName);
-  show(`<div class="modal">
-    <div class="modal-header"><div class="modal-title">Assign Project to ${trackName}</div><button class="modal-close" onclick="closeModal()">×</button></div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Project</label>
-        <select class="form-control" id="assignProjId">
-          <option value="">—</option>
-          ${projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
-        </select>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr"><span class="mo-title">Assign Project to ${trackName}</span><button class="mo-close" onclick="closeModal()">×</button></div>
+      <div class="mo-body">
+        <div class="form-group">
+          <label class="form-label">Project</label>
+          <select class="form-control" id="assignProjId">
+            <option value="">—</option>
+            ${projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+          </select>
+        </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="doAssignProject('${trackName}')">Assign</button>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="doAssignProject('${trackName}')">Assign</button>
+      </div>
     </div>
   </div>`);
 }
@@ -975,20 +1006,22 @@ window.doAssignProject = async function(trackName) {
 
 async function modalAssignTrackMember(trackId, trackName) {
   const members = APP_STATE.teamMembers.filter(m=>m.track!==trackName);
-  show(`<div class="modal">
-    <div class="modal-header"><div class="modal-title">Assign Member to ${trackName}</div><button class="modal-close" onclick="closeModal()">×</button></div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Team Member</label>
-        <select class="form-control" id="assignMemberId">
-          <option value="">—</option>
-          ${members.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}
-        </select>
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr"><span class="mo-title">Assign Member to ${trackName}</span><button class="mo-close" onclick="closeModal()">×</button></div>
+      <div class="mo-body">
+        <div class="form-group">
+          <label class="form-label">Team Member</label>
+          <select class="form-control" id="assignMemberId">
+            <option value="">—</option>
+            ${members.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}
+          </select>
+        </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="doAssignMember('${trackName}')">Assign</button>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="doAssignMember('${trackName}')">Assign</button>
+      </div>
     </div>
   </div>`);
 }
@@ -1009,13 +1042,14 @@ async function modalResourceDay(memberId, date) {
   const tracks = APP_STATE.settings.trackNames || ['Track 1','Track 2','Track 3'];
   const trackColors = {'Track 1':'#1B2B5E','Track 2':'#00A896','Track 3':'#E8452C'};
 
-  show(`<div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Log Hours — ${member ? member.name : 'Member'}</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="font-size:13px;color:var(--text-lt);margin-bottom:16px">
+  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">Log Hours — ${member ? member.name : 'Member'}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="mo-body">
+      <div style="font-size:13px;color:var(--lt);margin-bottom:16px">
         📅 ${new Date(date).toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long', year:'numeric'})}
       </div>
 
@@ -1028,11 +1062,11 @@ async function modalResourceDay(memberId, date) {
             <div style="width:8px;height:8px;border-radius:50%;background:${trackColors[log.track]||'#1B2B5E'};flex-shrink:0"></div>
             <span style="font-size:13px;font-weight:700;color:${trackColors[log.track]||'#1B2B5E'}">${log.hours}h</span>
             <span style="font-size:13px;flex:1">${log.track||'—'}</span>
-            ${log.activity ? `<span style="font-size:11px;color:var(--text-lt)">${log.activity}</span>` : ''}
-            <button class="btn btn-icon danger btn-xs" onclick="deleteResourceLog('${log.id}','${memberId}','${date}')">🗑</button>
+            ${log.activity ? `<span style="font-size:11px;color:var(--lt)">${log.activity}</span>` : ''}
+            <button class="btn btn-danger btn-xs" onclick="deleteResourceLog('${log.id}','${memberId}','${date}')">🗑</button>
           </div>`).join('')}
         </div>
-        <div style="font-size:12px;color:var(--text-lt);margin-top:6px">
+        <div style="font-size:12px;color:var(--lt);margin-top:6px">
           Total: <strong>${existing.reduce((s,r)=>s+(parseFloat(r.hours)||0),0)}h</strong> logged today
         </div>
       </div>
@@ -1056,10 +1090,11 @@ async function modalResourceDay(memberId, date) {
         <label class="form-label">Activity / Project</label>
         <input class="form-control" id="rdActivity" placeholder="e.g. API development, Sprint planning…"/>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-      <button class="btn btn-primary" onclick="saveResourceDay('${memberId}','${date}')">+ Add Entry</button>
+      </div>
+      <div class="mo-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="saveResourceDay('${memberId}','${date}')">+ Add Entry</button>
+      </div>
     </div>
   </div>`);
 }
