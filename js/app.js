@@ -13,7 +13,7 @@ import {
 
 // ─── VIEW MAP ─────────────────────────────────────────────
 const VIEWS = {
-  dashboard:        { title: 'Pulse',               render: renderDashboard },
+  dashboard:        { title: '',                    render: renderDashboard },
   roadmap:          { title: 'Product Roadmap',     render: renderRoadmap },
   tracks:           { title: 'Clarity',             render: renderTracks },
   pledges:          { title: 'Pledges',             render: renderPledges },

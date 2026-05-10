@@ -198,7 +198,7 @@ export function renderDashboard() {
   const pipelineBoxes = PIPELINE.map(s=>{
     const cnt = projects.filter(p=>normaliseStatus(p.status||'')===s.label).length;
     return `<div style="flex:1;display:flex;flex-direction:column;gap:4px;align-items:center">
-      <div onclick="nav('projects')" style="width:100%;height:36px;border-radius:4px;background:${cnt>0?s.color+'18':'#F7F5FC'};border:1px solid ${cnt>0?s.color+'30':'#EDE6F7'};display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <div onclick="nav('tracks')" style="width:100%;height:36px;border-radius:4px;background:${cnt>0?s.color+'18':'#F7F5FC'};border:1px solid ${cnt>0?s.color+'30':'#EDE6F7'};display:flex;align-items:center;justify-content:center;cursor:pointer">
         <span style="font-size:${cnt>9?14:18}px;font-weight:700;color:${cnt>0?s.color:'#D1C9E0'}">${cnt}</span>
       </div>
       <span style="font-size:9px;text-align:center;line-height:1.25;color:${cnt>0?s.color:'var(--lt)'};font-weight:${cnt>0?600:400}">${s.label}</span>
@@ -208,28 +208,25 @@ export function renderDashboard() {
   return `
   <div class="vh">
     <div class="vh-left">
-      <h1>Dashboard</h1>
-      <div class="sub">Engineering PMO Overview · ${DateHelpers.fmt(DateHelpers.today())}</div>
-    </div>
-    <div class="vh-right">
-      <button class="btn btn-primary" onclick="openModal('project')">+ New Project</button>
+      <h1>Pulse</h1>
+      <div class="sub">Your weekly standup, generated.</div>
     </div>
   </div>
 
   <div class="card" style="margin-bottom:20px;overflow:hidden;padding:0">
     <div style="padding:8px 20px 0;display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lt)">Portfolio snapshot</span>
-      <span style="font-size:10px;color:var(--lt)">· ${DateHelpers.fmt(DateHelpers.today())}</span>
+      <span style="font-size:10px;color:var(--lt)">· projects grouped by status · click a number to see it in Clarity ↓</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border)">
-      ${sumBlock(total,'Total','all projects','var(--navy)')}
-      ${sumBlock(activeCnt,'Active','in progress or on track','#1282a0')}
-      ${sumBlock(attentionCnt,'Attention','at risk or on hold','#D97706')}
-      ${sumBlock(completed,'Completed','done and delivered','#065F46')}
+      ${sumBlock(total,'Total','all projects across all statuses','var(--navy)')}
+      ${sumBlock(activeCnt,'Active','In Progress + On Track · 2 statuses','#1282a0')}
+      ${sumBlock(attentionCnt,'Needs Action','At Risk + On Hold · flag these','#D97706')}
+      ${sumBlock(completed,'Completed','signed off and delivered','#065F46')}
     </div>
     <div style="padding:10px 20px 0;display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lt)">Status breakdown</span>
-      <span style="font-size:10px;color:var(--lt)">· click to filter projects</span>
+      <span style="font-size:10px;color:var(--lt)">· how many projects sit in each status right now · click to open in Clarity →</span>
     </div>
     <div style="padding:10px 20px 14px">
       <div style="display:flex;gap:4px;align-items:stretch">${pipelineBoxes}</div>
