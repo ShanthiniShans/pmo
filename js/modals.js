@@ -140,6 +140,13 @@ async function modalProject(id) {
             <select class="form-control" id="pStatus">${statusOptions(p?.status)}</select>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">Clarity Stage <span style="font-size:10px;font-weight:400;color:var(--lt)">(controls which column this appears in on the Clarity board)</span></label>
+          <select class="form-control" id="pStage">
+            <option value="">— Auto-detect from Status —</option>
+            ${['Idea','Brief Draft','3-Way Scope','Ready to Build','In Progress','Released','Observation'].map(s=>`<option value="${s}" ${p?.stage===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
         <div class="form-row-3">
           <div class="form-group">
             <label class="form-label">Priority</label>
@@ -205,7 +212,9 @@ window.saveProject = async function(id) {
     devLead: val('pDevLead'), jiraKey: val('pJira'),
     progress: num('pProgress'), description: val('pDesc'),
     objectives: val('pObj'), stakeholders: val('pStake'),
-    team: [...(document.getElementById('pTeam')?.selectedOptions||[])].map(o=>o.value)
+    team: [...(document.getElementById('pTeam')?.selectedOptions||[])].map(o=>o.value),
+    stage: val('pStage'),
+    stageChangedAt: val('pStage') ? new Date().toISOString() : ''
   };
   if (!data.name) return alert('Project name is required');
   try {

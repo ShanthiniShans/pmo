@@ -375,7 +375,7 @@ export function renderDashboard() {
   </div>`;
 }
 
-// ─── TRACKS ───────────────────────────────────────────────
+// ─── TRACKS / CLARITY ────────────────────────────────────
 export function renderTracks() {
   const projects    = APP_STATE.projects;
   const tracks      = APP_STATE.settings.trackNames || ['Track 1','Track 2','Track 3'];
@@ -383,20 +383,33 @@ export function renderTracks() {
   const activeTrack = f.track || 'All';
   const filtered    = activeTrack === 'All' ? projects : projects.filter(p => p.track === activeTrack);
 
-  const COLS = [
-    { label:'Yet to Start', color:'#94A3B8' },
-    { label:'In Progress',  color:'#1282a0' },
-    { label:'On Track',     color:'#1e8a4a' },
-    { label:'At Risk',      color:'#D97706' },
-    { label:'On Hold',      color:'#6B7280' },
-    { label:'Completed',    color:'#065F46' },
+  const STAGES = [
+    { label:'Idea',           color:'#94A3B8', desc:'Capture the problem and a PM owner.' },
+    { label:'Brief Draft',    color:'#1282a0', desc:'Write the brief. Link it and assign an SME.' },
+    { label:'3-Way Scope',    color:'#D97706', desc:'PM + SME + Eng align. Resolve all questions.' },
+    { label:'Ready to Build', color:'#1e8a4a', desc:'Gate cleared. Waiting to be picked up.' },
+    { label:'In Progress',    color:'#7C3AED', desc:'In active development. Log updates regularly.' },
+    { label:'Released',       color:'#059669', desc:'Shipped. SME should sign off within 30 days.' },
+    { label:'Observation',    color:'#2563EB', desc:'Post-release watch. Done when SME signs off.' },
   ];
+
+  // Map legacy status values → stage when no explicit stage is set
+  const STATUS_TO_STAGE = {
+    'Yet to Start':'Idea','On Hold':'Brief Draft','At Risk':'3-Way Scope',
+    'On Track':'Ready to Build','In Progress':'In Progress',
+    'Completed':'Released','Overdue':'In Progress',
+  };
+
+  function stageOf(p) {
+    if (p.stage) return p.stage;
+    return STATUS_TO_STAGE[normaliseStatus(p.status||'')] || 'Idea';
+  }
 
   return `
   <div class="vh">
     <div class="vh-left">
       <h1>Clarity</h1>
-      <div class="sub">Project pipeline · ${filtered.length} project${filtered.length!==1?'s':''}</div>
+      <div class="sub">Feature pipeline · ${filtered.length} project${filtered.length!==1?'s':''}</div>
     </div>
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('project')">+ New Project</button>
@@ -416,33 +429,38 @@ export function renderTracks() {
   </div>
 
   <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:16px;align-items:flex-start">
-    ${COLS.map(col => {
-      const colProjects = filtered.filter(p => normaliseStatus(p.status||'') === col.label);
+    ${STAGES.map(stage => {
+      const colProjects = filtered.filter(p => stageOf(p) === stage.label);
       return `
-      <div style="min-width:220px;flex:0 0 220px;display:flex;flex-direction:column;gap:8px">
-        <div style="padding:10px 12px;border-radius:10px;background:#fff;border:1px solid var(--border);border-top:3px solid ${col.color};display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:600;font-size:12px;color:var(--navy)">${col.label}</span>
-          <span style="font-size:11px;font-weight:700;color:${col.color};background:${col.color}18;border-radius:980px;padding:1px 8px">${colProjects.length}</span>
+      <div style="min-width:230px;flex:0 0 230px;display:flex;flex-direction:column;gap:8px">
+        <div style="padding:12px 14px;border-radius:10px;background:#fff;border:1px solid var(--border);border-top:3px solid ${stage.color}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:700;font-size:12px;color:var(--navy)">${stage.label}</span>
+            <span style="font-size:11px;font-weight:700;color:${stage.color};background:${stage.color}18;border-radius:980px;padding:1px 8px">${colProjects.length}</span>
+          </div>
+          <div style="font-size:11px;color:var(--lt);line-height:1.4">${stage.desc}</div>
         </div>
         ${colProjects.length === 0
           ? `<div style="padding:16px 12px;border-radius:10px;background:rgba(0,0,0,.02);border:1px dashed var(--border);text-align:center"><span style="font-size:12px;color:var(--lt)">Empty</span></div>`
           : colProjects.map(p => {
               const devM = APP_STATE.teamMembers.find(m => m.id === p.devLead);
-              const daysInStatus = p.statusChangedAt
-                ? Math.floor((Date.now() - new Date(p.statusChangedAt).getTime()) / 86400000)
-                : null;
-              const stale = daysInStatus !== null && daysInStatus >= 14 && normaliseStatus(p.status||'') !== 'Completed';
+              const daysInStage = p.stageChangedAt
+                ? Math.floor((Date.now() - new Date(p.stageChangedAt).getTime()) / 86400000)
+                : p.statusChangedAt
+                  ? Math.floor((Date.now() - new Date(p.statusChangedAt).getTime()) / 86400000)
+                  : null;
+              const stale = daysInStage !== null && daysInStage >= 14 && stage.label !== 'Released' && stage.label !== 'Observation';
               return `<div class="card" style="padding:12px 14px;cursor:pointer;border-radius:10px;transition:box-shadow .15s" onclick="nav('project-detail',{id:'${p.id}'})" onmouseover="this.style.boxShadow='0 4px 16px rgba(27,43,94,.13)'" onmouseout="this.style.boxShadow=''">
                 <div style="font-weight:600;font-size:13px;color:var(--navy);margin-bottom:6px;line-height:1.3">${p.name||p.title||'Unnamed'}</div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
                   ${p.track?`<span class="badge badge-navy" style="font-size:10px">${p.track}</span>`:''}
                   ${p.phase?`<span class="badge badge-grey" style="font-size:10px">${p.phase}</span>`:''}
-                  ${stale?`<span class="badge badge-amber" style="font-size:10px" title="Days in current status">${daysInStatus}d</span>`:''}
+                  ${stale?`<span class="badge badge-amber" style="font-size:10px" title="Days in this stage">${daysInStage}d</span>`:''}
                 </div>
                 ${progressBar(p.progress||0)}
                 <div style="display:flex;align-items:center;margin-top:6px;gap:6px">
                   ${devM?`<div class="av av-sm" style="background:${TRACK_COLORS[devM.track]||'var(--navy)'}">${avatar(devM.name)}</div><span style="font-size:11px;color:var(--lt);flex:1">${devM.name}</span>`:'<span style="flex:1"></span>'}
-                  ${p.endDate?`<span style="font-size:10px;color:${DateHelpers.isOverdue(p.endDate)&&normaliseStatus(p.status||'')!=='Completed'?'#ef4444':'var(--lt)'}">${DateHelpers.fmt(p.endDate)}</span>`:''}
+                  ${p.endDate?`<span style="font-size:10px;color:${DateHelpers.isOverdue(p.endDate)&&stage.label!=='Released'&&stage.label!=='Observation'?'#ef4444':'var(--lt)'}">${DateHelpers.fmt(p.endDate)}</span>`:''}
                 </div>
               </div>`;
             }).join('')
