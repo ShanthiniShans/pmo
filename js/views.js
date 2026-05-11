@@ -682,8 +682,6 @@ export function renderProjects() {
       <div class="sub">${total} projects</div>
     </div>
     <div class="vh-right">
-      <button class="btn btn-ghost btn-sm" onclick="downloadTemplate('projects')">⬇ Template</button>
-      <button class="btn btn-ghost btn-sm" onclick="triggerImport('projects')">⬆ Import</button>
       <button class="btn btn-primary" onclick="openModal('project')">+ New Project</button>
     </div>
   </div>
@@ -1237,8 +1235,6 @@ export function renderRisks() {
       <div class="sub">${risks.length} risks tracked</div>
     </div>
     <div class="vh-right">
-      <button class="btn btn-ghost btn-sm" onclick="downloadTemplate('risks')">⬇ Template</button>
-      <button class="btn btn-ghost btn-sm" onclick="triggerImport('risks')">⬆ Import</button>
       <button class="btn btn-primary" onclick="openModal('risk')">+ Add Risk</button>
     </div>
   </div>
