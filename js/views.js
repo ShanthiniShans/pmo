@@ -99,6 +99,49 @@ function filterBar() {
 
 const TRACK_COLORS = {'Track 1':'#1B2B5E','Track 2':'#00A896','Track 3':'#E8452C'};
 
+// ─── MILESTONE DETAIL POPOVER ─────────────────────────────
+window._showMsDetail = function(msId, event) {
+  event.stopPropagation();
+  document.querySelectorAll('.ms-popover').forEach(el=>el.remove());
+  const ms = APP_STATE.milestones.find(m=>m.id===msId);
+  if (!ms) return;
+  const STATUS_COLOR = {'Completed':'#059669','Overdue':'#DC2626','At Risk':'#D97706','On Track':'#2563EB','Yet to Start':'#94A3B8','On Hold':'#6B7280'};
+  const sc = STATUS_COLOR[ms.status]||'#94A3B8';
+  const tasks = ms.tasks||[];
+  const pop = document.createElement('div');
+  pop.className = 'ms-popover';
+  pop.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:16px;min-width:240px;max-width:300px;font-family:"DM Sans",sans-serif';
+  pop.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:10px;height:10px;background:${sc};border-radius:50%;flex-shrink:0"></div>
+      <div style="font-size:13px;font-weight:700;color:#1B2B5E;flex:1">${ms.title}</div>
+      <button onclick="this.closest('.ms-popover').remove()" style="border:none;background:none;cursor:pointer;color:#94a3b8;font-size:16px;line-height:1;padding:0">×</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${sc}18;color:${sc}">${ms.status||'—'}</span>
+      ${ms.dueDate?`<span style="font-size:10px;color:#64748b;padding:2px 6px;background:#f1f5f9;border-radius:20px">📅 ${ms.dueDate}</span>`:''}
+    </div>
+    ${tasks.length>0?`
+    <div style="border-top:1px solid #f1f5f9;padding-top:10px">
+      <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Tasks (${tasks.filter(t=>t.done).length}/${tasks.length})</div>
+      ${tasks.map(t=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f8fafc">
+        <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid ${t.done?'#22c55e':'#cbd5e1'};background:${t.done?'#22c55e':'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          ${t.done?'<svg width="8" height="8" viewBox="0 0 10 10"><polyline points="1,5 4,8 9,2" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>':''}
+        </div>
+        <span style="font-size:11px;${t.done?'text-decoration:line-through;color:#94a3b8':'color:#1B2B5E'}">${t.text}</span>
+      </div>`).join('')}
+    </div>`:''}
+    ${ms.notes?`<div style="margin-top:10px;font-size:11px;color:#64748b;border-top:1px solid #f1f5f9;padding-top:8px">${ms.notes}</div>`:''}
+    <div style="margin-top:10px;display:flex;gap:6px">
+      <button onclick="openModal('milestone','${ms.id}');this.closest('.ms-popover').remove()" style="font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;color:#1B2B5E;font-family:inherit">Edit</button>
+    </div>`;
+  const rect = event.target.getBoundingClientRect();
+  pop.style.left = Math.min(rect.left, window.innerWidth - 320) + 'px';
+  pop.style.top = (rect.bottom + 8) + 'px';
+  document.body.appendChild(pop);
+  setTimeout(()=>{ document.addEventListener('click', function h(e){ if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',h);} }); }, 100);
+};
+
 // ─── EXEC BANNER ──────────────────────────────────────────
 function execBanner(active) {
   const steps = [
@@ -546,9 +589,9 @@ export function renderRoadmap() {
                 const mp = datePct(ms.dueDate);
                 if (mp===null) return '';
                 const mc = MS_COLOR[normaliseStatus(ms.status)]||'#94A3B8';
-                return `<div title="${ms.title} · ${ms.status}" style="position:absolute;top:50%;left:${mp}%;transform:translate(-50%,-50%);z-index:6;cursor:default">
-                  <div style="width:11px;height:11px;background:${mc};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)"></div>
-                  <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:700;color:${mc};background:#fff;padding:2px 5px;border-radius:3px;border:1px solid ${mc}50;max-width:90px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(0,0,0,.1)">${ms.title}</div>
+                return `<div title="${ms.title} · ${ms.status}" style="position:absolute;top:50%;left:${mp}%;transform:translate(-50%,-50%);z-index:6;cursor:pointer" onclick="window._showMsDetail('${ms.id}',event)">
+                  <div style="width:12px;height:12px;background:${mc};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .15s" onmouseover="this.style.transform='scale(1.4)'" onmouseout="this.style.transform=''"></div>
+                  <div style="position:absolute;top:15px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:700;color:${mc};background:#fff;padding:2px 5px;border-radius:3px;border:1px solid ${mc}50;max-width:90px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(0,0,0,.1);pointer-events:none">${ms.title}</div>
                 </div>`;
               }).join('')}
             </div>
@@ -1545,6 +1588,13 @@ export function renderPledges() {
     'On Track':'badge-teal','At Risk':'badge-amber','Breached':'badge-red','Honored':'badge-green'
   };
 
+  const PLEDGE_STATUSES = [
+    { label:'On Track', color:'#1e8a4a', bg:'#f0fdf4' },
+    { label:'At Risk',  color:'#D97706', bg:'#fffbeb' },
+    { label:'Breached', color:'#DC2626', bg:'#fef2f2' },
+    { label:'Honored',  color:'#065F46', bg:'#ecfdf5' },
+  ];
+
   return `
   <div class="vh">
     <div class="vh-left">
@@ -1552,10 +1602,20 @@ export function renderPledges() {
       <div class="sub">Customer commitments with deadlines and accountability</div>
     </div>
     <div class="vh-right">
-      <button class="btn btn-ghost btn-sm" onclick="downloadTemplate('pledges')">⬇ Template</button>
-      <button class="btn btn-ghost btn-sm" onclick="triggerImport('pledges')">⬆ Import</button>
       <button class="btn btn-primary" onclick="openModal('pledge')">+ New Pledge</button>
     </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    ${PLEDGE_STATUSES.map(s=>{
+      const cnt = pledges.filter(p=>p.status===s.label).length;
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-radius:10px;background:${s.bg};border:1px solid ${s.color}28;border-left:4px solid ${s.color};min-width:110px">
+        <div>
+          <div style="font-size:24px;font-weight:800;color:${s.color};line-height:1">${cnt}</div>
+          <div style="font-size:11px;font-weight:600;color:${s.color};margin-top:2px">${s.label}</div>
+        </div>
+      </div>`;
+    }).join('')}
   </div>
 
   <div class="filter-row">

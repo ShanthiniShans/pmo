@@ -102,8 +102,17 @@ export function openModal(type, id, extra) {
 }
 
 // ─── PROJECT ──────────────────────────────────────────────
+window._filterTeamOptions = function(q) {
+  const sel = document.getElementById('pTeam');
+  if (!sel) return;
+  [...sel.options].forEach(o => {
+    o.style.display = o.text.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+};
+
 async function modalProject(id) {
   const p = id ? APP_STATE.projects.find(x=>x.id===id) : null;
+  const sel = Array.isArray(p?.team) ? p.team : (p?.team||'').split(',').map(s=>s.trim()).filter(Boolean);
   show(`<div class="mo" onclick="if(event.target===this)closeModal()">
     <div class="mo-box lg">
       <div class="mo-hdr">
@@ -173,7 +182,11 @@ async function modalProject(id) {
         </div>
         <div class="form-group">
           <label class="form-label">Team Members</label>
-          <div style="display:flex;flex-direction:column;gap:4px">${memberCheckboxes(p?.team)}</div>
+          <input class="form-control" id="teamSearchInput" placeholder="Search members…" oninput="window._filterTeamOptions(this.value)" style="margin-bottom:6px;font-size:12px"/>
+          <select class="form-control" id="pTeam" multiple size="5" style="font-size:12px">
+            ${APP_STATE.teamMembers.map(m=>`<option value="${m.id}" ${sel.includes(m.id)?'selected':''}>${m.name} — ${m.role}</option>`).join('')}
+          </select>
+          <div style="font-size:11px;color:var(--lt);margin-top:4px">Hold Ctrl / Cmd to select multiple members</div>
         </div>
       </div>
       <div class="mo-foot">
@@ -192,7 +205,7 @@ window.saveProject = async function(id) {
     devLead: val('pDevLead'), jiraKey: val('pJira'),
     progress: num('pProgress'), description: val('pDesc'),
     objectives: val('pObj'), stakeholders: val('pStake'),
-    team: checkedVals('team')
+    team: [...(document.getElementById('pTeam')?.selectedOptions||[])].map(o=>o.value)
   };
   if (!data.name) return alert('Project name is required');
   try {
@@ -203,8 +216,30 @@ window.saveProject = async function(id) {
 };
 
 // ─── MILESTONE ────────────────────────────────────────────
+window._msTasks = [];
+window._renderMsTasks = function() {
+  const list = document.getElementById('msTaskList');
+  if (!list) return;
+  list.innerHTML = window._msTasks.length === 0
+    ? `<div style="font-size:11px;color:var(--lt);padding:6px 0">No tasks yet. Add one below.</div>`
+    : window._msTasks.map((t,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:${t.done?'#f0fdf4':'#f8fafc'};border-radius:6px;border:1px solid ${t.done?'#bbf7d0':'#e2e8f0'}">
+        <input type="checkbox" ${t.done?'checked':''} onchange="window._msTasks[${i}].done=this.checked;window._renderMsTasks()"/>
+        <span style="flex:1;font-size:12px;${t.done?'text-decoration:line-through;color:var(--lt)':'color:var(--navy)'}">${t.text}</span>
+        <button style="border:none;background:none;cursor:pointer;color:#ef4444;font-size:16px;line-height:1;padding:0 2px" onclick="window._msTasks.splice(${i},1);window._renderMsTasks()">×</button>
+      </div>`).join('');
+};
+window._addMsTask = function() {
+  const inp = document.getElementById('msNewTask');
+  if (!inp || !inp.value.trim()) return;
+  window._msTasks.push({ text: inp.value.trim(), done: false });
+  inp.value = '';
+  window._renderMsTasks();
+};
+
 async function modalMilestone(id, projectId) {
   const m = id ? APP_STATE.milestones.find(x=>x.id===id) : null;
+  window._msTasks = (m?.tasks||[]).map(t=>({...t}));
   const statusOpts = ['On Track','At Risk','Overdue','Completed','Yet to Start'];
   show(`<div class="mo" onclick="if(event.target===this)closeModal()">
     <div class="mo-box">
@@ -260,6 +295,16 @@ async function modalMilestone(id, projectId) {
           <label class="form-label">Notes</label>
           <textarea class="form-control" id="msNotes">${m?.notes||''}</textarea>
         </div>
+        <div class="form-group" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+          <label class="form-label" style="margin-bottom:8px">Tasks <span style="font-size:10px;font-weight:400;color:var(--lt)">(checklist for this milestone)</span></label>
+          <div id="msTaskList" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--lt);padding:6px 0">No tasks yet. Add one below.</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input class="form-control" id="msNewTask" placeholder="Add a task…" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter'){event.preventDefault();window._addMsTask()}"/>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="window._addMsTask()">+ Add</button>
+          </div>
+        </div>
       </div>
       <div class="mo-foot">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -267,6 +312,7 @@ async function modalMilestone(id, projectId) {
       </div>
     </div>
   </div>`);
+  window._renderMsTasks();
 }
 
 window.toggleMsCompleted = function(status) {
@@ -283,7 +329,8 @@ window.saveMilestone = async function(id) {
     track: val('msTrack'), dueDate: val('msDue'),
     status: val('msStatus'), completedDate: val('msCompleted'),
     revisedETA: val('msRevised'), delayReason: val('msDelay'),
-    notes: val('msNotes')
+    notes: val('msNotes'),
+    tasks: window._msTasks || []
   };
   if (!data.title) return alert('Title required');
   try {
