@@ -188,12 +188,18 @@ async function modalProject(id) {
           <input class="form-control" id="pStake" value="${p?.stakeholders||''}"/>
         </div>
         <div class="form-group">
-          <label class="form-label">Team Members</label>
-          <input class="form-control" id="teamSearchInput" placeholder="Search members…" oninput="window._filterTeamOptions(this.value)" style="margin-bottom:6px;font-size:12px"/>
-          <select class="form-control" id="pTeam" multiple size="5" style="font-size:12px">
-            ${APP_STATE.teamMembers.map(m=>`<option value="${m.id}" ${sel.includes(m.id)?'selected':''}>${m.name} — ${m.role}</option>`).join('')}
-          </select>
-          <div style="font-size:11px;color:var(--lt);margin-top:4px">Hold Ctrl / Cmd to select multiple members</div>
+          <label class="form-label" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px" onclick="(function(){var p=document.getElementById('pTeamPanel');var a=document.getElementById('pTeamArrow');p.style.display=p.style.display==='none'?'':'none';a.textContent=p.style.display===''?'▲':'▼';})()">
+            Team Members
+            <span style="font-size:10px;color:var(--lt);font-weight:400">${sel.length ? sel.length+' selected' : 'none selected'}</span>
+            <span id="pTeamArrow" style="margin-left:auto;font-size:10px;color:var(--lt)">▼</span>
+          </label>
+          <div id="pTeamPanel" style="display:none">
+            <input class="form-control" id="teamSearchInput" placeholder="Search members…" oninput="window._filterTeamOptions(this.value)" style="margin-bottom:6px;font-size:12px"/>
+            <select class="form-control" id="pTeam" multiple size="5" style="font-size:12px">
+              ${APP_STATE.teamMembers.map(m=>`<option value="${m.id}" ${sel.includes(m.id)?'selected':''}>${m.name} — ${m.role}</option>`).join('')}
+            </select>
+            <div style="font-size:11px;color:var(--lt);margin-top:4px">Hold Ctrl / Cmd to select multiple members</div>
+          </div>
         </div>
       </div>
       <div class="mo-foot">

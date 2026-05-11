@@ -884,7 +884,6 @@ export async function renderProjectDetail(params) {
 export function renderOnboarding() {
   const projects = APP_STATE.onboardingProjects;
   return `
-  ${filterBar()}
   <div class="vh">
     <div class="vh-left">
       <h1>Onboarding Projects</h1>
@@ -1337,9 +1336,6 @@ export function renderLeadership() {
     <div class="vh-left">
       <h1>Leadership Report</h1>
       <div class="sub">Generated: ${DateHelpers.fmt(DateHelpers.today())}</div>
-    </div>
-    <div class="vh-right">
-      <button class="btn btn-ghost btn-sm no-print" onclick="window.print()">🖨 Print</button>
     </div>
   </div>
 
