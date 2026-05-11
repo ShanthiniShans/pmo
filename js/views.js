@@ -926,12 +926,11 @@ export function renderOnboarding() {
   <div class="card" style="padding:0">
     <div class="tbl-wrap">
       <table class="dt">
-        <thead><tr><th>Customer</th><th>Project</th><th>Track</th><th>Phase</th><th>Status</th><th>Dev Lead</th><th>Start</th><th>End</th><th>Progress</th><th>Jira</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Customer</th><th>Track</th><th>Phase</th><th>Status</th><th>Dev Lead</th><th>Start</th><th>End</th><th>Progress</th><th>Jira</th><th>Actions</th></tr></thead>
         <tbody>
           ${projects.length ? projects.map(p=>`
           <tr class="clk">
             <td><span style="font-size:12px;font-weight:600;color:var(--navy)">👤 ${p.customerName||'—'}</span></td>
-            <td style="font-weight:700;color:var(--navy)">${p.name}</td>
             <td>${p.track?`<span class="badge badge-navy">${p.track}</span>`:'—'}</td>
             <td style="font-size:12px">${p.phase||'—'}</td>
             <td>${ragBadge(p.status)}</td>
@@ -944,7 +943,7 @@ export function renderOnboarding() {
               <button class="btn-icon" onclick="openModal('onboarding','${p.id}')">✏️</button>
               <button class="btn-icon" onclick="deleteItem('onboardingProjects','${p.id}')">🗑</button>
             </td>
-          </tr>`).join(''):`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🏗️</div>No onboarding projects</div></td></tr>`}
+          </tr>`).join(''):`<tr><td colspan="10"><div class="empty"><div class="empty-icon">🏗️</div>No onboarding projects</div></td></tr>`}
         </tbody>
       </table>
     </div>

@@ -869,6 +869,7 @@ window.saveNote = async function(entityId, entityType) {
 // ─── ONBOARDING ───────────────────────────────────────────
 async function modalOnboarding(id) {
   const p = id ? APP_STATE.onboardingProjects.find(x=>x.id===id) : null;
+  const sel = Array.isArray(p?.team) ? p.team : (p?.team||'').split(',').map(s=>s.trim()).filter(Boolean);
   show(`<div class="mo" onclick="if(event.target===this)closeModal()">
     <div class="mo-box lg">
       <div class="mo-hdr">
@@ -876,15 +877,9 @@ async function modalOnboarding(id) {
         <button class="mo-close" onclick="closeModal()">×</button>
       </div>
       <div class="mo-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Customer Name *</label>
-            <input class="form-control" id="obCustomer" value="${p?.customerName||''}"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Project Name *</label>
-            <input class="form-control" id="obName" value="${p?.name||''}"/>
-          </div>
+        <div class="form-group">
+          <label class="form-label">Customer Name *</label>
+          <input class="form-control" id="obCustomer" value="${p?.customerName||''}"/>
         </div>
         <div class="form-row-3">
           <div class="form-group">
@@ -925,8 +920,18 @@ async function modalOnboarding(id) {
           <input type="number" class="form-control" id="obProgress" min="0" max="100" value="${p?.progress||0}"/>
         </div>
         <div class="form-group">
-          <label class="form-label">Team Members</label>
-          <div style="display:flex;flex-direction:column;gap:4px">${memberCheckboxes(p?.team)}</div>
+          <label class="form-label" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px" onclick="(function(){var p=document.getElementById('obTeamPanel');var a=document.getElementById('obTeamArrow');p.style.display=p.style.display==='none'?'':'none';a.textContent=p.style.display===''?'▲':'▼';})()">
+            Team Members
+            <span style="font-size:10px;color:var(--lt);font-weight:400">${sel.length ? sel.length+' selected' : 'none selected'}</span>
+            <span id="obTeamArrow" style="margin-left:auto;font-size:10px;color:var(--lt)">▼</span>
+          </label>
+          <div id="obTeamPanel" style="display:none">
+            <input class="form-control" id="obTeamSearch" placeholder="Search members…" oninput="window._filterObTeamOptions(this.value)" style="margin-bottom:6px;font-size:12px"/>
+            <select class="form-control" id="obTeam" multiple size="5" style="font-size:12px">
+              ${APP_STATE.teamMembers.map(m=>`<option value="${m.id}" ${sel.includes(m.id)?'selected':''}>${m.name} — ${m.role}</option>`).join('')}
+            </select>
+            <div style="font-size:11px;color:var(--lt);margin-top:4px">Hold Ctrl / Cmd to select multiple members</div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Notes</label>
@@ -941,9 +946,15 @@ async function modalOnboarding(id) {
   </div>`);
 }
 
+window._filterObTeamOptions = function(q) {
+  const sel = document.getElementById('obTeam');
+  if (!sel) return;
+  [...sel.options].forEach(o => { o.style.display = o.text.toLowerCase().includes(q.toLowerCase()) ? '' : 'none'; });
+};
+
 window.saveOnboarding = async function(id) {
-  const data = { customerName: val('obCustomer'), name: val('obName'), track: val('obTrack'), phase: val('obPhase'), status: val('obStatus'), devLead: val('obLead'), jiraKey: val('obJira'), startDate: val('obStart'), endDate: val('obEnd'), progress: num('obProgress'), team: checkedVals('team'), notes: val('obNotes') };
-  if (!data.name || !data.customerName) return alert('Customer and project name required');
+  const data = { customerName: val('obCustomer'), track: val('obTrack'), phase: val('obPhase'), status: val('obStatus'), devLead: val('obLead'), jiraKey: val('obJira'), startDate: val('obStart'), endDate: val('obEnd'), progress: num('obProgress'), team: [...(document.getElementById('obTeam')?.selectedOptions||[])].map(o=>o.value), notes: val('obNotes') };
+  if (!data.customerName) return alert('Customer name required');
   try {
     if (id) await DB.update('onboardingProjects', id, data);
     else await DB.add('onboardingProjects', data);
