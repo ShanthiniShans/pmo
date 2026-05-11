@@ -68,7 +68,7 @@ function filterBar() {
     <div class="fg">
       <label>Year</label>
       <select onchange="window._filterChange('year',this.value)">
-        ${[2025,2026,2027].map(y=>`<option value="${y}" ${f.year==y?'selected':''}>${y}</option>`).join('')}
+        ${[2026,2027].map(y=>`<option value="${y}" ${f.year==y?'selected':''}>${y}</option>`).join('')}
       </select>
     </div>
     <div class="fg">
@@ -455,7 +455,7 @@ export function renderTracks() {
 // ─── ROADMAP ──────────────────────────────────────────────
 export function renderRoadmap() {
   const f = APP_STATE.filters;
-  const year = parseInt(f.year) || 2025;
+  const year = parseInt(f.year) || 2026;
   const projects = filterProjects(APP_STATE.projects);
   const milestones = APP_STATE.milestones;
 

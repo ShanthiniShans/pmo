@@ -15,7 +15,7 @@ import {
 const VIEWS = {
   dashboard:        { title: '',                    render: renderDashboard },
   roadmap:          { title: 'Product Roadmap',     render: renderRoadmap },
-  tracks:           { title: 'Clarity',             render: renderTracks },
+  tracks:           { title: '',                    render: renderTracks },
   pledges:          { title: 'Pledges',             render: renderPledges },
   projects:         { title: 'Projects',            render: renderProjects },
   'project-detail': { title: 'Project Detail',      render: renderProjectDetail },
@@ -94,7 +94,7 @@ window._filterChange = function(key, value) {
 };
 
 window._filterReset = function() {
-  APP_STATE.filters = { year: 2025, quarter: '', month: '', track: '', startDate: '', endDate: '' };
+  APP_STATE.filters = { year: 2026, quarter: '', month: '', track: '', startDate: '', endDate: '' };
   navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
 };
 

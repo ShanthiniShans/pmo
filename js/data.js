@@ -43,7 +43,7 @@ export const APP_STATE = {
     trackNames: ['Track 1','Track 2','Track 3'],
     jiraMappings: []
   },
-  filters: { year: 2025, quarter: '', month: '', track: '', startDate: '', endDate: '' },
+  filters: { year: 2026, quarter: '', month: '', track: '', startDate: '', endDate: '' },
   currentView: 'dashboard',
   currentParams: {}
 };
