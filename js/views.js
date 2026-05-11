@@ -99,6 +99,32 @@ function filterBar() {
 
 const TRACK_COLORS = {'Track 1':'#1B2B5E','Track 2':'#00A896','Track 3':'#E8452C'};
 
+// ─── SHARED STAT BLOCK (used across all tabs) ─────────────
+function statBlock(n, lbl, sub, col) {
+  const on = n > 0;
+  return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 12px;gap:3px;border-right:1px solid var(--border);flex:1;min-width:0">
+    <span style="font-size:30px;font-weight:800;color:${on?col:'#D1C9E0'};line-height:1">${n}</span>
+    <span style="font-size:11px;font-weight:700;color:${on?col:'#D1C9E0'};margin-top:2px">${lbl}</span>
+    ${sub?`<span style="font-size:10px;color:var(--lt);text-align:center;line-height:1.3;margin-top:1px">${sub}</span>`:''}
+  </div>`;
+}
+function statRow(blocks) {
+  return `<div class="card" style="overflow:hidden;padding:0;margin-bottom:20px">
+    <div style="display:flex">${blocks}</div>
+  </div>`;
+}
+
+// ─── STAGE HELPER (shared by Clarity + Pulse) ─────────────
+const STATUS_TO_STAGE = {
+  'Yet to Start':'Idea','On Hold':'Brief Draft','At Risk':'3-Way Scope',
+  'On Track':'Ready to Build','In Progress':'In Progress',
+  'Completed':'Released','Overdue':'In Progress',
+};
+function stageOf(p) {
+  if (p.stage) return p.stage;
+  return STATUS_TO_STAGE[normaliseStatus(p.status||'')] || 'Idea';
+}
+
 // ─── MILESTONE DETAIL POPOVER ─────────────────────────────
 window._showMsDetail = function(msId, event) {
   event.stopPropagation();
@@ -180,9 +206,13 @@ export function renderDashboard() {
   const overdueMilestones = milestones.filter(m=>m.status==='Overdue');
 
   const PIPELINE = [
-    {label:'Yet to Start',color:'#94A3B8'},{label:'In Progress',color:'#1282a0'},
-    {label:'On Track',color:'#1e8a4a'},{label:'At Risk',color:'#D97706'},
-    {label:'On Hold',color:'#6B7280'},{label:'Completed',color:'#065F46'},
+    {label:'Idea',           color:'#94A3B8'},
+    {label:'Brief Draft',    color:'#1282a0'},
+    {label:'3-Way Scope',    color:'#D97706'},
+    {label:'Ready to Build', color:'#1e8a4a'},
+    {label:'In Progress',    color:'#7C3AED'},
+    {label:'Released',       color:'#059669'},
+    {label:'Observation',    color:'#2563EB'},
   ];
 
   function sumBlock(n, lbl, sub, col) {
@@ -236,10 +266,10 @@ export function renderDashboard() {
     </div>`;
   }
 
-  const activeCnt   = projects.filter(p=>['In Progress','On Track'].includes(normaliseStatus(p.status||''))).length;
-  const attentionCnt= projects.filter(p=>['At Risk','On Hold'].includes(normaliseStatus(p.status||''))).length;
+  const activeCnt   = projects.filter(p=>['In Progress','Ready to Build'].includes(stageOf(p))).length;
+  const attentionCnt= projects.filter(p=>['Idea','Brief Draft','3-Way Scope'].includes(stageOf(p))).length;
   const pipelineBoxes = PIPELINE.map(s=>{
-    const cnt = projects.filter(p=>normaliseStatus(p.status||'')===s.label).length;
+    const cnt = projects.filter(p=>stageOf(p)===s.label).length;
     return `<div style="flex:1;display:flex;flex-direction:column;gap:4px;align-items:center">
       <div onclick="nav('tracks')" style="width:100%;height:36px;border-radius:4px;background:${cnt>0?s.color+'18':'#F7F5FC'};border:1px solid ${cnt>0?s.color+'30':'#EDE6F7'};display:flex;align-items:center;justify-content:center;cursor:pointer">
         <span style="font-size:${cnt>9?14:18}px;font-weight:700;color:${cnt>0?s.color:'#D1C9E0'}">${cnt}</span>
@@ -263,22 +293,18 @@ export function renderDashboard() {
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border)">
       ${sumBlock(total,'Total','all projects across all statuses','var(--navy)')}
-      ${sumBlock(activeCnt,'Active','In Progress + On Track · 2 statuses','#1282a0')}
-      ${sumBlock(attentionCnt,'Needs Action','At Risk + On Hold · flag these','#D97706')}
+      ${sumBlock(activeCnt,'Active','In Progress + Ready to Build','#1282a0')}
+      ${sumBlock(attentionCnt,'Needs Action','Idea · Draft · Scope · flag these','#D97706')}
       ${sumBlock(completed,'Completed','signed off and delivered','#065F46')}
     </div>
     <div style="padding:10px 20px 0;display:flex;align-items:center;gap:6px">
       <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lt)">Status breakdown</span>
-      <span style="font-size:10px;color:var(--lt)">· how many projects sit in each status right now · click to open in Clarity →</span>
+      <span style="font-size:10px;color:var(--lt)">· matches the 7 Clarity stages · click any box to open Clarity →</span>
     </div>
     <div style="padding:10px 20px 14px">
       <div style="display:flex;gap:4px;align-items:stretch">${pipelineBoxes}</div>
       <div style="display:flex;gap:4px;margin-top:3px">
-        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
-        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
-        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
-        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
-        <div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>
+        ${Array(6).fill('<div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>').join('')}
         <div style="flex:1"></div>
       </div>
     </div>
@@ -392,18 +418,6 @@ export function renderTracks() {
     { label:'Released',       color:'#059669', desc:'Shipped. SME should sign off within 30 days.' },
     { label:'Observation',    color:'#2563EB', desc:'Post-release watch. Done when SME signs off.' },
   ];
-
-  // Map legacy status values → stage when no explicit stage is set
-  const STATUS_TO_STAGE = {
-    'Yet to Start':'Idea','On Hold':'Brief Draft','At Risk':'3-Way Scope',
-    'On Track':'Ready to Build','In Progress':'In Progress',
-    'Completed':'Released','Overdue':'In Progress',
-  };
-
-  function stageOf(p) {
-    if (p.stage) return p.stage;
-    return STATUS_TO_STAGE[normaliseStatus(p.status||'')] || 'Idea';
-  }
 
   return `
   <div class="vh">
@@ -704,12 +718,12 @@ export function renderProjects() {
     </div>
   </div>
 
-  <div class="stat-row">
-    <div class="stat-card n"><div class="stat-num">${total}</div><div class="stat-lbl">Total</div></div>
-    <div class="stat-card b"><div class="stat-num">${inProg}</div><div class="stat-lbl">In Progress</div></div>
-    <div class="stat-card g"><div class="stat-num">${completed}</div><div class="stat-num" style="font-size:30px"></div><div class="stat-lbl">Completed</div></div>
-    <div class="stat-card a"><div class="stat-num">${atRisk}</div><div class="stat-lbl">At Risk / Overdue</div></div>
-  </div>
+  ${statRow(
+    statBlock(total,'Total','all projects','var(--navy)') +
+    statBlock(inProg,'In Progress','currently active','#7C3AED') +
+    statBlock(completed,'Completed','signed off','#059669') +
+    statBlock(atRisk,'At Risk / Overdue','needs attention','#DC2626')
+  )}
 
   <div class="card" style="padding:0">
     <div class="tbl-wrap">
@@ -1256,12 +1270,12 @@ export function renderRisks() {
     </div>
   </div>
 
-  <div class="stat-row">
-    <div class="stat-card r"><div class="stat-num">${high}</div><div class="stat-lbl">High (Score ≥12)</div></div>
-    <div class="stat-card a"><div class="stat-num">${med}</div><div class="stat-lbl">Medium (6–11)</div></div>
-    <div class="stat-card g"><div class="stat-num">${low}</div><div class="stat-lbl">Low (&lt;6)</div></div>
-    <div class="stat-card n"><div class="stat-num">${openRisks.length}</div><div class="stat-lbl">Open Total</div></div>
-  </div>
+  ${statRow(
+    statBlock(high,'High','score ≥ 12','#DC2626') +
+    statBlock(med,'Medium','score 6–11','#D97706') +
+    statBlock(low,'Low','score < 6','#059669') +
+    statBlock(openRisks.length,'Open Total','all open risks','var(--navy)')
+  )}
 
   <div class="card" style="padding:0">
     <div class="tbl-wrap">
@@ -1341,12 +1355,12 @@ export function renderLeadership() {
 
   <div class="report-section">
     <h2>Executive Summary</h2>
-    <div class="stat-row">
-      <div class="stat-card n"><div class="stat-num">${projects.length}</div><div class="stat-lbl">Total Projects</div></div>
-      <div class="stat-card g"><div class="stat-num">${projects.filter(p=>normaliseStatus(p.status)==='Completed').length}</div><div class="stat-lbl">Completed</div></div>
-      <div class="stat-card a"><div class="stat-num">${atRisk.length}</div><div class="stat-lbl">At Risk</div></div>
-      <div class="stat-card r"><div class="stat-num">${overdue.length}</div><div class="stat-lbl">Overdue</div></div>
-    </div>
+    ${statRow(
+      statBlock(projects.length,'Total Projects','across all tracks','var(--navy)') +
+      statBlock(projects.filter(p=>normaliseStatus(p.status)==='Completed').length,'Completed','signed off','#059669') +
+      statBlock(atRisk.length,'At Risk','flagged milestones','#D97706') +
+      statBlock(overdue.length,'Overdue','past due date','#DC2626')
+    )}
   </div>
 
   <div class="report-section">
@@ -1598,13 +1612,6 @@ export function renderPledges() {
     'On Track':'badge-teal','At Risk':'badge-amber','Breached':'badge-red','Honored':'badge-green'
   };
 
-  const PLEDGE_STATUSES = [
-    { label:'On Track', color:'#1e8a4a', bg:'#f0fdf4' },
-    { label:'At Risk',  color:'#D97706', bg:'#fffbeb' },
-    { label:'Breached', color:'#DC2626', bg:'#fef2f2' },
-    { label:'Honored',  color:'#065F46', bg:'#ecfdf5' },
-  ];
-
   return `
   <div class="vh">
     <div class="vh-left">
@@ -1616,17 +1623,12 @@ export function renderPledges() {
     </div>
   </div>
 
-  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
-    ${PLEDGE_STATUSES.map(s=>{
-      const cnt = pledges.filter(p=>p.status===s.label).length;
-      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-radius:10px;background:${s.bg};border:1px solid ${s.color}28;border-left:4px solid ${s.color};min-width:110px">
-        <div>
-          <div style="font-size:24px;font-weight:800;color:${s.color};line-height:1">${cnt}</div>
-          <div style="font-size:11px;font-weight:600;color:${s.color};margin-top:2px">${s.label}</div>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>
+  ${statRow(
+    statBlock(pledges.filter(p=>p.status==='On Track').length,'On Track','commitments on schedule','#1e8a4a') +
+    statBlock(pledges.filter(p=>p.status==='At Risk').length,'At Risk','need attention','#D97706') +
+    statBlock(pledges.filter(p=>p.status==='Breached').length,'Breached','overdue commitments','#DC2626') +
+    statBlock(pledges.filter(p=>p.status==='Honored').length,'Honored','delivered and signed off','#059669')
+  )}
 
   <div class="filter-row">
     <div class="fg"><label>Status</label>
