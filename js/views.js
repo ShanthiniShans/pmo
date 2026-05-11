@@ -64,36 +64,51 @@ function filterProjects(projects) {
 function filterBar() {
   const f = APP_STATE.filters;
   const tracks = APP_STATE.settings.trackNames || ['Track 1','Track 2','Track 3'];
-  return `<div class="filter-row no-print">
-    <div class="fg">
-      <label>Year</label>
-      <select onchange="window._filterChange('year',this.value)">
-        ${[2026,2027].map(y=>`<option value="${y}" ${f.year==y?'selected':''}>${y}</option>`).join('')}
-      </select>
+  const hasActive = f.quarter || f.track || f.startDate || f.endDate;
+
+  function pill(label, key, val, active) {
+    return `<button onclick="window._filterChange('${key}','${active?'':val}')"
+      style="padding:3px 11px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid ${active?'#1B2B5E':'#DDE3EE'};background:${active?'#1B2B5E':'#fff'};color:${active?'#fff':'#64748B'};font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap;line-height:1.6">${label}</button>`;
+  }
+
+  function sep() {
+    return `<div style="width:1px;height:20px;background:#E2E8F0;flex-shrink:0"></div>`;
+  }
+
+  return `<div class="no-print" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 16px;background:#F8FAFC;border:1px solid #EEF2F8;border-radius:10px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em">Year</span>
+      <div style="display:flex;gap:3px">
+        ${[2026,2027].map(y=>pill(y,'year',y,f.year==y)).join('')}
+      </div>
     </div>
-    <div class="fg">
-      <label>Quarter</label>
-      <select onchange="window._filterChange('quarter',this.value)">
-        <option value="">All</option>
-        ${['Q1','Q2','Q3','Q4'].map(q=>`<option value="${q}" ${f.quarter===q?'selected':''}>${q}</option>`).join('')}
-      </select>
+    ${sep()}
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em">Quarter</span>
+      <div style="display:flex;gap:3px">
+        ${['Q1','Q2','Q3','Q4'].map(q=>pill(q,'quarter',q,f.quarter===q)).join('')}
+      </div>
     </div>
-    <div class="fg">
-      <label>Track</label>
-      <select onchange="window._filterChange('track',this.value)">
+    ${sep()}
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em">Track</span>
+      <select onchange="window._filterChange('track',this.value)"
+        style="font-size:11px;font-weight:600;padding:3px 24px 3px 10px;border-radius:20px;border:1.5px solid ${f.track?'#1B2B5E':'#DDE3EE'};background:${f.track?'#1B2B5E':'#fff'};color:${f.track?'#fff':'#64748B'};cursor:pointer;font-family:'DM Sans',sans-serif;appearance:none;-webkit-appearance:none;outline:none">
         <option value="">All Tracks</option>
         ${tracks.map(t=>`<option value="${t}" ${f.track===t?'selected':''}>${t}</option>`).join('')}
       </select>
     </div>
-    <div class="fg">
-      <label>From</label>
-      <input type="date" value="${f.startDate||''}" onchange="window._filterChange('startDate',this.value)"/>
+    ${sep()}
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em">From</span>
+      <input type="date" value="${f.startDate||''}" onchange="window._filterChange('startDate',this.value)"
+        style="font-size:11px;padding:3px 10px;border-radius:20px;border:1.5px solid ${f.startDate?'#1B2B5E':'#DDE3EE'};color:${f.startDate?'#1B2B5E':'#94A3B8'};font-family:'DM Sans',sans-serif;background:#fff;outline:none"/>
+      <span style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em">To</span>
+      <input type="date" value="${f.endDate||''}" onchange="window._filterChange('endDate',this.value)"
+        style="font-size:11px;padding:3px 10px;border-radius:20px;border:1.5px solid ${f.endDate?'#1B2B5E':'#DDE3EE'};color:${f.endDate?'#1B2B5E':'#94A3B8'};font-family:'DM Sans',sans-serif;background:#fff;outline:none"/>
     </div>
-    <div class="fg">
-      <label>To</label>
-      <input type="date" value="${f.endDate||''}" onchange="window._filterChange('endDate',this.value)"/>
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="window._filterReset()">Reset</button>
+    ${hasActive ? `${sep()}<button onclick="window._filterReset()"
+      style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid #FCA5A5;background:#FEF2F2;color:#EF4444;font-family:'DM Sans',sans-serif;transition:all .15s">× Reset</button>` : ''}
   </div>`;
 }
 
@@ -488,8 +503,8 @@ export function renderTracks() {
 export function renderRoadmap() {
   const f = APP_STATE.filters;
   const year = parseInt(f.year) || 2026;
-  const projects = filterProjects(APP_STATE.projects);
-  const milestones = APP_STATE.milestones;
+  const projects = filterProjects(APP_STATE.projects).sort((a,b)=>{ const da=a.startDate||''; const db=b.startDate||''; return da<db?-1:da>db?1:0; });
+  const milestones = [...APP_STATE.milestones].sort((a,b)=>{ const da=a.dueDate||''; const db=b.dueDate||''; return da<db?-1:da>db?1:0; });
 
   let startMonth = 0, endMonth = 11;
   if (f.quarter === 'Q1') { startMonth = 0; endMonth = 2; }
@@ -700,7 +715,8 @@ export function renderMilestones() {
 
 // ─── PROJECTS ─────────────────────────────────────────────
 export function renderProjects() {
-  const projects = filterProjects(APP_STATE.projects);
+  const projects = filterProjects(APP_STATE.projects)
+    .sort((a,b)=>{ const da=a.endDate||a.startDate||''; const db=b.endDate||b.startDate||''; return da<db?-1:da>db?1:0; });
   const total     = projects.length;
   const inProg    = projects.filter(p=>normaliseStatus(p.status)==='In Progress').length;
   const completed = projects.filter(p=>normaliseStatus(p.status)==='Completed').length;
@@ -1309,7 +1325,7 @@ export function renderRisks() {
 
 // ─── ESCALATIONS ──────────────────────────────────────────
 export function renderEscalations() {
-  const escs = APP_STATE.escalations;
+  const escs = [...(APP_STATE.escalations||[])].sort((a,b)=>{ const da=a.date||''; const db=b.date||''; return da>db?-1:da<db?1:0; });
   return `
   <div class="vh">
     <div class="vh-left">
@@ -1338,8 +1354,8 @@ export function renderEscalations() {
 
 // ─── LEADERSHIP REPORT ────────────────────────────────────
 export function renderLeadership() {
-  const projects  = APP_STATE.projects;
-  const milestones = APP_STATE.milestones;
+  const projects  = [...APP_STATE.projects].sort((a,b)=>{ const da=a.endDate||a.startDate||''; const db=b.endDate||b.startDate||''; return da<db?-1:da>db?1:0; });
+  const milestones = [...APP_STATE.milestones].sort((a,b)=>{ const da=a.dueDate||''; const db=b.dueDate||''; return da<db?-1:da>db?1:0; });
   const risks     = APP_STATE.risks;
   const overdue   = milestones.filter(m=>normaliseStatus(m.status)==='Overdue');
   const atRisk    = milestones.filter(m=>normaliseStatus(m.status)==='At Risk');
@@ -1418,7 +1434,7 @@ export function renderLeadership() {
 
 // ─── IMPACTS ──────────────────────────────────────────────
 export function renderImpacts() {
-  const impacts = APP_STATE.impacts;
+  const impacts = [...(APP_STATE.impacts||[])].sort((a,b)=>{ const da=a.date||a.startDate||''; const db=b.date||b.startDate||''; return da>db?-1:da<db?1:0; });
   return `
   <div class="vh">
     <div class="vh-left">
@@ -1456,7 +1472,7 @@ export function renderImpacts() {
 
 // ─── CHARTERS ─────────────────────────────────────────────
 export function renderCharters() {
-  const charters = APP_STATE.charters;
+  const charters = [...(APP_STATE.charters||[])].sort((a,b)=>{ const da=a.startDate||a.createdAt||''; const db=b.startDate||b.createdAt||''; return da<db?-1:da>db?1:0; });
   return `
   <div class="vh">
     <div class="vh-left">
@@ -1588,7 +1604,7 @@ export function renderSettings() {
 // PLEDGES VIEW
 // ============================================================
 export function renderPledges() {
-  const pledges = APP_STATE.pledges || [];
+  const pledges = [...(APP_STATE.pledges||[])].sort((a,b)=>{ const da=a.dueDate||''; const db=b.dueDate||''; if(!da) return 1; if(!db) return -1; return da<db?-1:da>db?1:0; });
 
   function countdown(dueDate, status) {
     if (status === 'Honored') return `<span class="countdown honored">✓ Honored</span>`;
@@ -1692,7 +1708,7 @@ export function renderPledges() {
 // KNOWLEDGE VIEW
 // ============================================================
 export function renderKnowledge() {
-  const docs   = APP_STATE.knowledge || [];
+  const docs   = [...(APP_STATE.knowledge||[])].sort((a,b)=>{ const da=a.date||a.createdAt||''; const db=b.date||b.createdAt||''; return da>db?-1:da<db?1:0; });
   const search = APP_STATE._knowledgeSearch || '';
 
   let filtered = docs;

@@ -41,6 +41,8 @@ async function navigateTo(view, params) {
 
   APP_STATE.currentView = view;
   APP_STATE.currentParams = params || {};
+  localStorage.setItem('klarion_view', view);
+  localStorage.setItem('klarion_params', JSON.stringify(params || {}));
 
   // Update sidebar active state
   document.querySelectorAll('.nav-item').forEach(el => {
@@ -283,7 +285,9 @@ export async function initApp() {
 
   // NOTE: seedIfEmpty() call intentionally removed — live data must not be overwritten
   await initData(scheduleRefresh);
-  navigateTo('dashboard');
+  const savedView = localStorage.getItem('klarion_view');
+  const savedParams = (() => { try { return JSON.parse(localStorage.getItem('klarion_params')||'{}'); } catch(e) { return {}; } })();
+  navigateTo(savedView && VIEWS[savedView] ? savedView : 'dashboard', savedParams);
 }
 
 window.testJiraConfig = async function() {
