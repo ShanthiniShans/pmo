@@ -354,8 +354,40 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-dk); border-radius: 10px; }
 
+/* ── WIZARD STEP INDICATOR ── */
+.step-indicator { display:flex; align-items:center; justify-content:center; gap:0; padding:16px 20px 0; margin-bottom:20px; }
+.step-circle { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; border:2px solid var(--border-dk); color:var(--lt); background:var(--white); transition:all .2s; flex-shrink:0; }
+.step-circle.active { background:var(--navy); border-color:var(--navy); color:#fff; }
+.step-circle.done { background:var(--teal); border-color:var(--teal); color:#fff; }
+.step-line { flex:1; height:2px; background:var(--border); max-width:60px; }
+.step-line.done { background:var(--teal); }
+.step-label { font-size:9px; color:var(--lt); text-align:center; margin-top:3px; font-weight:600; text-transform:uppercase; }
+.pill-group { display:flex; gap:6px; flex-wrap:wrap; }
+.pill-opt { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid var(--border-dk); background:var(--white); color:var(--mid); font-family:'DM Sans',sans-serif; transition:all .15s; }
+.pill-opt.selected { background:var(--navy); color:#fff; border-color:var(--navy); }
+.pill-opt.sel-critical { background:#dc2626; border-color:#dc2626; color:#fff; }
+.pill-opt.sel-high { background:#d97706; border-color:#d97706; color:#fff; }
+.pill-opt.sel-low { background:#16a34a; border-color:#16a34a; color:#fff; }
+.slider-wrap { display:flex; align-items:center; gap:12px; }
+.slider-wrap input[type=range] { flex:1; accent-color:var(--teal); cursor:pointer; }
+.slider-val { min-width:42px; text-align:center; font-size:16px; font-weight:800; color:var(--navy); }
+.field-error { font-size:11px; color:#dc2626; margin-top:4px; display:none; }
+.field-error.show { display:block; }
+
+/* ── PROJECT LINK ── */
+.proj-link { cursor:pointer; color:var(--navy); font-weight:700; }
+.proj-link:hover { color:var(--teal); text-decoration:underline; }
+
 /* ── PRINT ── */
-@media print { #sidebar { display: none !important; } #main { margin-left: 0 !important; } .content { padding: 10px !important; } .no-print { display: none !important; } }
+@media print {
+  #sidebar { display:none !important; }
+  #main { margin-left:0 !important; }
+  .no-print { display:none !important; }
+  .content { padding:10px !important; }
+  .mo { display:none !important; }
+  body { background:#fff !important; }
+  .stat-card { border:1px solid #ccc !important; box-shadow:none !important; }
+}
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {

@@ -186,17 +186,24 @@ window._showMsDetail = function(msId, event) {
 // ─── EXEC BANNER ──────────────────────────────────────────
 function execBanner(active) {
   const steps = [
-    { view:'team',     label:'Team',      desc:'Members & roles',        num:1 },
-    { view:'capacity', label:'Capacity',  desc:'Allocation planning',    num:2 },
-    { view:'resources',label:'Resources', desc:'Weekly hour tracking',   num:3 }
+    { view:'team',     label:'Team',                 desc:'Members & roles',             num:1 },
+    { view:'capacity', label:'Capacity & Resources', desc:'Allocation + hour tracking',  num:2 }
   ];
+  // Internal sub-tabs shown inside Capacity & Resources
+  const capTab = APP_STATE._capTab || 'allocation';
+  const subLinks = active==='capacity'
+    ? `<div style="display:flex;gap:4px;margin-left:8px">
+        <span onclick="APP_STATE._capTab='allocation';nav('capacity')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;background:${capTab==='allocation'?'rgba(0,168,150,.35)':'rgba(255,255,255,.08)'};color:#fff;font-weight:600">Allocation</span>
+        <span onclick="APP_STATE._capTab='timelog';nav('capacity')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;background:${capTab==='timelog'?'rgba(0,168,150,.35)':'rgba(255,255,255,.08)'};color:#fff;font-weight:600">Time Log</span>
+      </div>`
+    : '';
   return `<div class="exec-banner">
     ${steps.map((s,i)=>`
       ${i>0?`<div class="exec-arrow">›</div>`:''}
-      <div class="exec-step-card ${active===s.view?'active':''}" onclick="nav('${s.view}')">
+      <div class="exec-step-card ${active===s.view||active==='resources'&&s.view==='capacity'?'active':''}" onclick="nav('${s.view}')">
         <div class="exec-step-num">${s.num}</div>
         <div class="exec-step-info">
-          <div class="exec-step-title">${s.label}</div>
+          <div class="exec-step-title" style="display:flex;align-items:center;gap:4px">${s.label}${s.view==='capacity'?subLinks:''}</div>
           <div class="exec-step-desc">${s.desc}</div>
         </div>
       </div>`).join('')}
@@ -205,214 +212,167 @@ function execBanner(active) {
 
 // ─── DASHBOARD ────────────────────────────────────────────
 export function renderDashboard() {
-  const projects = APP_STATE.projects.map(p=>({...p, name:p.name||p.title||'Unnamed', status:normaliseStatus(p.status||p.rag||'')}));
-  const milestones = APP_STATE.milestones.map(m=>({...m, title:m.title||m.name||'Unnamed', status:normaliseStatus(m.status||m.rag||'')}));
+  const today     = DateHelpers.today();
+  const projects  = APP_STATE.projects.map(p=>({...p, name:p.name||p.title||'Unnamed', status:normaliseStatus(p.status||p.rag||'')}));
+  const milestones= APP_STATE.milestones.map(m=>({...m, title:m.title||m.name||'Unnamed', status:normaliseStatus(m.status||m.rag||'')}));
+  const risks     = APP_STATE.risks;
+  const escs      = APP_STATE.escalations || [];
+  const pledges   = APP_STATE.pledges || [];
   const total     = projects.length;
   const inProg    = projects.filter(p=>p.status==='In Progress').length;
-  const atRisk    = milestones.filter(m=>m.status==='At Risk').length;
-  const overdue   = milestones.filter(m=>m.status==='Overdue').length;
   const completed = projects.filter(p=>p.status==='Completed').length;
-  const upcoming  = milestones.filter(m=>m.status!=='Completed').sort((a,b)=>a.dueDate>b.dueDate?1:-1).slice(0,5);
-  const openRisks = APP_STATE.risks.filter(r=>normaliseStatus(r.status)==='Open');
-  const openEsc   = APP_STATE.escalations.filter(e=>normaliseStatus(e.status||'Open')==='Open');
-  const highRisks = openRisks.filter(r=>(r.likelihood||1)*(r.impact||1)>=12);
-  const medRisks  = openRisks.filter(r=>{ const s=(r.likelihood||1)*(r.impact||1); return s>=6&&s<12; });
-  const activeTab = APP_STATE._dashTab || 'flags';
-  const overdueMilestones = milestones.filter(m=>m.status==='Overdue');
+  const atRiskProj= projects.filter(p=>['At Risk','Overdue'].includes(p.status)).length;
+  const overdueMilestones = milestones.filter(m=>m.dueDate<today&&m.status!=='Completed');
+  const openRisks = risks.filter(r=>normaliseStatus(r.status)==='Open');
+  const openEsc   = escs.filter(e=>normaliseStatus(e.status||'Open')==='Open');
+  const activeTab = APP_STATE._pulseTab || 'flags';
 
-  const PIPELINE = [
-    {label:'Idea',           color:'#94A3B8'},
-    {label:'Brief Draft',    color:'#1282a0'},
-    {label:'3-Way Scope',    color:'#D97706'},
-    {label:'Ready to Build', color:'#1e8a4a'},
-    {label:'In Progress',    color:'#7C3AED'},
-    {label:'Released',       color:'#059669'},
-    {label:'Observation',    color:'#2563EB'},
-  ];
+  // ── Auto-surfaced flags ─────────────────────────────────
+  const flagsA = overdueMilestones.map(m=>({ type:'high', label:'OVERDUE MILESTONE', title:m.title, sub:`${m.projectName||'—'} · ${teamName(m.ownerId)||'—'}`, detail:`${DateHelpers.daysBetween(m.dueDate,today)}d overdue`, action:`nav('milestones')` }));
+  const flagsB = pledges.filter(p=>p.status==='Breached'||(p.dueDate&&p.dueDate<today&&p.status!=='Honored')).map(p=>({ type:'high', label:'BREACHED PLEDGE', title:p.title||'—', sub:p.customer||'—', detail:p.dueDate&&p.dueDate<today?`${DateHelpers.daysBetween(p.dueDate,today)}d overdue`:'Breached', action:`nav('pledges')` }));
+  const flagsC = openRisks.filter(r=>(r.likelihood||1)*(r.impact||1)>=7).map(r=>({ type:'high', label:'HIGH RISK', title:r.title, sub:`${r.project||'—'} · Score ${(r.likelihood||1)*(r.impact||1)}`, detail:r.owner||'—', action:`nav('risks')` }));
+  const flagsD = openEsc.filter(e=>['L3','L4'].includes(e.level||'')).map(e=>({ type:'high', label:'ESCALATION '+e.level, title:e.project||'—', sub:e.title||e.issue||'—', detail:e.date?`${DateHelpers.daysBetween(e.date,today)}d open`:'Open', action:`nav('escalations')` }));
+  const flagsE = milestones.filter(m=>m.status==='At Risk'&&(!m.dueDate||m.dueDate>=today)).map(m=>({ type:'med', label:'AT RISK', title:m.title, sub:m.projectName||'—', detail:DateHelpers.fmt(m.dueDate), action:`nav('milestones')` }));
+  const flagsF = openRisks.filter(r=>{ const s=(r.likelihood||1)*(r.impact||1); return s>=4&&s<7; }).map(r=>({ type:'med', label:'MEDIUM RISK', title:r.title, sub:r.project||'—', detail:'Score '+(r.likelihood||1)*(r.impact||1), action:`nav('risks')` }));
+  const allFlags = [...flagsA,...flagsB,...flagsC,...flagsD,...flagsE,...flagsF];
+  const openFlagsCount = allFlags.length;
 
-  function sumBlock(n, lbl, sub, col) {
-    const on = n > 0;
-    return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 8px;gap:3px;border-right:1px solid var(--border)">
-      <span style="font-size:28px;font-weight:800;color:${on?col:'#D1C9E0'};line-height:1">${n}</span>
-      <span style="font-size:11px;font-weight:700;color:${on?col:'#D1C9E0'}">${lbl}</span>
-      <span style="font-size:9px;color:var(--lt);text-align:center;line-height:1.3">${sub}</span>
+  function flagCard(f) {
+    const labelCol = f.type==='high' ? '#dc2626' : '#d97706';
+    return `<div class="flag-card ${f.type}" onclick="${f.action}" style="cursor:pointer">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span class="flag-type" style="background:${labelCol}18;color:${labelCol}">${f.label}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--navy);flex:1">${f.title}</span>
+        ${f.detail?`<span style="font-size:11px;font-weight:700;color:${f.type==='high'?'#dc2626':'#d97706'};white-space:nowrap">${f.detail}</span>`:''}
+      </div>
+      ${f.sub?`<div style="font-size:11px;color:var(--lt)">${f.sub}</div>`:''}
     </div>`;
   }
 
-  function fSection(title, subtitle, accent, items, renderItem) {
-    return `<div class="card" style="overflow:hidden;padding:0">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 18px;border-bottom:1px solid var(--border);background:#FAFAFA;border-left:4px solid ${accent}">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:13px;font-weight:700;color:var(--navy)">${title}</span>
-            <span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:980px;background:${items.length>0?accent+'20':'rgba(0,0,0,.05)'};color:${items.length>0?accent:'var(--lt)'}">${items.length}</span>
-          </div>
-          <div style="font-size:11px;color:var(--lt);margin-top:2px">${subtitle}</div>
+  // ── Stat row (always visible) ────────────────────────────
+  function statItem(n, lbl, col, clickable) {
+    const style = `display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 10px;gap:3px;border-right:1px solid var(--border);flex:1;min-width:0${clickable?';cursor:pointer':''}`;
+    const click = clickable ? `onclick="APP_STATE._pulseTab='flags';nav('dashboard')"` : '';
+    return `<div style="${style}" ${click}>
+      <span style="font-size:26px;font-weight:800;color:${n>0?col:'#D1C9E0'};line-height:1">${n}</span>
+      <span style="font-size:10px;font-weight:700;color:${n>0?col:'#D1C9E0'};text-align:center;line-height:1.3">${lbl}</span>
+    </div>`;
+  }
+
+  const statRowHtml = `<div class="card" style="overflow:hidden;padding:0;margin-bottom:16px">
+    <div style="display:flex;overflow-x:auto">
+      ${statItem(total,'Total Projects','var(--navy)',false)}
+      ${statItem(inProg,'In Progress','#1282a0',false)}
+      ${statItem(completed,'Completed','#059669',false)}
+      ${statItem(atRiskProj,'At Risk','#d97706',false)}
+      ${statItem(overdueMilestones.length,'Overdue Milestones','#dc2626',true)}
+      ${statItem(openFlagsCount,'Open Flags','#dc2626',true)}
+    </div>
+  </div>`;
+
+  // ── Health tab ───────────────────────────────────────────
+  function healthTab() {
+    const tracks = APP_STATE.settings.trackNames || ['Track 1','Track 2','Track 3'];
+    const TC = { 'Track 1':'#1B2B5E','Track 2':'#00A896','Track 3':'#E8452C' };
+    const onTrackMs = milestones.filter(m=>['On Track','Yet to Start'].includes(m.status)).length;
+    const atRiskMs  = milestones.filter(m=>m.status==='At Risk').length;
+    const overdueMs = overdueMilestones.length;
+    const msTotal   = onTrackMs + atRiskMs + overdueMs;
+    const msBar = msTotal > 0 ? `
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Milestone Health</div>
+        <div style="display:flex;height:14px;border-radius:6px;overflow:hidden;margin-bottom:8px">
+          ${onTrackMs>0?`<div style="flex:${onTrackMs};background:#22c55e;transition:flex .3s"></div>`:''}
+          ${atRiskMs>0?`<div style="flex:${atRiskMs};background:#f59e0b"></div>`:''}
+          ${overdueMs>0?`<div style="flex:${overdueMs};background:#ef4444"></div>`:''}
         </div>
-      </div>
-      <div style="padding:8px 18px">
-        ${items.length===0?`<p style="font-size:12px;color:var(--lt);padding:6px 0">All clear</p>`:`<div style="display:flex;flex-direction:column;gap:1px">${items.map(renderItem).join('')}</div>`}
+        <div style="display:flex;gap:14px;font-size:11px">
+          <span style="color:#16a34a;font-weight:600">✅ ${onTrackMs} on track</span>
+          <span style="color:#d97706;font-weight:600">⚠️ ${atRiskMs} at risk</span>
+          <span style="color:#dc2626;font-weight:600">🔴 ${overdueMs} overdue</span>
+        </div>
+      </div>` : '';
+    const trackTable = tracks.length ? `
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Track Utilisation</div>
+        <div class="tbl-wrap">
+          <table class="dt">
+            <thead><tr><th>Track</th><th>Members</th><th>Projects</th><th>Avg Allocation</th><th>Signal</th></tr></thead>
+            <tbody>
+              ${tracks.map(track=>{
+                const tm  = APP_STATE.teamMembers.filter(m=>m.track===track);
+                const tp  = projects.filter(p=>p.track===track);
+                const avgAlloc = tm.length ? Math.round(tm.reduce((s,m)=>s+(m.availability||100),0)/tm.length) : 0;
+                const signal = avgAlloc>85?`<span style="color:#dc2626;font-weight:700">⚠️ Overloaded</span>`:overdueMs>0?`<span style="color:#d97706;font-weight:700">⚠️ Delays</span>`:`<span style="color:#16a34a;font-weight:700">✅ Healthy</span>`;
+                return `<tr>
+                  <td style="font-weight:700;color:${TC[track]||'var(--navy)'}">● ${track}</td>
+                  <td>${tm.length}</td>
+                  <td>${tp.length}</td>
+                  <td>${avgAlloc}%</td>
+                  <td>${signal}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : `<div class="empty"><div class="empty-icon">🏷️</div>No tracks configured</div>`;
+    const ragGrid = `<div class="card">
+      <div class="card-title">Project RAG Status</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+        ${projects.length ? projects.map(p=>`
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer" onclick="nav('project-detail',{id:'${p.id}'})">
+            <span class="proj-link" style="font-size:13px;display:block;margin-bottom:4px">${p.name}</span>
+            <div style="font-size:11px;color:var(--lt);margin-bottom:6px">${p.track||'—'} · ${p.phase||'—'}</div>
+            ${progressBar(p.progress||0)}
+            <div style="display:flex;align-items:center;gap:6px;margin-top:4px">${ragBadge(p.status)}<span style="font-size:11px;color:var(--lt)">${DateHelpers.fmt(p.endDate)}</span></div>
+          </div>`).join('') : `<div class="empty"><div class="empty-icon">📋</div>No projects</div>`}
       </div>
     </div>`;
+    return msBar + trackTable + ragGrid;
   }
 
-  function fRow(title, sub, detail, detailColor, action) {
-    return `<div onclick="${action}" style="display:flex;align-items:center;gap:12px;padding:8px 8px;border-radius:6px;cursor:pointer;transition:background .1s" onmouseover="this.style.background='#F8F6FC'" onmouseout="this.style.background=''">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${title}</div>
-        ${sub?`<div style="font-size:11px;color:var(--lt);margin-top:1px">${sub}</div>`:''}
-      </div>
-      ${detail?`<span style="font-size:11px;font-weight:600;color:${detailColor};white-space:nowrap;background:${detailColor}12;padding:2px 8px;border-radius:4px">${detail}</span>`:''}
-      <span style="font-size:11px;color:var(--lt);flex-shrink:0">→</span>
+  // ── Activity tab ─────────────────────────────────────────
+  function activityTab() {
+    const items = [
+      ...milestones.map(m=>({ icon:'🎯', label:m.title, proj:m.projectName||'—', date:m.updatedAt||m.createdAt||m.dueDate||'' })),
+      ...(risks).map(r=>({ icon:'⚠️', label:r.title, proj:r.project||'—', date:r.updatedAt||r.createdAt||'' })),
+      ...(escs).map(e=>({ icon:'🚨', label:e.title||'Escalation', proj:e.project||'—', date:e.date||e.createdAt||'' })),
+      ...(pledges).map(p=>({ icon:'🤝', label:p.title||'Pledge', proj:p.customer||'—', date:p.updatedAt||p.createdAt||p.dueDate||'' }))
+    ].filter(x=>x.date).sort((a,b)=>b.date>a.date?1:-1).slice(0,15);
+    return `<div class="card">
+      ${items.length ? items.map(a=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:16px;flex-shrink:0">${a.icon}</span>
+          <div style="flex:1;min-width:0">
+            <span style="font-size:13px;font-weight:600;color:var(--navy)">${a.label}</span>
+            <span style="font-size:11px;color:var(--lt)"> · ${a.proj}</span>
+          </div>
+          <span style="font-size:11px;color:var(--lt);flex-shrink:0">${DateHelpers.fmt(a.date)}</span>
+        </div>`).join('') : `<div class="empty"><div class="empty-icon">📝</div>No recent activity</div>`}
     </div>`;
   }
-
-  function fGroup(label, accent, count, children) {
-    if (count === 0) return '';
-    return `<div style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div style="width:10px;height:10px;border-radius:50%;background:${accent}"></div>
-        <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${accent}">${label}</span>
-        <span style="font-size:10px;padding:1px 8px;border-radius:980px;background:${accent}15;color:${accent};font-weight:600">${count} item${count!==1?'s':''}</span>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px;padding-left:18px;border-left:2px solid ${accent}20">
-        ${children}
-      </div>
-    </div>`;
-  }
-
-  const activeCnt   = projects.filter(p=>['In Progress','Ready to Build'].includes(stageOf(p))).length;
-  const attentionCnt= projects.filter(p=>['Idea','Brief Draft','3-Way Scope'].includes(stageOf(p))).length;
-  const pipelineBoxes = PIPELINE.map(s=>{
-    const cnt = projects.filter(p=>stageOf(p)===s.label).length;
-    return `<div style="flex:1;display:flex;flex-direction:column;gap:4px;align-items:center">
-      <div onclick="nav('tracks')" style="width:100%;height:36px;border-radius:4px;background:${cnt>0?s.color+'18':'#F7F5FC'};border:1px solid ${cnt>0?s.color+'30':'#EDE6F7'};display:flex;align-items:center;justify-content:center;cursor:pointer">
-        <span style="font-size:${cnt>9?14:18}px;font-weight:700;color:${cnt>0?s.color:'#D1C9E0'}">${cnt}</span>
-      </div>
-      <span style="font-size:9px;text-align:center;line-height:1.25;color:${cnt>0?s.color:'var(--lt)'};font-weight:${cnt>0?600:400}">${s.label}</span>
-    </div>`;
-  }).join('');
 
   return `
   <div class="vh">
     <div class="vh-left">
       <h1>Pulse</h1>
-      <div class="sub">Your weekly standup, generated.</div>
+      <div class="sub">Programme health at a glance</div>
     </div>
   </div>
-
-  <div class="card" style="margin-bottom:20px;overflow:hidden;padding:0">
-    <div style="padding:8px 20px 0;display:flex;align-items:center;gap:6px">
-      <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lt)">Portfolio snapshot</span>
-      <span style="font-size:10px;color:var(--lt)">· projects grouped by status · click a number to see it in Clarity ↓</span>
+  ${statRowHtml}
+  <div class="card" style="padding:0">
+    <div class="pulse-tabs" style="padding:0 16px">
+      <button class="pt ${activeTab==='flags'?'active':''}"  onclick="APP_STATE._pulseTab='flags';nav('dashboard')">🚩 Flags${openFlagsCount>0?` (${openFlagsCount})`:''}</button>
+      <button class="pt ${activeTab==='health'?'active':''}" onclick="APP_STATE._pulseTab='health';nav('dashboard')">❤️ Health</button>
+      <button class="pt ${activeTab==='activity'?'active':''}" onclick="APP_STATE._pulseTab='activity';nav('dashboard')">⚡ Activity</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border)">
-      ${sumBlock(total,'Total','all projects across all statuses','var(--navy)')}
-      ${sumBlock(activeCnt,'Active','In Progress + Ready to Build','#1282a0')}
-      ${sumBlock(attentionCnt,'Needs Action','Idea · Draft · Scope · flag these','#D97706')}
-      ${sumBlock(completed,'Completed','signed off and delivered','#065F46')}
+    <div style="padding:14px 16px">
+      ${activeTab==='flags' ? (allFlags.length
+          ? allFlags.map(flagCard).join('')
+          : `<div class="card" style="border:2px solid #22c55e;background:#f0fdf4;text-align:center;padding:24px"><div style="font-size:22px;margin-bottom:6px">✅</div><div style="font-size:14px;font-weight:700;color:#15803d">All clear — no open flags</div></div>`)
+        : activeTab==='health' ? healthTab()
+        : activityTab()}
     </div>
-    <div style="padding:10px 20px 0;display:flex;align-items:center;gap:6px">
-      <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lt)">Status breakdown</span>
-      <span style="font-size:10px;color:var(--lt)">· matches the 7 Clarity stages · click any box to open Clarity →</span>
-    </div>
-    <div style="padding:10px 20px 14px">
-      <div style="display:flex;gap:4px;align-items:stretch">${pipelineBoxes}</div>
-      <div style="display:flex;gap:4px;margin-top:3px">
-        ${Array(6).fill('<div style="flex:1;display:flex;justify-content:flex-end"><span style="font-size:9px;color:#D1C9E0">→</span></div>').join('')}
-        <div style="flex:1"></div>
-      </div>
-    </div>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;margin-bottom:16px;align-items:start">
-    <div class="card">
-      <div class="card-title">Project RAG Status</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px">
-        ${projects.length ? projects.map(p=>`
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:box-shadow .12s" onclick="nav('project-detail',{id:'${p.id}'})" onmouseover="this.style.boxShadow='0 2px 8px rgba(27,43,94,.1)'" onmouseout="this.style.boxShadow=''">
-          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">${p.name}</div>
-          <div style="font-size:11px;color:var(--lt);margin-bottom:8px">${p.track||'—'} · ${p.phase||'—'}</div>
-          ${progressBar(p.progress||0)}
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">${ragBadge(p.status)}<span style="font-size:11px;color:var(--lt)">${p.progress||0}%</span></div>
-        </div>`).join('') : `<div class="empty"><div class="empty-icon">📋</div>No projects yet</div>`}
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="card">
-        <div class="card-title">Upcoming Milestones</div>
-        ${upcoming.length ? upcoming.map(m=>`
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="flex:1">
-            <div style="font-size:12px;font-weight:600;color:var(--navy)">${m.title}</div>
-            <div style="font-size:11px;color:var(--lt)">${m.projectName||'—'}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">${ragBadge(m.status)}<div style="font-size:11px;color:var(--lt);margin-top:3px">${DateHelpers.fmt(m.dueDate)}</div></div>
-        </div>`).join('') : `<div class="empty"><div class="empty-icon">🎯</div>No upcoming milestones</div>`}
-      </div>
-      <div class="card">
-        <div class="card-title">Open Escalations</div>
-        ${openEsc.length ? openEsc.map(e=>`
-        <div style="border-left:3px solid ${['High','Critical'].includes(normaliseStatus(e.priority))?'#ef4444':'#f59e0b'};padding:8px 10px;margin-bottom:6px;border-radius:0 4px 4px 0;background:var(--bg)">
-          <div style="font-size:12px;font-weight:600;color:var(--navy)">${e.title||'Unnamed'}</div>
-          <div style="font-size:11px;color:var(--lt);margin-top:2px">${e.project||'—'} · ${DateHelpers.fmt(e.date)} · ${ragBadge(e.priority)}</div>
-        </div>`).join('') : `<div class="empty"><div class="empty-icon">✅</div>No open escalations</div>`}
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="pulse-tabs">
-      <button class="pt ${activeTab==='flags'?'active':''}" onclick="APP_STATE._dashTab='flags';nav('dashboard')">🚩 Flags</button>
-      <button class="pt ${activeTab==='health'?'active':''}" onclick="APP_STATE._dashTab='health';nav('dashboard')">❤️ Health</button>
-      <button class="pt ${activeTab==='activity'?'active':''}" onclick="APP_STATE._dashTab='activity';nav('dashboard')">⚡ Activity</button>
-    </div>
-    <div style="padding:10px 16px;background:rgba(27,43,94,.03);border-bottom:1px solid rgba(27,43,94,.06);font-size:12px;color:var(--lt);line-height:1.6">
-      ${activeTab==='flags'?'Ordered by urgency — address critical and overdue items first. Each flag links directly to the relevant view.':activeTab==='health'?'Project health by track — RAG status at a glance across all delivery streams.':'Recent completions and milestone activity across the programme.'}
-    </div>
-
-    ${activeTab==='flags' ? `
-    <div>
-      ${!overdueMilestones.length && !highRisks.length && !medRisks.length && !openEsc.length ? `<div class="empty"><div class="empty-icon">✅</div>No flags — everything is moving.</div>` : ''}
-      ${fGroup('Critical — act now','#DC2626', overdueMilestones.length + highRisks.length,
-        (overdueMilestones.length ? fSection('Overdue Milestones','Past their due date — needs immediate attention','#DC2626',overdueMilestones,m=>fRow(m.title,m.projectName||'—',DateHelpers.fmt(m.dueDate),'#DC2626',`nav('milestones')`)) : '') +
-        (highRisks.length ? fSection('High Risks','Score ≥12 — escalation required','#DC2626',highRisks,r=>fRow(r.title,r.mitigation||'','Score '+(r.likelihood||1)*(r.impact||1),'#DC2626',`nav('risks')`)) : '')
-      )}
-      ${fGroup('At risk','#D97706', medRisks.length,
-        fSection('Medium Risks','Score 6–11 — monitor and plan mitigation','#D97706',medRisks,r=>fRow(r.title,r.mitigation||'','Score '+(r.likelihood||1)*(r.impact||1),'#D97706',`nav('risks')`))
-      )}
-      ${fGroup('Escalations','#1B2B5E', openEsc.length,
-        fSection('Open Escalations','Issues raised that need resolution','#1B2B5E',openEsc,e=>fRow(e.title||'Unnamed',`${e.project||'—'} · ${DateHelpers.fmt(e.date)}`,normaliseStatus(e.priority),['High','Critical'].includes(normaliseStatus(e.priority))?'#DC2626':'#D97706',`nav('escalations')`))
-      )}
-    </div>` : ''}
-
-    ${activeTab==='health' ? `
-    <div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
-        ${['Track 1','Track 2','Track 3'].map((track,i)=>{
-          const tProj = projects.filter(p=>p.track===track);
-          const tMs   = milestones.filter(m=>m.track===track);
-          const colors = ['#1B2B5E','#00A896','#E8452C'];
-          return `<div class="card" style="border-top:3px solid ${colors[i]};margin-bottom:0">
-            <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px">${track}</div>
-            <div style="font-size:11px;color:var(--lt);margin-bottom:8px">${tProj.length} projects · ${tMs.length} milestones</div>
-            ${tProj.map(p=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px">${ragBadge(p.status)}<span style="color:var(--text)">${p.name}</span></div>`).join('')}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>` : ''}
-
-    ${activeTab==='activity' ? `
-    <div>
-      ${milestones.filter(m=>m.status==='Completed').slice(0,8).map(m=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span class="badge badge-green">✓</span>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:var(--navy)">${m.title}</div>
-          <div style="font-size:11px;color:var(--lt)">${m.projectName||'—'} · ${DateHelpers.fmt(m.completedDate||m.dueDate)}</div>
-        </div>
-      </div>`).join('') || `<div class="empty"><div class="empty-icon">📝</div>No completed milestones yet</div>`}
-    </div>` : ''}
   </div>`;
 }
 
@@ -480,7 +440,7 @@ export function renderTracks() {
                   : null;
               const stale = daysInStage !== null && daysInStage >= 14 && stage.label !== 'Released' && stage.label !== 'Observation';
               return `<div class="card" style="padding:12px 14px;cursor:pointer;border-radius:10px;transition:box-shadow .15s" onclick="nav('project-detail',{id:'${p.id}'})" onmouseover="this.style.boxShadow='0 4px 16px rgba(27,43,94,.13)'" onmouseout="this.style.boxShadow=''">
-                <div style="font-weight:600;font-size:13px;color:var(--navy);margin-bottom:6px;line-height:1.3">${p.name||p.title||'Unnamed'}</div>
+                <span class="proj-link" style="font-size:13px;display:block;margin-bottom:6px;line-height:1.3">${p.name||p.title||'Unnamed'}</span>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
                   ${p.track?`<span class="badge badge-navy" style="font-size:10px">${p.track}</span>`:''}
                   ${p.phase?`<span class="badge badge-grey" style="font-size:10px">${p.phase}</span>`:''}
@@ -619,7 +579,7 @@ export function renderRoadmap() {
           const color = STATUS_COLOR[normaliseStatus(p.status)]||'#94A3B8';
           return `<div class="gantt-row">
             <div class="gantt-lbl" onclick="nav('project-detail',{id:'${p.id}'})">
-              <div class="gantt-feat-name">${p.name}</div>
+              <span class="proj-link gantt-feat-name">${p.name}</span>
               <div class="gantt-feat-sub" style="display:flex;align-items:center;gap:6px">
                 ${ragBadge(p.status)}
                 <span>${p.progress||0}%</span>
@@ -749,7 +709,7 @@ export function renderProjects() {
           ${projects.length ? projects.map(p=>`
           <tr class="clk ${normaliseStatus(p.status)==='Completed'?'done':''}" onclick="nav('project-detail',{id:'${p.id}'})">
             <td>
-              <div style="font-weight:700;color:var(--navy)">${p.name||p.title||'Unnamed'}</div>
+              <span class="proj-link">${p.name||p.title||'Unnamed'}</span>
               <div style="font-size:11px;color:var(--lt)">${p.description||''}</div>
             </td>
             <td>${p.track?`<span class="badge badge-navy">${p.track}</span>`:'—'}</td>
@@ -779,135 +739,219 @@ export async function renderProjectDetail(params) {
   const p  = APP_STATE.projects.find(x=>x.id===id);
   if (!p) return `<div class="empty"><div class="empty-icon">❌</div>Project not found.</div>`;
 
-  const pMs    = APP_STATE.milestones.filter(m=>m.projectId===id);
-  const pNotes = APP_STATE.notes.filter(n=>n.entityId===id);
-  const charter = APP_STATE.charters.find(c=>c.projectId===id);
-  const jira   = await JiraService.fetch(p.jiraKey);
-  const tArr   = teamArr(p.team);
+  const today    = DateHelpers.today();
+  const pMs      = APP_STATE.milestones.filter(m=>m.projectId===id||m.projectName===p.name);
+  const charter  = APP_STATE.charters.find(c=>c.projectId===id||c.projectName===p.name);
+  const pRisks   = APP_STATE.risks.filter(r=>r.projectId===id||r.project===p.name);
+  const pEscs    = APP_STATE.escalations.filter(e=>e.projectId===id||e.project===p.name);
+  const trackMembers = APP_STATE.teamMembers.filter(m=>m.track===p.track||teamArr(p.team).includes(m.id));
+  const jira     = await JiraService.fetch(p.jiraKey);
+  const tArr     = teamArr(p.team);
+  const activeTab = APP_STATE._detailTab || 'overview';
+
+  function tabBtn(key, label) {
+    return `<button class="pt ${activeTab===key?'active':''}" onclick="APP_STATE._detailTab='${key}';nav('project-detail',{id:'${id}'})">${label}</button>`;
+  }
+
+  // ── TAB 1: Overview ──
+  function tabOverview() {
+    const metrics = charter?.metrics || [];
+    const charterBlock = charter
+      ? `<div style="background:#f8faff;border:1px solid var(--border);border-radius:var(--rs);padding:14px;margin-top:12px">
+           <div style="font-size:11px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:8px">Charter Metrics</div>
+           ${metrics.length ? `<div class="chip-row">${metrics.map(m=>`
+             <div class="tag" style="font-size:11px">${m.label||m.name||'—'}: <span style="color:var(--lt);margin:0 4px">${m.baseline||'—'}</span>→<span style="color:var(--teal);margin-left:4px;font-weight:700">${m.target||'—'}</span></div>`).join('')}</div>` :
+             `<div style="font-size:12px;color:var(--mid)">${charter.objectives||'No metrics defined'}</div>`}
+           <div style="margin-top:8px;display:flex;gap:6px">
+             <button class="btn btn-ghost btn-xs" onclick="openModal('charter','${charter.id}')">Edit Charter</button>
+           </div>
+         </div>`
+      : `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--rs);padding:12px;margin-top:12px;display:flex;align-items:center;gap:10px">
+           <span style="font-size:18px">📋</span>
+           <div style="flex:1"><div style="font-size:12px;font-weight:700;color:#92400e">No charter yet</div><div style="font-size:11px;color:#a16207">Define objectives and success metrics</div></div>
+           <button class="btn btn-ghost btn-xs" onclick="openModal('charter',null,'${id}')">Create Charter</button>
+         </div>`;
+    return `
+      <div class="card">
+        <div class="card-title">Description</div>
+        <div style="font-size:13px;color:var(--text)">${p.description||'<span style="color:var(--lt)">No description provided.</span>'}</div>
+        ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
+        ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
+        ${charterBlock}
+      </div>`;
+  }
+
+  // ── TAB 2: Milestones ──
+  function tabMilestones() {
+    const sorted = [...pMs].sort((a,b)=>{ if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate>b.dueDate?1:-1; });
+    const onTrack = sorted.filter(m=>['On Track','Yet to Start'].includes(normaliseStatus(m.status))).length;
+    const atRisk  = sorted.filter(m=>normaliseStatus(m.status)==='At Risk').length;
+    const overdue = sorted.filter(m=>normaliseStatus(m.status)==='Overdue').length;
+    return `
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0">Milestones (${sorted.length})</div>
+          <button class="btn btn-ghost btn-sm" onclick="openModal('milestone',null,'${id}')">+ Add Milestone</button>
+        </div>
+        ${sorted.length ? `
+        <div style="display:flex;gap:12px;margin-bottom:12px;font-size:11px">
+          <span style="color:#16a34a;font-weight:700">✅ ${onTrack} on track</span>
+          <span style="color:#d97706;font-weight:700">⚠️ ${atRisk} at risk</span>
+          <span style="color:#dc2626;font-weight:700">🔴 ${overdue} overdue</span>
+        </div>
+        <div class="tbl-wrap">
+          <table class="dt">
+            <thead><tr><th>Milestone</th><th>Due Date</th><th>Status</th><th>Owner</th><th>Timing</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${sorted.map(m=>{
+                const daysLeft = m.dueDate ? DateHelpers.daysBetween(today, m.dueDate) : null;
+                const isOverdue = daysLeft !== null && daysLeft < 0 && normaliseStatus(m.status)!=='Completed';
+                const timing = daysLeft===null ? '—' : normaliseStatus(m.status)==='Completed' ? `<span style="color:#16a34a">✓ Done</span>` :
+                  isOverdue ? `<span style="color:#dc2626;font-weight:700">${Math.abs(daysLeft)}d overdue</span>` :
+                  daysLeft <= 3 ? `<span style="color:#d97706;font-weight:700">${daysLeft}d left</span>` :
+                  `<span style="color:var(--lt)">${daysLeft}d left</span>`;
+                return `<tr>
+                  <td style="font-weight:600;color:var(--navy)">${m.title}</td>
+                  <td style="font-size:12px;${isOverdue?'color:#dc2626':''}">${DateHelpers.fmt(m.dueDate)}</td>
+                  <td>${ragBadge(m.status)}</td>
+                  <td style="font-size:12px">${m.owner||teamName(m.ownerId)||'—'}</td>
+                  <td>${timing}</td>
+                  <td onclick="event.stopPropagation()">
+                    ${normaliseStatus(m.status)!=='Completed'?`<button class="btn-icon" onclick="markMilestoneComplete('${m.id}')">✓</button>`:''}
+                    <button class="btn-icon" onclick="openModal('milestone','${m.id}')">✏️</button>
+                    <button class="btn-icon" onclick="deleteItem('milestones','${m.id}')">🗑</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>` : `<div class="empty"><div class="empty-icon">🎯</div>No milestones yet</div>`}
+      </div>`;
+  }
+
+  // ── TAB 3: Risks & Escalations ──
+  function tabRisks() {
+    return `
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0">Risks (${pRisks.length})</div>
+          <button class="btn btn-ghost btn-sm" onclick="openModal('risk')">+ Add Risk</button>
+        </div>
+        ${pRisks.length ? pRisks.map(r=>{
+          const score = (r.likelihood||1)*(r.impact||1);
+          const cls = score>=12?'score-h':score>=6?'score-m':'score-l';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:var(--rs);margin-bottom:8px">
+            <span class="risk-score ${cls}">${score}</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--navy)">${r.title}</div>
+              <div style="font-size:11px;color:var(--lt)">P:${r.likelihood||1} × I:${r.impact||1} · ${r.owner||'—'}</div>
+              ${r.mitigation?`<div style="font-size:11px;color:var(--mid);margin-top:2px">${r.mitigation}</div>`:''}
+            </div>
+            ${ragBadge(r.status)}
+            <button class="btn-icon" onclick="openModal('risk','${r.id}')">✏️</button>
+          </div>`;
+        }).join('') : `<div style="font-size:12px;color:var(--lt)">No risks logged for this project</div>`}
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0">Escalations (${pEscs.length})</div>
+          <button class="btn btn-ghost btn-sm" onclick="openModal('escalation')">+ Add Escalation</button>
+        </div>
+        ${pEscs.length ? pEscs.map(e=>`
+          <div style="border-left:3px solid ${['High','Critical'].includes(normaliseStatus(e.priority))?'#ef4444':'#f59e0b'};padding:8px 10px;margin-bottom:8px;border-radius:0 4px 4px 0;background:var(--bg)">
+            <div style="font-size:13px;font-weight:700;color:var(--navy)">${e.title||'Unnamed'}</div>
+            <div style="font-size:11px;color:var(--lt)">${DateHelpers.fmt(e.date)} · ${ragBadge(e.priority)} ${ragBadge(e.status)}</div>
+          </div>`).join('') : `<div style="font-size:12px;color:var(--lt)">No escalations</div>`}
+      </div>`;
+  }
+
+  // ── TAB 4: Team & Activity ──
+  function tabTeam() {
+    const pResources = APP_STATE.resources.filter(r => trackMembers.some(m=>m.id===r.memberId));
+    const totalHours = pResources.reduce((s,r)=>s+(parseFloat(r.hours)||0), 0);
+    const recentActivity = [
+      ...pMs.map(m=>({ icon:'🎯', label:m.title, date:m.updatedAt||m.createdAt||m.dueDate, type:'milestone' })),
+      ...pRisks.map(r=>({ icon:'⚠️', label:r.title, date:r.updatedAt||r.createdAt, type:'risk' })),
+      ...pEscs.map(e=>({ icon:'🚨', label:e.title||'Escalation', date:e.date||e.createdAt, type:'escalation' }))
+    ].filter(x=>x.date).sort((a,b)=>b.date>a.date?1:-1).slice(0,5);
+    return `
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">Team Members</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+          ${trackMembers.length ? trackMembers.map(m=>`
+            <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:8px">
+              <div class="av" style="background:${TRACK_COLORS[m.track]||'var(--navy)'}">${avatar(m.name)}</div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--navy)">${m.name}</div>
+                <div style="font-size:10px;color:var(--lt)">${m.role||''} · ${m.availability||100}% avail</div>
+              </div>
+            </div>`).join('') : `<div style="font-size:12px;color:var(--lt)">No team assigned</div>`}
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--mid)">
+          Total hours logged by this team: <strong>${totalHours}h</strong>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Recent Activity</div>
+        ${recentActivity.length ? recentActivity.map(a=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:16px">${a.icon}</span>
+            <div style="flex:1;font-size:13px;color:var(--navy);font-weight:500">${a.label}</div>
+            <span style="font-size:11px;color:var(--lt)">${DateHelpers.fmt(a.date)}</span>
+          </div>`).join('') : `<div class="empty"><div class="empty-icon">📝</div>No recent activity</div>`}
+      </div>`;
+  }
+
+  const tabContent = activeTab==='overview'    ? tabOverview()
+                   : activeTab==='milestones'  ? tabMilestones()
+                   : activeTab==='risks'        ? tabRisks()
+                   : activeTab==='team'         ? tabTeam()
+                   : tabOverview();
+
+  const priorityColor = { Critical:'#dc2626', High:'#d97706', Medium:'var(--navy)', Low:'#16a34a' };
+  const pCol = priorityColor[normaliseStatus(p.priority)] || 'var(--navy)';
 
   return `
   <div class="vh">
     <div class="vh-left">
-      <button class="btn btn-ghost btn-sm" onclick="nav('projects')" style="margin-bottom:6px">← Back</button>
-      <h1>${p.name}</h1>
-      <div class="sub">${p.track||'—'} · ${p.phase||'—'}</div>
+      <button class="btn btn-ghost btn-sm no-print" onclick="nav('projects')" style="margin-bottom:6px">← Back to Projects</button>
     </div>
-    <div class="vh-right">
-      ${ragBadge(p.status)}
-      <button class="btn btn-ghost btn-sm" onclick="openModal('project','${p.id}')">Edit</button>
+    <div class="vh-right no-print">
+      <button class="btn btn-ghost btn-sm" onclick="openModal('project','${p.id}')">✏️ Edit</button>
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start">
-    <div>
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-title">Project Overview</div>
-        <div class="det-meta-grid">
-          <div class="det-meta-item"><span class="lbl">Track</span><span class="val">${p.track||'—'}</span></div>
-          <div class="det-meta-item"><span class="lbl">Phase</span><span class="val">${p.phase||'—'}</span></div>
-          <div class="det-meta-item"><span class="lbl">Priority</span><span class="val">${ragBadge(p.priority)}</span></div>
-          <div class="det-meta-item"><span class="lbl">Dev Lead</span><span class="val">${teamName(p.devLead)}</span></div>
-          <div class="det-meta-item"><span class="lbl">Start</span><span class="val">${DateHelpers.fmt(p.startDate)}</span></div>
-          <div class="det-meta-item"><span class="lbl">End</span><span class="val" style="${DateHelpers.isOverdue(p.endDate)&&normaliseStatus(p.status)!=='Completed'?'color:#ef4444':''}">${DateHelpers.fmt(p.endDate)}</span></div>
+  <div class="card" style="margin-bottom:16px;border-top:4px solid ${pCol}">
+    <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">
+      <div style="flex:1;min-width:0">
+        <h1 style="font-size:22px;font-weight:800;color:var(--navy);line-height:1.2;margin-bottom:8px">${p.name}</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          ${p.track?`<span class="badge badge-navy">${p.track}</span>`:''}
+          ${ragBadge(p.priority)}
+          ${ragBadge(p.status)}
+          ${p.phase?`<span class="badge badge-grey">${p.phase}</span>`:''}
         </div>
-        ${progressBar(p.progress||0)}
-        <div style="font-size:11px;color:var(--lt);margin-top:4px">${p.progress||0}% complete</div>
-        ${p.description?`<hr class="divider"/><div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:4px">Description</div><div style="font-size:13px">${p.description}</div>`:''}
-        ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:10px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
-        ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:10px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
-      </div>
-
-      <div class="card" style="margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div class="card-title" style="margin-bottom:0">Milestones</div>
-          <button class="btn btn-ghost btn-sm" onclick="openModal('milestone',null,'${id}')">+ Add</button>
-        </div>
-        ${pMs.length ? pMs.map(m=>`
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--navy)">${m.title}</div>
-            <div style="font-size:11px;color:var(--lt)">${DateHelpers.fmt(m.dueDate)}${m.revisedETA?' → '+DateHelpers.fmt(m.revisedETA):''}</div>
-          </div>
-          ${ragBadge(m.status)}
-          ${normaliseStatus(m.status)!=='Completed'?`<button class="btn btn-primary btn-xs" onclick="markMilestoneComplete('${m.id}')">✓</button>`:''}
-        </div>`).join(''):'<div style="font-size:12px;color:var(--lt)">No milestones</div>'}
-      </div>
-
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div class="card-title" style="margin-bottom:0">Notes & Comments</div>
-          <button class="btn btn-ghost btn-sm" onclick="openModal('notes','${id}','project')">+ Add Note</button>
-        </div>
-        ${pNotes.length ? pNotes.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).map(n=>`
-        <div style="padding:10px;background:var(--bg);border-radius:var(--rs);margin-bottom:8px">
-          <div style="display:flex;gap:8px;margin-bottom:4px">
-            <div class="av av-sm" style="background:var(--navy)">${avatar(n.author||'PM')}</div>
-            <div>
-              <span style="font-size:12px;font-weight:700;color:var(--navy)">${n.author||'PM'}</span>
-              <span style="font-size:11px;color:var(--lt);margin-left:6px">${DateHelpers.fmt(n.date)}</span>
-            </div>
-          </div>
-          <div style="font-size:13px;color:var(--text)">${n.text}</div>
-        </div>`).join(''):'<div style="font-size:12px;color:var(--lt)">No notes yet.</div>'}
       </div>
     </div>
-
-    <div>
-      <div class="card" style="margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div class="card-title" style="margin-bottom:0">Jira ${p.jiraKey?`<span class="badge badge-blue" style="font-size:10px;margin-left:4px">${p.jiraKey}</span>`:''} ${jira.isMock?'<span class="badge badge-amber" style="font-size:9px">mock</span>':''}</div>
-          ${!p.jiraKey?`<button class="btn btn-ghost btn-xs" onclick="openModal('project','${p.id}')">+ Add Key</button>`:''}
-        </div>
-        ${!p.jiraKey?`<div style="font-size:12px;color:var(--lt)">No Jira project key set.</div>`:`
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px">
-          <div style="background:var(--bg);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--navy)">${jira.todo}</div><div style="font-size:10px;color:var(--lt)">To Do</div></div>
-          <div style="background:var(--bg);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--teal)">${jira.inProgress}</div><div style="font-size:10px;color:var(--lt)">In Progress</div></div>
-          <div style="background:var(--bg);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--green)">${jira.done}</div><div style="font-size:10px;color:var(--lt)">Done</div></div>
-          <div style="background:var(--bg);border-radius:var(--rs);padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--navy)">${jira.total}</div><div style="font-size:10px;color:var(--lt)">Total</div></div>
-        </div>
-        ${jira.total>0?progressBar(Math.round(jira.done/jira.total*100)):''}
-        ${jira.isMock?`<div style="font-size:11px;color:var(--amber);margin-top:8px">⚠️ Showing mock data. Configure Jira in Admin Settings.</div>`:''}`}
-      </div>
-
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-title">Team</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px">
-          ${tArr.map(tid=>{
-            const m=APP_STATE.teamMembers.find(t=>t.id===tid);
-            if(!m) return '';
-            return `<div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px">
-              <div class="av av-sm" style="background:${TRACK_COLORS[m.track]||'var(--navy)'}">${avatar(m.name)}</div>
-              <div>
-                <div style="font-size:12px;font-weight:600;color:var(--navy)">${m.name}</div>
-                <div style="font-size:10px;color:var(--lt)">${m.role||''}</div>
-              </div>
-            </div>`;
-          }).join('')||'<div style="font-size:12px;color:var(--lt)">No team assigned</div>'}
-        </div>
-      </div>
-
-      ${charter?`
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div class="card-title" style="margin-bottom:0">Charter</div>
-          <button class="btn btn-ghost btn-xs" onclick="openModal('charter','${charter.id}')">Edit</button>
-        </div>
-        <div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:2px">Sponsor</div>
-        <div style="font-size:12px;margin-bottom:8px">${charter.sponsor||'—'}</div>
-        <div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:2px">Objectives</div>
-        <div style="font-size:13px;margin-bottom:8px">${charter.objectives||'—'}</div>
-        <div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:2px">Success Criteria</div>
-        <div style="font-size:12px">${charter.successCriteria||'—'}</div>
-      </div>`:`
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div class="card-title" style="margin-bottom:0">Charter</div>
-          <button class="btn btn-ghost btn-xs" onclick="openModal('charter',null,'${id}')">+ Create</button>
-        </div>
-        <div class="empty" style="padding:20px 10px"><div class="empty-icon">📄</div>No charter yet</div>
-      </div>`}
+    <div style="height:10px;background:#e8eaf0;border-radius:6px;overflow:hidden;margin-bottom:12px">
+      <div style="height:100%;width:${Math.min(p.progress||0,100)}%;background:${(p.progress||0)>=70?'#22c55e':(p.progress||0)>=40?'#f59e0b':'#ef4444'};border-radius:6px;transition:width .3s"></div>
     </div>
-  </div>`;
+    <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--mid)">
+      <span>📅 <strong>${DateHelpers.fmt(p.startDate)}</strong> → <strong style="${DateHelpers.isOverdue(p.endDate)&&normaliseStatus(p.status)!=='Completed'?'color:#dc2626':''}">${DateHelpers.fmt(p.endDate)}</strong></span>
+      ${p.devLead?`<span>👤 Dev Lead: <strong>${teamName(p.devLead)}</strong></span>`:''}
+      ${p.sprint?`<span>🏃 Sprint: <strong>${p.sprint}</strong></span>`:''}
+      <span>📊 <strong>${p.progress||0}%</strong> complete</span>
+      ${p.jiraKey?`<span>🔗 Jira: <strong>${p.jiraKey}</strong></span>`:''}
+    </div>
+  </div>
+
+  <div class="pulse-tabs">
+    ${tabBtn('overview',   '📋 Overview')}
+    ${tabBtn('milestones', '🎯 Milestones')}
+    ${tabBtn('risks',      '⚠️ Risks & Escalations')}
+    ${tabBtn('team',       '👥 Team & Activity')}
+  </div>
+  ${tabContent}`;
 }
 
 // ─── ONBOARDING ───────────────────────────────────────────
@@ -1042,8 +1086,16 @@ export function renderTeam() {
   </div>`;
 }
 
-// ─── CAPACITY ─────────────────────────────────────────────
-export function renderCapacity() {
+// ─── CAPACITY & RESOURCES (merged) ────────────────────────
+export function renderCapacityResources() {
+  const activeTab = APP_STATE._capTab || 'allocation';
+  if (activeTab === 'timelog') return _renderTimeLog();
+  return _renderAllocation();
+}
+// legacy alias — capacity view now redirects to merged view
+export { renderCapacityResources as renderCapacity };
+
+function _renderAllocation() {
   const members   = [...APP_STATE.teamMembers].sort((a,b)=>(b.availability||100)-(a.availability||100));
   const f         = APP_STATE.filters;
   const projects  = f.track ? APP_STATE.projects.filter(p=>p.track===f.track) : APP_STATE.projects;
@@ -1061,18 +1113,27 @@ export function renderCapacity() {
     completion: projectCompletion(p)
   }));
 
+  function capTabBar() {
+    const t = APP_STATE._capTab || 'allocation';
+    return `<div class="pulse-tabs no-print" style="margin-bottom:14px">
+      <button class="pt ${t==='allocation'?'active':''}" onclick="APP_STATE._capTab='allocation';nav('capacity')">Allocation</button>
+      <button class="pt ${t==='timelog'?'active':''}" onclick="APP_STATE._capTab='timelog';nav('capacity')">Time Log</button>
+    </div>`;
+  }
+
   return `
   ${execBanner('capacity')}
   ${filterBar()}
   <div class="vh">
     <div class="vh-left">
-      <h1>Capacity Planning</h1>
-      <div class="sub">Allocation across projects</div>
+      <h1>Capacity &amp; Resources</h1>
+      <div class="sub">Allocation planning &amp; hour tracking</div>
     </div>
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('capacity')">Edit Allocations</button>
     </div>
   </div>
+  ${capTabBar()}
 
   <div class="card" style="padding:0">
     <div style="overflow-x:auto">
@@ -1157,8 +1218,10 @@ export function renderCapacity() {
   </div>`;
 }
 
-// ─── RESOURCES ────────────────────────────────────────────
-export function renderResources() {
+// ─── TIME LOG (internal tab of Capacity & Resources) ──────
+export function renderResources() { return renderCapacityResources(); }
+
+function _renderTimeLog() {
   const members     = APP_STATE.teamMembers;
   const resources   = APP_STATE.resources;
   const f           = APP_STATE.filters;
@@ -1183,16 +1246,20 @@ export function renderResources() {
   const filtMembers = f.track ? members.filter(m=>m.track===f.track) : members;
 
   return `
-  ${execBanner('resources')}
+  ${execBanner('capacity')}
   ${filterBar()}
   <div class="vh">
     <div class="vh-left">
-      <h1>Resource Tracking</h1>
+      <h1>Capacity &amp; Resources</h1>
       <div class="sub">Weekly hour logs per team member</div>
     </div>
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('resource')">+ Log Hours</button>
     </div>
+  </div>
+  <div class="pulse-tabs no-print" style="margin-bottom:14px">
+    <button class="pt" onclick="APP_STATE._capTab='allocation';nav('capacity')">Allocation</button>
+    <button class="pt active" onclick="APP_STATE._capTab='timelog';nav('capacity')">Time Log</button>
   </div>
 
   <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:12px">
@@ -1353,82 +1420,372 @@ export function renderEscalations() {
 
 // ─── LEADERSHIP REPORT ────────────────────────────────────
 export function renderLeadership() {
+  const today     = DateHelpers.today();
+  const now       = new Date();
   const projects  = [...APP_STATE.projects].sort((a,b)=>{ const da=a.endDate||a.startDate||''; const db=b.endDate||b.startDate||''; return da<db?-1:da>db?1:0; });
-  const milestones = [...APP_STATE.milestones].sort((a,b)=>{ const da=a.dueDate||''; const db=b.dueDate||''; return da<db?-1:da>db?1:0; });
-  const risks     = APP_STATE.risks;
-  const overdue   = milestones.filter(m=>normaliseStatus(m.status)==='Overdue');
-  const atRisk    = milestones.filter(m=>normaliseStatus(m.status)==='At Risk');
-  const openRisks = risks.filter(r=>normaliseStatus(r.status)==='Open').sort((a,b)=>b.likelihood*b.impact-a.likelihood*a.impact);
+  const milestones= [...APP_STATE.milestones].sort((a,b)=>{ const da=a.dueDate||''; const db=b.dueDate||''; return da<db?-1:da>db?1:0; });
+  const risks     = APP_STATE.risks || [];
+  const escs      = APP_STATE.escalations || [];
+  const pledges   = APP_STATE.pledges || [];
+  const resources = APP_STATE.resources || [];
+  const members   = APP_STATE.teamMembers || [];
+  const tracks    = APP_STATE.settings.trackNames || [];
+  const impacts   = APP_STATE.impacts || [];
+
+  const openRisks = risks.filter(r=>normaliseStatus(r.status)==='Open');
+  const highRisks = openRisks.filter(r=>(r.likelihood||1)*(r.impact||1)>=7);
+  const overdueMilestones = milestones.filter(m=>m.dueDate<today&&m.status!=='Completed');
+  const openEscL34 = escs.filter(e=>['L3','L4'].includes(e.level||'')&&normaliseStatus(e.status||'Open')!=='Resolved');
+
+  const activeTab = APP_STATE._leadershipTab || 'weekly';
+
+  function tabBtn(key, lbl) {
+    return `<button class="pt ${activeTab===key?'active':''}" onclick="APP_STATE._leadershipTab='${key}';nav('leadership')">${lbl}</button>`;
+  }
+
+  function trackStats(track) {
+    const tm  = members.filter(m=>m.track===track);
+    const tp  = projects.filter(p=>p.track===track);
+    const avgAlloc = tm.length ? Math.round(tm.reduce((s,m)=>s+(m.availability||100),0)/tm.length) : 0;
+    const weekAgo  = new Date(now); weekAgo.setDate(weekAgo.getDate()-7);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+    const hrsLogged = resources.filter(r=>tm.some(m=>m.id===r.memberId)&&r.date>=weekAgoStr).reduce((s,r)=>s+(parseFloat(r.hours)||0),0);
+    const tMs   = milestones.filter(m=>tm.some(mb=>mb.id===m.ownerId)||tp.some(p=>p.name===m.projectName||p.id===m.projectId));
+    const compMs = tMs.filter(m=>m.status==='Completed').length;
+    const ovdMs  = tMs.filter(m=>m.dueDate<today&&m.status!=='Completed').length;
+    const signal = avgAlloc>85?'⚠️ Overloaded':ovdMs>0?'⚠️ Delays':'✅ Healthy';
+    return { tm, tp, avgAlloc, hrsLogged, tMs, compMs, ovdMs, signal };
+  }
+
+  // ── DAILY REPORT ─────────────────────────────────────────
+  function dailyTab() {
+    const yesterday = new Date(now); yesterday.setDate(yesterday.getDate()-1);
+    const yStr = yesterday.toISOString().split('T')[0];
+    const in3d  = new Date(now); in3d.setDate(in3d.getDate()+3);
+    const in3dStr = in3d.toISOString().split('T')[0];
+
+    const completedYesterday = milestones.filter(m=>m.status==='Completed'&&(m.completedDate===yStr||(m.updatedAt||'').startsWith(yStr)));
+    const inProgressProj = projects.filter(p=>normaliseStatus(p.status)==='In Progress');
+    const blockers = [
+      ...projects.filter(p=>p.status==='On Hold'),
+      ...openEscL34.map(e=>({name:e.title||'Escalation',track:'—',phase:'—',description:e.project})),
+      ...highRisks.map(r=>({name:r.title,track:'—',phase:'—',description:r.mitigation}))
+    ];
+    const upcoming3d = milestones.filter(m=>m.dueDate>=today&&m.dueDate<=in3dStr&&m.status!=='Completed').sort((a,b)=>a.dueDate>b.dueDate?1:-1);
+
+    const trackRows = tracks.length ? tracks.map(track=>{
+      const s = trackStats(track);
+      const msToday = s.tMs.filter(m=>m.dueDate===today).length;
+      return `<tr>
+        <td style="font-weight:700">${track}</td>
+        <td>${s.tm.length}</td>
+        <td>${s.tp.length}</td>
+        <td>${s.avgAlloc}%</td>
+        <td>${s.hrsLogged}h</td>
+        <td>${msToday}</td>
+        <td>${s.signal}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="7" class="empty">No tracks configured</td></tr>`;
+
+    return `
+    <div class="report-section">
+      <h2>📊 Programme Snapshot</h2>
+      ${statRow(statBlock(projects.length,'Total','all projects','var(--navy)')+statBlock(inProgressProj.length,'In Progress','active','#7c3aed')+statBlock(projects.filter(p=>p.status==='On Hold').length,'Blocked','on hold','#dc2626')+statBlock(overdueMilestones.length,'Overdue Milestones','past due','#dc2626')+statBlock(openRisks.length,'Open Flags','risks+esc','#d97706'))}
+    </div>
+    <div class="report-section">
+      <h2>✅ Completed Yesterday</h2>
+      ${completedYesterday.length ? `<div class="tbl-wrap"><table class="dt"><thead><tr><th>Milestone</th><th>Project</th><th>Completed by</th><th>Track</th></tr></thead><tbody>${completedYesterday.map(m=>`<tr><td style="font-weight:600">${m.title}</td><td>${m.projectName||'—'}</td><td>${teamName(m.ownerId)||'—'}</td><td>${m.track||'—'}</td></tr>`).join('')}</tbody></table></div>` : `<div style="font-size:12px;color:var(--lt);padding:8px 0">No milestones completed yesterday</div>`}
+    </div>
+    <div class="report-section">
+      <h2>🚀 In Progress Today</h2>
+      ${inProgressProj.length ? `<div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Phase</th><th>Progress</th><th>Dev Lead</th><th>Sprint</th><th>Next Milestone</th></tr></thead><tbody>${inProgressProj.map(p=>{
+        const nextMs = milestones.filter(m=>(m.projectId===p.id||m.projectName===p.name)&&m.status!=='Completed').sort((a,b)=>a.dueDate>b.dueDate?1:-1)[0];
+        return `<tr><td style="font-weight:600">${p.name}</td><td>${p.track||'—'}</td><td>${p.phase||'—'}</td><td>${progressBar(p.progress||0)}<span style="font-size:11px">${p.progress||0}%</span></td><td>${teamName(p.devLead)}</td><td>${p.sprint||'—'}</td><td>${nextMs?`${nextMs.title} · ${DateHelpers.fmt(nextMs.dueDate)}`:'—'}</td></tr>`;
+      }).join('')}</tbody></table></div>` : `<div style="font-size:12px;color:var(--lt);padding:8px 0">No projects in progress</div>`}
+    </div>
+    <div class="report-section">
+      <h2>🚨 Blockers &amp; Alerts</h2>
+      ${blockers.length ? blockers.map(b=>`<div style="background:#fef2f2;border-left:4px solid #dc2626;border-radius:0 var(--rs) var(--rs) 0;padding:10px 14px;margin-bottom:8px"><div style="font-size:13px;font-weight:700;color:#dc2626">${b.name||b.title||'—'}</div><div style="font-size:12px;color:var(--mid)">${b.description||b.phase||'—'}</div></div>`).join('') : `<div style="font-size:12px;color:#16a34a;padding:8px 0">✅ No blockers today</div>`}
+    </div>
+    <div class="report-section">
+      <h2>📅 Upcoming (Next 3 Days)</h2>
+      ${upcoming3d.length ? `<div class="tbl-wrap"><table class="dt"><thead><tr><th>Milestone</th><th>Project</th><th>Due Date</th><th>Owner</th><th>Status</th></tr></thead><tbody>${upcoming3d.map(m=>`<tr><td style="font-weight:600">${m.title}</td><td>${m.projectName||'—'}</td><td>${DateHelpers.fmt(m.dueDate)}</td><td>${teamName(m.ownerId)||'—'}</td><td>${ragBadge(m.status)}</td></tr>`).join('')}</tbody></table></div>` : `<div style="font-size:12px;color:var(--lt);padding:8px 0">No milestones in the next 3 days</div>`}
+    </div>
+    <div class="report-section">
+      <h2>🏗️ Track-wise Resource Status</h2>
+      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Track</th><th>Members</th><th>Active Projects</th><th>Avg Allocation %</th><th>Hours This Week</th><th>Milestones Due Today</th><th>Signal</th></tr></thead><tbody>${trackRows}</tbody></table></div>
+    </div>`;
+  }
+
+  // ── WEEKLY REPORT ────────────────────────────────────────
+  function weeklyTab() {
+    const weekStart = new Date(now); weekStart.setDate(weekStart.getDate()-3);
+    const weekEnd   = new Date(now); weekEnd.setDate(weekEnd.getDate()+3);
+    const wsStr = weekStart.toISOString().split('T')[0];
+    const weStr = weekEnd.toISOString().split('T')[0];
+    const weekMs  = milestones.filter(m=>m.dueDate>=wsStr&&m.dueDate<=weStr);
+    const weekMsComplete = weekMs.filter(m=>m.status==='Completed').length;
+    const weekMsMissed   = weekMs.filter(m=>m.dueDate<today&&m.status!=='Completed').length;
+    const weekMsOnTrack  = weekMs.length - weekMsComplete - weekMsMissed;
+    const ontimeRate = weekMs.length > 0 ? Math.round(weekMsComplete/weekMs.length*100) : 100;
+    const newRisks   = risks.filter(r=>{ const d=r.createdAt||(r.date||''); return d>=wsStr; });
+    const nonHonored = pledges.filter(p=>p.status!=='Honored').sort((a,b)=>a.dueDate>b.dueDate?1:-1);
+
+    const trackDetailRows = tracks.length ? tracks.map(track=>{
+      const s = trackStats(track);
+      return `<tr>
+        <td style="font-weight:700">${track}</td>
+        <td>${s.tm.length}</td>
+        <td>${s.tp.length}</td>
+        <td>${s.avgAlloc}%</td>
+        <td>${s.hrsLogged}h</td>
+        <td>${s.compMs}</td>
+        <td>${s.ovdMs}</td>
+        <td>${s.signal}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="8" class="empty">No tracks configured</td></tr>`;
+
+    const mostLoaded = tracks.length ? tracks.reduce((a,t)=>{ const s=trackStats(t); return s.avgAlloc>trackStats(a).avgAlloc?t:a; }, tracks[0]) : '—';
+    const leastLoaded = tracks.length ? tracks.reduce((a,t)=>{ const s=trackStats(t); return s.avgAlloc<trackStats(a).avgAlloc?t:a; }, tracks[0]) : '—';
+
+    return `
+    <div class="report-section">
+      <h2>📋 Executive Summary — Week of ${DateHelpers.fmt(today)}</h2>
+      <div class="card" style="background:#f8faff;border-left:4px solid var(--navy)">
+        <p style="font-size:13px;color:var(--text);line-height:1.7">
+          This week, <strong>${projects.filter(p=>p.status==='In Progress').length}</strong> projects are active across <strong>${tracks.length||'—'}</strong> tracks.
+          <strong>${weekMs.length}</strong> milestones are due this week — <strong>${weekMsOnTrack}</strong> on track, <strong>${weekMsComplete}</strong> completed, <strong>${weekMsMissed}</strong> at risk.
+          <strong>${highRisks.length}</strong> high-priority risks remain open.
+          <strong>${openEscL34.length}</strong> escalations require leadership attention.
+        </p>
+      </div>
+    </div>
+    <div class="report-section">
+      <h2>🟢🟡🔴 Project Health (RAG)</h2>
+      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Priority</th><th>Phase</th><th>Progress</th><th>Status</th><th>End Date</th><th>Dev Lead</th></tr></thead><tbody>${projects.map(p=>`<tr><td style="font-weight:600">${p.name||'Unnamed'}</td><td>${p.track||'—'}</td><td>${ragBadge(p.priority)}</td><td>${p.phase||'—'}</td><td>${progressBar(p.progress||0)}<span style="font-size:11px">${p.progress||0}%</span></td><td>${ragBadge(p.status)}</td><td style="${p.endDate<today&&p.status!=='Completed'?'color:#dc2626':''}">${DateHelpers.fmt(p.endDate)}</td><td>${teamName(p.devLead)}</td></tr>`).join('')||`<tr><td colspan="8" class="empty">No projects</td></tr>`}</tbody></table></div>
+    </div>
+    <div class="report-section">
+      <h2>🎯 Milestone Status This Week</h2>
+      ${weekMs.length ? `<div class="tbl-wrap"><table class="dt"><thead><tr><th>Milestone</th><th>Project</th><th>Due</th><th>Owner</th><th>Status</th><th>Days</th></tr></thead><tbody>${weekMs.map(m=>{
+        const daysLeft = DateHelpers.daysBetween(today, m.dueDate);
+        const timing = m.status==='Completed' ? '<span style="color:#16a34a">✓</span>' : daysLeft<0 ? `<span style="color:#dc2626">${Math.abs(daysLeft)}d late</span>` : `${daysLeft}d`;
+        return `<tr><td style="font-weight:600">${m.title}</td><td>${m.projectName||'—'}</td><td>${DateHelpers.fmt(m.dueDate)}</td><td>${teamName(m.ownerId)||'—'}</td><td>${ragBadge(m.status)}</td><td>${timing}</td></tr>`;
+      }).join('')}</tbody></table></div>
+      <div style="padding:10px 0;font-size:12px;color:var(--mid);display:flex;gap:16px;flex-wrap:wrap">
+        <span>Planned: <strong>${weekMs.length}</strong></span>
+        <span>Completed: <strong>${weekMsComplete}</strong></span>
+        <span>Missed: <strong>${weekMsMissed}</strong></span>
+        <span>On-time rate: <strong style="color:${ontimeRate>=85?'#16a34a':ontimeRate>=70?'#d97706':'#dc2626'}">${ontimeRate}%</strong></span>
+      </div>` : `<div style="font-size:12px;color:var(--lt);padding:8px 0">No milestones due this week</div>`}
+    </div>
+    <div class="report-section">
+      <h2>⚠️ Risks &amp; Escalations</h2>
+      ${newRisks.length?`<div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:6px">New this week (${newRisks.length})</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>Risk</th><th>Project</th><th>Score</th><th>Owner</th></tr></thead><tbody>${newRisks.map(r=>`<tr><td>${r.title}</td><td>${r.project||'—'}</td><td>${(r.likelihood||1)*(r.impact||1)}</td><td>${r.owner||'—'}</td></tr>`).join('')}</tbody></table></div>`:''}
+      ${highRisks.length?`<div style="font-size:12px;font-weight:700;color:#dc2626;margin:10px 0 6px">High risks open (${highRisks.length})</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>Risk</th><th>Project</th><th>Score</th><th>Mitigation</th></tr></thead><tbody>${highRisks.map(r=>`<tr><td style="font-weight:600">${r.title}</td><td>${r.project||'—'}</td><td><span class="risk-score score-h">${(r.likelihood||1)*(r.impact||1)}</span></td><td>${r.mitigation||'—'}</td></tr>`).join('')}</tbody></table></div>`:''}
+      ${openEscL34.length?`<div style="font-size:12px;font-weight:700;color:#d97706;margin:10px 0 6px">Escalations L3/L4 (${openEscL34.length})</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Level</th><th>Issue</th><th>Days Open</th></tr></thead><tbody>${openEscL34.map(e=>`<tr><td>${e.project||'—'}</td><td>${e.level||'—'}</td><td>${e.title||e.issue||'—'}</td><td>${e.date?DateHelpers.daysBetween(e.date,today):'—'}</td></tr>`).join('')}</tbody></table></div>`:''}
+      ${!newRisks.length&&!highRisks.length&&!openEscL34.length?`<div style="font-size:12px;color:#16a34a;padding:8px 0">✅ No critical risks or escalations</div>`:''}
+    </div>
+    <div class="report-section">
+      <h2>🤝 Pledges / Customer Commitments</h2>
+      ${nonHonored.length?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>Customer</th><th>Commitment</th><th>Due</th><th>Owner</th><th>Status</th><th>Days</th></tr></thead><tbody>${nonHonored.map(p=>{
+        const dl = p.dueDate?DateHelpers.daysBetween(today,p.dueDate):null;
+        const days = dl===null?'—':dl<0?`<span style="color:#dc2626">${Math.abs(dl)}d late</span>`:`${dl}d`;
+        return `<tr><td>${p.customer||'—'}</td><td style="font-weight:600">${p.title||'—'}</td><td>${DateHelpers.fmt(p.dueDate)}</td><td>${p.owner||'—'}</td><td>${ragBadge(p.status)}</td><td>${days}</td></tr>`;
+      }).join('')}</tbody></table></div>` : `<div style="font-size:12px;color:#16a34a;padding:8px 0">✅ All pledges honored</div>`}
+    </div>
+    <div class="report-section">
+      <h2>🏗️ Track-wise Resource Utilisation</h2>
+      ${tracks.length?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>Track</th><th>Members</th><th>Projects</th><th>Avg Alloc</th><th>Hours Logged</th><th>✅ Ms Done</th><th>🔴 Ms Overdue</th><th>Signal</th></tr></thead><tbody>${trackDetailRows}</tbody></table></div>
+      <div style="margin-top:12px;padding:12px;background:#f8faff;border-radius:var(--rs);font-size:12px;color:var(--mid);display:flex;flex-direction:column;gap:4px">
+        ${tracks.length?`<div>Most loaded: <strong>${mostLoaded}</strong> at <strong>${trackStats(mostLoaded).avgAlloc}%</strong></div><div>Available bandwidth: <strong>${leastLoaded}</strong> has <strong>${100-trackStats(leastLoaded).avgAlloc}%</strong> free</div><div>Delivery risk: tracks with overdue milestones need attention</div>`:''}
+      </div>` : `<div class="empty">No tracks configured</div>`}
+    </div>
+    <div class="report-section">
+      <h2>🔷 Decisions Required</h2>
+      ${openEscL34.length+highRisks.length>0?[...openEscL34.map(e=>`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--rs);padding:12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:4px">ESCALATION ${e.level||''}</div><div style="font-size:13px;font-weight:700;color:var(--navy)">${e.project||'—'}</div><div style="font-size:12px;color:var(--mid)">${e.title||e.issue||'—'}</div></div>`), ...highRisks.map(r=>`<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--rs);padding:12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;margin-bottom:4px">HIGH RISK · SCORE ${(r.likelihood||1)*(r.impact||1)}</div><div style="font-size:13px;font-weight:700;color:var(--navy)">${r.title}</div><div style="font-size:12px;color:var(--mid)">${r.mitigation||'—'}</div></div>`)].join(''):`<div style="font-size:12px;color:#16a34a;padding:8px 0">✅ No decisions required this week</div>`}
+    </div>`;
+  }
+
+  // ── MONTHLY REPORT ───────────────────────────────────────
+  function monthlyTab() {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString().split('T')[0];
+    const nextMonthEnd   = new Date(now.getFullYear(), now.getMonth()+2, 0).toISOString().split('T')[0];
+    const monthName = now.toLocaleString('en-GB', { month:'long', year:'numeric' });
+
+    const completedThisMonth = projects.filter(p=>p.status==='Completed'&&(p.endDate||'')>=monthStart&&(p.endDate||'')<nextMonthStart);
+    const msThisMonth = milestones.filter(m=>m.dueDate>=monthStart&&m.dueDate<nextMonthStart);
+    const msCompleted = msThisMonth.filter(m=>m.status==='Completed').length;
+    const msPlanned   = msThisMonth.length;
+    const msMissed    = msThisMonth.filter(m=>m.dueDate<today&&m.status!=='Completed').length;
+    const otRate      = msPlanned > 0 ? Math.round(msCompleted/msPlanned*100) : 100;
+    const newRisksMonth = risks.filter(r=>(r.createdAt||r.date||'')>=monthStart);
+    const closedRisksMonth = risks.filter(r=>(r.closedAt||'')>=monthStart&&r.status!=='Open');
+    const nextMsMs = milestones.filter(m=>m.dueDate>=nextMonthStart&&m.dueDate<=nextMonthEnd).sort((a,b)=>a.dueDate>b.dueDate?1:-1).slice(0,5);
+
+    const trackDetailRows = tracks.length ? tracks.map(track=>{
+      const s = trackStats(track);
+      const msRate = s.tMs.length>0?Math.round(s.compMs/s.tMs.length*100):100;
+      return `<tr>
+        <td style="font-weight:700">${track}</td>
+        <td>${s.tm.length}</td>
+        <td>${s.tp.length}</td>
+        <td>${s.hrsLogged}h</td>
+        <td>${s.avgAlloc}%</td>
+        <td>${s.compMs}</td>
+        <td>${s.ovdMs}</td>
+        <td>${msRate}%</td>
+        <td>${s.signal}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="9" class="empty">No tracks configured</td></tr>`;
+
+    const honoredPledges  = pledges.filter(p=>p.status==='Honored').length;
+    const breachedPledges = pledges.filter(p=>p.status==='Breached');
+    const inProgPledges   = pledges.filter(p=>!['Honored','Breached'].includes(p.status)).length;
+    const ragOverall = otRate>=85?'🟢 Green':otRate>=70?'🟡 Amber':'🔴 Red';
+
+    return `
+    <div class="report-section">
+      <h2>📋 Monthly Program Review — ${monthName}</h2>
+      <div class="card" style="background:#f8faff;border-left:4px solid var(--navy)">
+        <p style="font-size:13px;color:var(--text);line-height:1.7">
+          ${monthName}: <strong>${projects.filter(p=>p.status==='In Progress').length}</strong> projects active, <strong>${msPlanned}</strong> milestones planned.
+          <strong>${completedThisMonth.length}</strong> projects delivered. Business impact measured on <strong>${impacts.length}</strong> shipped features.
+          Overall programme health: <strong>${ragOverall}</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="report-section">
+      <h2>🚀 What Shipped This Month</h2>
+      ${completedThisMonth.length ? `<div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Go-Live Date</th><th>Impact</th></tr></thead><tbody>${completedThisMonth.map(p=>{
+        const imp = impacts.filter(i=>i.project===p.name||i.projectId===p.id);
+        return `<tr><td style="font-weight:600">${p.name}</td><td>${DateHelpers.fmt(p.endDate)}</td><td>${imp.length?imp.map(i=>`${i.metric}: ${i.baseline}→<strong>${i.current}</strong>`).join(', '):'—'}</td></tr>`;
+      }).join('')}</tbody></table></div>` : `<div style="font-size:12px;color:var(--lt);padding:8px 0">No projects completed this month</div>`}
+    </div>
+    <div class="report-section">
+      <h2>🔄 Projects In Flight</h2>
+      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Priority</th><th>Phase</th><th>Progress</th><th>Status</th><th>End Date</th></tr></thead><tbody>${projects.filter(p=>p.status!=='Completed').map(p=>`<tr><td style="font-weight:600">${p.name}</td><td>${p.track||'—'}</td><td>${ragBadge(p.priority)}</td><td>${p.phase||'—'}</td><td>${progressBar(p.progress||0)}<span style="font-size:11px">${p.progress||0}%</span></td><td>${ragBadge(p.status)}</td><td>${DateHelpers.fmt(p.endDate)}</td></tr>`).join('')||`<tr><td colspan="7" class="empty">No active projects</td></tr>`}</tbody></table></div>
+    </div>
+    <div class="report-section">
+      <h2>📊 Milestone Adherence</h2>
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:12px">
+        <div style="font-size:48px;font-weight:800;color:${otRate>=85?'#16a34a':otRate>=70?'#d97706':'#dc2626'}">${otRate}%</div>
+        <div style="font-size:12px;color:var(--mid)"><div>On-time delivery rate</div><div>Planned: ${msPlanned} · Completed: ${msCompleted} · Missed: ${msMissed}</div></div>
+      </div>
+      ${msMissed>0?`<div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:6px">Missed milestones</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>Milestone</th><th>Project</th><th>Due Date</th><th>Status</th></tr></thead><tbody>${msThisMonth.filter(m=>m.dueDate<today&&m.status!=='Completed').map(m=>`<tr><td>${m.title}</td><td>${m.projectName||'—'}</td><td>${DateHelpers.fmt(m.dueDate)}</td><td>${ragBadge(m.status)}</td></tr>`).join('')}</tbody></table></div>`:''}
+    </div>
+    <div class="report-section">
+      <h2>🏗️ Track-wise Resource &amp; Productivity</h2>
+      ${tracks.length?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>Track</th><th>Members</th><th>Projects</th><th>Total Hours</th><th>Avg Util</th><th>Ms Done</th><th>Ms Missed</th><th>On-time Rate</th><th>Signal</th></tr></thead><tbody>${trackDetailRows}</tbody></table></div>
+      ${tracks.map(track=>{
+        const s = trackStats(track);
+        return s.tm.length?`
+        <div style="margin-top:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">${track} — Member Breakdown</div>
+          <div class="tbl-wrap"><table class="dt"><thead><tr><th>Member</th><th>Role</th><th>Hours Logged</th><th>Projects</th><th>Avail %</th></tr></thead><tbody>${s.tm.map(m=>{
+            const hrs = resources.filter(r=>r.memberId===m.id).reduce((sum,r)=>sum+(parseFloat(r.hours)||0),0);
+            const mProj = projects.filter(p=>teamArr(p.team).includes(m.id)||p.devLead===m.id);
+            return `<tr><td style="font-weight:600">${m.name}</td><td>${m.role||'—'}</td><td>${hrs}h</td><td>${mProj.length}</td><td>${m.availability||100}%</td></tr>`;
+          }).join('')}</tbody></table></div>
+        </div>`:''}).join('')}` : `<div class="empty">No tracks configured</div>`}
+    </div>
+    <div class="report-section">
+      <h2>📈 Risk Trend</h2>
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
+        <div style="font-size:13px;color:var(--mid)">Opened this month: <strong>${newRisksMonth.length}</strong></div>
+        <div style="font-size:13px;color:var(--mid)">Closed this month: <strong>${closedRisksMonth.length}</strong></div>
+        <div style="font-size:13px;font-weight:700;color:${newRisksMonth.length<=closedRisksMonth.length?'#16a34a':'#dc2626'}">Net: ${newRisksMonth.length-closedRisksMonth.length>=0?'+':''}${newRisksMonth.length-closedRisksMonth.length} ${newRisksMonth.length<=closedRisksMonth.length?'(improving)':'(watch closely)'}</div>
+      </div>
+      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Risk</th><th>Project</th><th>Score</th><th>Status</th></tr></thead><tbody>${risks.slice(0,10).map(r=>`<tr><td>${r.title}</td><td>${r.project||'—'}</td><td>${(r.likelihood||1)*(r.impact||1)}</td><td>${ragBadge(r.status)}</td></tr>`).join('')||`<tr><td colspan="4" class="empty">No risks logged</td></tr>`}</tbody></table></div>
+    </div>
+    <div class="report-section">
+      <h2>🤝 Pledges / Customer Commitments</h2>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:13px">
+        <span>Total: <strong>${pledges.length}</strong></span>
+        <span style="color:#16a34a">Honored: <strong>${honoredPledges}</strong></span>
+        <span style="color:#dc2626">Breached: <strong>${breachedPledges.length}</strong></span>
+        <span style="color:#d97706">In progress: <strong>${inProgPledges}</strong></span>
+      </div>
+      ${breachedPledges.length?`<div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:6px">Breached pledges</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>Customer</th><th>Commitment</th><th>Due</th><th>Owner</th></tr></thead><tbody>${breachedPledges.map(p=>`<tr><td>${p.customer||'—'}</td><td style="font-weight:600">${p.title||'—'}</td><td>${DateHelpers.fmt(p.dueDate)}</td><td>${p.owner||'—'}</td></tr>`).join('')}</tbody></table></div>`:''}
+    </div>
+    <div class="report-section">
+      <h2>🔭 Next Month Focus</h2>
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">Top milestones due next month</div>
+      ${nextMsMs.length?nextMsMs.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><span class="badge badge-navy">🎯</span><span style="flex:1;font-size:13px;font-weight:600">${m.title}</span><span style="font-size:11px;color:var(--lt)">${m.projectName||'—'}</span><span style="font-size:11px;color:var(--lt)">${DateHelpers.fmt(m.dueDate)}</span></div>`).join(''):` <div style="font-size:12px;color:var(--lt)">No milestones scheduled next month</div>`}
+      ${highRisks.length?`<div style="font-size:12px;font-weight:700;color:#dc2626;margin:12px 0 6px">Key risks to watch</div>${highRisks.slice(0,3).map(r=>`<div style="font-size:12px;padding:4px 0;color:var(--mid)">⚠️ ${r.title} (Score ${(r.likelihood||1)*(r.impact||1)})</div>`).join('')}`:''}
+    </div>`;
+  }
+
+  // ── Build plain text for copy/email ─────────────────────
+  function buildPlainText() {
+    const tab = APP_STATE._leadershipTab || 'weekly';
+    const lines = [];
+    lines.push(`KLARION PROGRAMME REPORT — ${tab.toUpperCase()}`);
+    lines.push(`Generated: ${DateHelpers.fmt(today)}`);
+    lines.push('');
+    lines.push(`Projects: ${projects.length} total · ${projects.filter(p=>p.status==='In Progress').length} in progress · ${projects.filter(p=>p.status==='Completed').length} completed`);
+    lines.push(`Milestones: ${milestones.length} total · ${overdueMilestones.length} overdue`);
+    lines.push(`Open Risks: ${openRisks.length} · High Priority: ${highRisks.length}`);
+    lines.push(`Open Escalations (L3/L4): ${openEscL34.length}`);
+    lines.push('');
+    lines.push('── PROJECT STATUS ──────────────────────────');
+    projects.forEach(p=>{
+      lines.push(`• ${p.name} [${p.status}] ${p.progress||0}% — ${p.track||'—'} · ${teamName(p.devLead)}`);
+    });
+    if (!projects.length) lines.push('  No projects');
+    lines.push('');
+    if (overdueMilestones.length) {
+      lines.push('── OVERDUE MILESTONES ──────────────────────');
+      overdueMilestones.forEach(m=>{ lines.push(`🔴 ${m.title} (${m.projectName||'—'}) — due ${DateHelpers.fmt(m.dueDate)}`); });
+      lines.push('');
+    }
+    if (highRisks.length) {
+      lines.push('── HIGH RISKS ──────────────────────────────');
+      highRisks.forEach(r=>{ lines.push(`⚠️ Score ${(r.likelihood||1)*(r.impact||1)} — ${r.title} (${r.project||'—'})`); });
+      lines.push('');
+    }
+    if (openEscL34.length) {
+      lines.push('── ESCALATIONS L3/L4 ───────────────────────');
+      openEscL34.forEach(e=>{ lines.push(`🚨 ${e.level||'—'} — ${e.project||'—'}: ${e.title||'—'}`); });
+      lines.push('');
+    }
+    lines.push('── TRACK RESOURCE STATUS ───────────────────');
+    tracks.forEach(track=>{
+      const s = trackStats(track);
+      lines.push(`${track}: ${s.tm.length} members · ${s.tp.length} projects · ${s.avgAlloc}% alloc · ${s.hrsLogged}h logged · ${s.signal}`);
+    });
+    if (!tracks.length) lines.push('  No tracks configured');
+    return lines.join('\n');
+  }
+
+  const tabContent = activeTab==='daily'   ? dailyTab()
+                   : activeTab==='monthly' ? monthlyTab()
+                   : weeklyTab();
+
+  const emailSubj = `Klarion Programme Report — ${activeTab.charAt(0).toUpperCase()+activeTab.slice(1)} — ${DateHelpers.fmt(today)}`;
 
   return `
   <div class="vh">
     <div class="vh-left">
       <h1>Leadership Report</h1>
-      <div class="sub">Generated: ${DateHelpers.fmt(DateHelpers.today())}</div>
+      <div class="sub">Generated: ${DateHelpers.fmt(today)}</div>
+    </div>
+    <div class="vh-right no-print">
+      <button class="btn btn-ghost btn-sm" onclick="(function(){navigator.clipboard.writeText(window._leadershipText||'').then(()=>showToast('Copied to clipboard ✅')).catch(()=>showToast('Copy failed','error'))})()">📋 Copy Text</button>
+      <button class="btn btn-ghost btn-sm" onclick="window.print()">📄 Export PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="window.location.href='mailto:?subject='+encodeURIComponent(window._leadershipSubject||'')+'&body='+encodeURIComponent(window._leadershipText||'')">✉️ Email</button>
     </div>
   </div>
-
-  <div class="report-section">
-    <h2>Executive Summary</h2>
-    ${statRow(
-      statBlock(projects.length,'Total Projects','across all tracks','var(--navy)') +
-      statBlock(projects.filter(p=>normaliseStatus(p.status)==='Completed').length,'Completed','signed off','#059669') +
-      statBlock(atRisk.length,'At Risk','flagged milestones','#D97706') +
-      statBlock(overdue.length,'Overdue','past due date','#DC2626')
-    )}
+  <div class="pulse-tabs no-print">
+    ${tabBtn('daily',   'Daily')}
+    ${tabBtn('weekly',  'Weekly')}
+    ${tabBtn('monthly', 'Monthly')}
   </div>
-
-  <div class="report-section">
-    <h2>Project Status</h2>
-    <div class="card" style="padding:0">
-      <div class="tbl-wrap">
-        <table class="dt">
-          <thead><tr><th>Project</th><th>Track</th><th>Phase</th><th>Status</th><th>Progress</th><th>Dev Lead</th></tr></thead>
-          <tbody>${projects.map(p=>`
-          <tr>
-            <td style="font-weight:600">${p.name||p.title||'Unnamed'}</td>
-            <td>${p.track||'—'}</td><td>${p.phase||'—'}</td>
-            <td>${ragBadge(p.status)}</td>
-            <td style="min-width:120px">${progressBar(p.progress||0)}<span style="font-size:11px;color:var(--lt)">${p.progress||0}%</span></td>
-            <td style="font-size:12px">${teamName(p.devLead)}</td>
-          </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="report-section">
-    <h2>Milestone Health</h2>
-    <div class="card" style="padding:0">
-      <div class="tbl-wrap">
-        <table class="dt">
-          <thead><tr><th>Milestone</th><th>Project</th><th>Due Date</th><th>Revised ETA</th><th>Status</th></tr></thead>
-          <tbody>${milestones.map(m=>`
-          <tr class="${normaliseStatus(m.status)==='Overdue'?'':normaliseStatus(m.status)==='Completed'?'done':''}">
-            <td style="font-weight:600">${m.title}</td>
-            <td style="font-size:12px">${m.projectName||'—'}</td>
-            <td style="font-size:12px">${DateHelpers.fmt(m.dueDate)}</td>
-            <td style="font-size:12px;color:${m.revisedETA?'#d97706':''}">${DateHelpers.fmt(m.revisedETA)}</td>
-            <td>${ragBadge(m.status)}</td>
-          </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="report-section">
-    <h2>Top Risks</h2>
-    ${openRisks.slice(0,5).map(r=>{
-      const score = r.likelihood*r.impact;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span class="risk-score ${score>=12?'score-h':score>=6?'score-m':'score-l'}">${score}</span>
-        <div style="flex:1"><div style="font-weight:600;font-size:13px">${r.title}</div><div style="font-size:11px;color:var(--lt)">${r.mitigation||''}</div></div>
-        <span style="font-size:12px;color:var(--mid)">${r.owner||'—'}</span>
-      </div>`;
-    }).join('')}
-  </div>`;
+  ${tabContent}
+  <script>
+    window._leadershipText = ${JSON.stringify(buildPlainText())};
+    window._leadershipSubject = ${JSON.stringify(emailSubj)};
+  </script>`;
 }
 
 // ─── IMPACTS ──────────────────────────────────────────────

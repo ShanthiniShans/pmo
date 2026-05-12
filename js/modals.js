@@ -101,134 +101,273 @@ export function openModal(type, id, extra) {
   }
 }
 
-// ─── PROJECT ──────────────────────────────────────────────
-window._filterTeamOptions = function(q) {
-  const sel = document.getElementById('pTeam');
-  if (!sel) return;
-  [...sel.options].forEach(o => {
-    o.style.display = o.text.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+// ─── PROJECT WIZARD ───────────────────────────────────────
+// Wizard state (shared across steps)
+window._wiz = {};
+
+function wizTrackOptions() {
+  const tracks = APP_STATE.tracks && APP_STATE.tracks.length
+    ? APP_STATE.tracks
+    : (APP_STATE.settings.trackNames || []).map((n,i) => ({ id: n, name: n }));
+  return tracks.map(t => `<option value="${t.id}" ${window._wiz.track === t.id ? 'selected' : ''}>${t.name}</option>`).join('');
+}
+
+function wizRenderStep1() {
+  const priorities = ['Low', 'Medium', 'High', 'Critical'];
+  const statuses   = ['Yet to Start', 'In Progress', 'On Hold', 'Completed'];
+  return `
+    <div class="form-group">
+      <label class="form-label">Project Name *</label>
+      <input class="form-control" id="wName" value="${window._wiz.name||''}" placeholder="e.g. Customer Portal Revamp" style="font-size:14px;font-weight:600"/>
+      <div class="field-error" id="wNameErr">Project name is required</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Track</label>
+      <select class="form-control" id="wTrack" onchange="window._wiz.track=this.value">
+        <option value="">— Select Track —</option>
+        ${wizTrackOptions()}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Priority</label>
+      <div class="pill-group" id="wPriorityGroup">
+        ${priorities.map(p => {
+          const sel = (window._wiz.priority||'Medium') === p;
+          const extra = sel ? (p==='Critical'?'sel-critical':p==='High'?'sel-high':p==='Low'?'sel-low':'selected') : '';
+          return `<button class="pill-opt ${extra}" onclick="window._wizSetPriority('${p}')">${p}</button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <div class="pill-group" id="wStatusGroup">
+        ${statuses.map(s => {
+          const sel = (window._wiz.status||'Yet to Start') === s;
+          return `<button class="pill-opt ${sel?'selected':''}" onclick="window._wizSetStatus('${s}')">${s}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function wizRenderStep2() {
+  const phases = APP_STATE.settings.phaseOptions || ['Requirements','Design','Development','UAT','Go-Live'];
+  const prog   = window._wiz.progress ?? 0;
+  return `
+    <div class="form-group">
+      <label class="form-label">Phase</label>
+      <select class="form-control" id="wPhase" onchange="window._wiz.phase=this.value">
+        <option value="">— Select Phase —</option>
+        ${phases.map(ph => `<option value="${ph}" ${window._wiz.phase===ph?'selected':''}>${ph}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Start Date *</label>
+        <input type="date" class="form-control" id="wStart" value="${window._wiz.startDate||''}" onchange="window._wiz.startDate=this.value"/>
+        <div class="field-error" id="wStartErr">Start date is required</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Date *</label>
+        <input type="date" class="form-control" id="wEnd" value="${window._wiz.endDate||''}" onchange="window._wiz.endDate=this.value"/>
+        <div class="field-error" id="wEndErr">End date is required</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Progress %</label>
+      <div class="slider-wrap">
+        <input type="range" min="0" max="100" value="${prog}" id="wProgress"
+          oninput="window._wiz.progress=parseInt(this.value);document.getElementById('wProgVal').textContent=this.value+'%'"/>
+        <span class="slider-val" id="wProgVal">${prog}%</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sprint <span style="font-weight:400;color:var(--lt)">(optional)</span></label>
+      <input class="form-control" id="wSprint" value="${window._wiz.sprint||''}" placeholder="e.g. Sprint 14" onchange="window._wiz.sprint=this.value"/>
+    </div>`;
+}
+
+function wizRenderStep3() {
+  return `
+    <div class="form-group">
+      <label class="form-label">Dev Lead</label>
+      <select class="form-control" id="wDevLead" onchange="window._wiz.devLead=this.value">
+        <option value="">— Select member —</option>
+        ${APP_STATE.teamMembers.map(m => `<option value="${m.id}" ${window._wiz.devLead===m.id?'selected':''}>${m.name} (${m.role||'—'})</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description <span style="font-weight:400;color:var(--lt)">(What problem does this solve?)</span></label>
+      <textarea class="form-control" id="wDesc" rows="3" onchange="window._wiz.description=this.value">${window._wiz.description||''}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Jira Key <span style="font-weight:400;color:var(--lt)">(optional)</span></label>
+      <input class="form-control" id="wJira" value="${window._wiz.jiraKey||''}" placeholder="e.g. KP-123" onchange="window._wiz.jiraKey=this.value"/>
+    </div>`;
+}
+
+function wizStepIndicator(step) {
+  const labels = ['Basic Info', 'Timeline', 'Team & Details'];
+  const circles = labels.map((lbl, i) => {
+    const n = i + 1;
+    const cls = n < step ? 'done' : n === step ? 'active' : '';
+    const icon = n < step ? '✓' : n;
+    return `<div style="display:flex;flex-direction:column;align-items:center">
+      <div class="step-circle ${cls}">${icon}</div>
+      <div class="step-label">${lbl}</div>
+    </div>`;
+  });
+  return `<div class="step-indicator">
+    ${circles[0]}
+    <div class="step-line ${step > 1 ? 'done' : ''}"></div>
+    ${circles[1]}
+    <div class="step-line ${step > 2 ? 'done' : ''}"></div>
+    ${circles[2]}
+  </div>`;
+}
+
+function wizFooter(step, editId) {
+  const back = step > 1
+    ? `<button class="btn btn-ghost" onclick="window._wizGo(${step - 1})">← Back</button>`
+    : `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>`;
+  const next = step < 3
+    ? `<button class="btn btn-primary" onclick="window._wizGo(${step + 1})">Next →</button>`
+    : `<button class="btn btn-primary" onclick="window._wizSave('${editId||''}')">Save Project</button>`;
+  return `<div class="mo-foot">${back}${next}</div>`;
+}
+
+function wizRender(step, editId) {
+  const stepContent = step === 1 ? wizRenderStep1() : step === 2 ? wizRenderStep2() : wizRenderStep3();
+  const title = editId ? 'Edit Project' : 'New Project';
+  return `<div class="mo" onclick="if(event.target===this)closeModal()">
+    <div class="mo-box">
+      <div class="mo-hdr">
+        <span class="mo-title">${title}</span>
+        <button class="mo-close" onclick="closeModal()">×</button>
+      </div>
+      ${wizStepIndicator(step)}
+      <div class="mo-body" id="wizBody">${stepContent}</div>
+      ${wizFooter(step, editId)}
+    </div>
+  </div>`;
+}
+
+window._wizSetPriority = function(p) {
+  window._wiz.priority = p;
+  document.querySelectorAll('#wPriorityGroup .pill-opt').forEach(btn => {
+    btn.className = 'pill-opt';
+    if (btn.textContent.trim() === p) {
+      btn.className = 'pill-opt ' + (p==='Critical'?'sel-critical':p==='High'?'sel-high':p==='Low'?'sel-low':'selected');
+    }
   });
 };
 
-async function modalProject(id) {
-  const p = id ? APP_STATE.projects.find(x=>x.id===id) : null;
-  const sel = Array.isArray(p?.team) ? p.team : (p?.team||'').split(',').map(s=>s.trim()).filter(Boolean);
-  show(`<div class="mo" onclick="if(event.target===this)closeModal()">
-    <div class="mo-box lg">
-      <div class="mo-hdr">
-        <span class="mo-title">${p ? 'Edit Project' : 'New Project'}</span>
-        <button class="mo-close" onclick="closeModal()">×</button>
-      </div>
-      <div class="mo-body">
-        <div class="form-row">
-          <div class="form-group form-row-full">
-            <label class="form-label">Project Name *</label>
-            <input class="form-control" id="pName" value="${p?.name||''}"/>
-          </div>
-        </div>
-        <div class="form-row-3">
-          <div class="form-group">
-            <label class="form-label">Track</label>
-            <select class="form-control" id="pTrack"><option value="">—</option>${trackOptions(p?.track)}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Phase</label>
-            <select class="form-control" id="pPhase">${phaseOptions(p?.phase)}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Status</label>
-            <select class="form-control" id="pStatus">${statusOptions(p?.status)}</select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Clarity Stage <span style="font-size:10px;font-weight:400;color:var(--lt)">(controls which column this appears in on the Clarity board)</span></label>
-          <select class="form-control" id="pStage">
-            <option value="">— Auto-detect from Status —</option>
-            ${['Idea','Brief Draft','3-Way Scope','Ready to Build','In Progress','Released','Observation'].map(s=>`<option value="${s}" ${p?.stage===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-row-3">
-          <div class="form-group">
-            <label class="form-label">Priority</label>
-            <select class="form-control" id="pPriority">${priorityOptions(p?.priority)}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Start Date</label>
-            <input type="date" class="form-control" id="pStart" value="${p?.startDate||''}"/>
-          </div>
-          <div class="form-group">
-            <label class="form-label">End Date</label>
-            <input type="date" class="form-control" id="pEnd" value="${p?.endDate||''}"/>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Dev Lead</label>
-            <select class="form-control" id="pDevLead"><option value="">—</option>${memberOptions(p?.devLead)}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Jira Project Key</label>
-            <input class="form-control" id="pJira" value="${p?.jiraKey||''}" placeholder="e.g. RSE"/>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Progress (%)</label>
-          <input type="number" class="form-control" id="pProgress" min="0" max="100" value="${p?.progress||0}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea class="form-control" id="pDesc">${p?.description||''}</textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Objectives</label>
-          <textarea class="form-control" id="pObj">${p?.objectives||''}</textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Stakeholders</label>
-          <input class="form-control" id="pStake" value="${p?.stakeholders||''}"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px" onclick="(function(){var p=document.getElementById('pTeamPanel');var a=document.getElementById('pTeamArrow');p.style.display=p.style.display==='none'?'':'none';a.textContent=p.style.display===''?'▲':'▼';})()">
-            Team Members
-            <span style="font-size:10px;color:var(--lt);font-weight:400">${sel.length ? sel.length+' selected' : 'none selected'}</span>
-            <span id="pTeamArrow" style="margin-left:auto;font-size:10px;color:var(--lt)">▼</span>
-          </label>
-          <div id="pTeamPanel" style="display:none">
-            <input class="form-control" id="teamSearchInput" placeholder="Search members…" oninput="window._filterTeamOptions(this.value)" style="margin-bottom:6px;font-size:12px"/>
-            <select class="form-control" id="pTeam" multiple size="5" style="font-size:12px">
-              ${APP_STATE.teamMembers.map(m=>`<option value="${m.id}" ${sel.includes(m.id)?'selected':''}>${m.name} — ${m.role}</option>`).join('')}
-            </select>
-            <div style="font-size:11px;color:var(--lt);margin-top:4px">Hold Ctrl / Cmd to select multiple members</div>
-          </div>
-        </div>
-      </div>
-      <div class="mo-foot">
-        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveProject('${id||''}')">Save Project</button>
-      </div>
-    </div>
-  </div>`);
-}
+window._wizSetStatus = function(s) {
+  window._wiz.status = s;
+  document.querySelectorAll('#wStatusGroup .pill-opt').forEach(btn => {
+    btn.className = 'pill-opt' + (btn.textContent.trim() === s ? ' selected' : '');
+  });
+};
 
-window.saveProject = async function(id) {
+window._wizGo = function(toStep) {
+  const cur = window._wiz._step || 1;
+  const editId = window._wiz._editId || '';
+  // Collect current step values before validating
+  if (cur === 1) {
+    window._wiz.name     = (document.getElementById('wName')?.value || '').trim();
+    window._wiz.track    = document.getElementById('wTrack')?.value || '';
+    if (!window._wiz.priority) window._wiz.priority = 'Medium';
+    if (!window._wiz.status)   window._wiz.status   = 'Yet to Start';
+    if (toStep > cur && !window._wiz.name) {
+      const err = document.getElementById('wNameErr');
+      if (err) err.classList.add('show');
+      return;
+    }
+  }
+  if (cur === 2) {
+    window._wiz.phase     = document.getElementById('wPhase')?.value || '';
+    window._wiz.startDate = document.getElementById('wStart')?.value || '';
+    window._wiz.endDate   = document.getElementById('wEnd')?.value || '';
+    window._wiz.progress  = parseInt(document.getElementById('wProgress')?.value || '0');
+    window._wiz.sprint    = document.getElementById('wSprint')?.value || '';
+    if (toStep > cur) {
+      let ok = true;
+      if (!window._wiz.startDate) { const e=document.getElementById('wStartErr'); if(e) e.classList.add('show'); ok=false; }
+      if (!window._wiz.endDate)   { const e=document.getElementById('wEndErr');   if(e) e.classList.add('show'); ok=false; }
+      if (!ok) return;
+    }
+  }
+  if (cur === 3) {
+    window._wiz.devLead     = document.getElementById('wDevLead')?.value || '';
+    window._wiz.description = document.getElementById('wDesc')?.value || '';
+    window._wiz.jiraKey     = document.getElementById('wJira')?.value || '';
+  }
+  window._wiz._step = toStep;
+  show(wizRender(toStep, editId));
+};
+
+window._wizSave = async function(id) {
+  window._wiz.devLead     = document.getElementById('wDevLead')?.value || '';
+  window._wiz.description = document.getElementById('wDesc')?.value || '';
+  window._wiz.jiraKey     = document.getElementById('wJira')?.value || '';
   const data = {
-    name: val('pName'), track: val('pTrack'), phase: val('pPhase'),
-    status: val('pStatus'), priority: val('pPriority'),
-    startDate: val('pStart'), endDate: val('pEnd'),
-    devLead: val('pDevLead'), jiraKey: val('pJira'),
-    progress: num('pProgress'), description: val('pDesc'),
-    objectives: val('pObj'), stakeholders: val('pStake'),
-    team: [...(document.getElementById('pTeam')?.selectedOptions||[])].map(o=>o.value),
-    stage: val('pStage'),
-    stageChangedAt: val('pStage') ? new Date().toISOString() : ''
+    name:        window._wiz.name       || '',
+    track:       window._wiz.track      || '',
+    priority:    window._wiz.priority   || 'Medium',
+    status:      window._wiz.status     || 'Yet to Start',
+    phase:       window._wiz.phase      || '',
+    startDate:   window._wiz.startDate  || '',
+    endDate:     window._wiz.endDate    || '',
+    progress:    window._wiz.progress   ?? 0,
+    sprint:      window._wiz.sprint     || '',
+    devLead:     window._wiz.devLead    || '',
+    description: window._wiz.description|| '',
+    jiraKey:     window._wiz.jiraKey    || '',
+    stage:       window._wiz.stage      || '',
+    objectives:  window._wiz.objectives || '',
+    stakeholders:window._wiz.stakeholders|| '',
+    team:        window._wiz.team       || []
   };
   if (!data.name) return alert('Project name is required');
   try {
     if (id) await DB.update('projects', id, data);
     else await DB.add('projects', data);
     closeModal();
-  } catch(e) { alert('Error: '+e.message); }
+  } catch(e) { alert('Error: ' + e.message); }
 };
+
+async function modalProject(id) {
+  const p = id ? APP_STATE.projects.find(x=>x.id===id) : null;
+  // Initialise wizard state from existing project or defaults
+  window._wiz = {
+    _step:    1,
+    _editId:  id || '',
+    name:        p?.name        || '',
+    track:       p?.track       || '',
+    priority:    p?.priority    || 'Medium',
+    status:      p?.status      || 'Yet to Start',
+    phase:       p?.phase       || '',
+    startDate:   p?.startDate   || '',
+    endDate:     p?.endDate     || '',
+    progress:    p?.progress    ?? 0,
+    sprint:      p?.sprint      || '',
+    devLead:     p?.devLead     || '',
+    description: p?.description || '',
+    jiraKey:     p?.jiraKey     || '',
+    stage:       p?.stage       || '',
+    objectives:  p?.objectives  || '',
+    stakeholders:p?.stakeholders|| '',
+    team:        Array.isArray(p?.team) ? p.team : (p?.team||'').split(',').map(s=>s.trim()).filter(Boolean)
+  };
+  show(wizRender(1, id || ''));
+}
+
+window.saveProject = async function(id) {
+  return window._wizSave(id);
+};
+
+// kept for backward compat — old flat form referenced these
+window._filterTeamOptions = function() {};
+
 
 // ─── MILESTONE ────────────────────────────────────────────
 window._msTasks = [];

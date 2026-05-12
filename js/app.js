@@ -6,7 +6,8 @@ import { openModal, closeModal } from './modals.js';
 import {
   renderDashboard, renderTracks, renderRoadmap, renderMilestones,
   renderProjects, renderProjectDetail, renderOnboarding, renderWorkflows,
-  renderTeam, renderCapacity, renderResources, renderRisks, renderEscalations,
+  renderTeam, renderCapacityResources, renderCapacity, renderResources,
+  renderRisks, renderEscalations,
   renderLeadership, renderImpacts, renderCharters, renderSettings,
   renderPledges, renderKnowledge
 } from './views.js';
@@ -23,8 +24,8 @@ const VIEWS = {
   onboarding:       { title: '', render: renderOnboarding },
   workflows:        { title: '', render: renderWorkflows },
   team:             { title: '', render: renderTeam },
-  capacity:         { title: '', render: renderCapacity },
-  resources:        { title: '', render: renderResources },
+  capacity:         { title: '', render: renderCapacityResources },
+  resources:        { title: '', render: renderCapacityResources },
   risks:            { title: '', render: renderRisks },
   escalations:      { title: '', render: renderEscalations },
   leadership:       { title: '', render: renderLeadership },
@@ -169,7 +170,7 @@ window._resourceWeek = function(direction, mode) {
     if (next > 0) return;
     APP_STATE._resourceWeekOffset = next;
   }
-  navigateTo('resources');
+  navigateTo('capacity');
 };
 
 // ─── TOAST ────────────────────────────────────────────────
