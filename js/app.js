@@ -40,6 +40,11 @@ async function navigateTo(view, params) {
   const v = VIEWS[view];
   if (!v) return;
 
+  // Reset filters when switching to a different view (not same-view tab switching)
+  if (view !== APP_STATE.currentView) {
+    APP_STATE.filters = { year: new Date().getFullYear(), quarter: '', month: '', track: '', startDate: '', endDate: '' };
+  }
+
   APP_STATE.currentView = view;
   APP_STATE.currentParams = params || {};
   localStorage.setItem('klarion_view', view);

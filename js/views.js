@@ -91,7 +91,7 @@ function projProgress(p) {
 function filterProjects(projects) {
   const f = APP_STATE.filters;
   return projects.filter(p => {
-    if (f.track && p.track !== f.track) return false;
+    if (f.track && resolveTrackName(p.track||p.trackId) !== f.track) return false;
     if (f.startDate && p.endDate && p.endDate < f.startDate) return false;
     if (f.endDate && p.startDate && p.startDate > f.endDate) return false;
     return true;
@@ -419,7 +419,7 @@ export function renderTracks() {
   const tracks      = APP_STATE.settings.trackNames || ['Track 1','Track 2','Track 3'];
   const f           = APP_STATE.filters;
   const activeTrack = f.track || 'All';
-  const filtered    = activeTrack === 'All' ? projects : projects.filter(p => p.track === activeTrack);
+  const filtered    = activeTrack === 'All' ? projects : projects.filter(p => resolveTrackName(p.track||p.trackId) === activeTrack);
 
   const STAGES = [
     { label:'Idea',           color:'#94A3B8', desc:'Capture the problem and a PM owner.' },
@@ -544,7 +544,7 @@ export function renderRoadmap() {
   }
 
   const todayPct    = datePct(DateHelpers.today());
-  const uniqueTracks = [...new Set(projects.map(p => p.track || 'Unassigned'))];
+  const uniqueTracks = [...new Set(projects.map(p => resolveTrackName(p.track||p.trackId) || 'Unassigned'))];
   const gridLines   = months.map((_,i) => i===0 ? '' :
     `<div style="position:absolute;top:0;bottom:0;left:${(i/months.length*100).toFixed(2)}%;width:1px;background:#EEF2F8;pointer-events:none;z-index:1"></div>`
   ).join('');
@@ -605,7 +605,7 @@ export function renderRoadmap() {
     ${uniqueTracks.length === 0 ? `<div class="empty"><div class="empty-icon">📋</div>No projects match current filters.</div>` :
       uniqueTracks.map((track,ti) => {
         const tc    = TC[ti % TC.length];
-        const tProj = projects.filter(p=>(p.track||'Unassigned')===track);
+        const tProj = projects.filter(p=>(resolveTrackName(p.track||p.trackId)||'Unassigned')===track);
         return `<div class="gantt-seg-hdr" style="background:${tc}0D;border-left:4px solid ${tc};border-top:2px solid #F0EEF4;border-bottom:1px solid ${tc}28">
           <div class="gantt-seg-name" style="color:${tc};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">${track} <span style="font-weight:400;color:${tc}88;text-transform:none;letter-spacing:0">— ${tProj.length} project${tProj.length!==1?'s':''}</span></div>
           <div style="border-left:1px solid var(--border);position:relative;min-height:32px">${gridLines}${todayLine}</div>
@@ -1135,7 +1135,7 @@ export { renderCapacityResources as renderCapacity };
 function _renderAllocation() {
   const members   = [...APP_STATE.teamMembers].sort((a,b)=>(b.availability||100)-(a.availability||100));
   const f         = APP_STATE.filters;
-  const projects  = f.track ? APP_STATE.projects.filter(p=>p.track===f.track) : APP_STATE.projects;
+  const projects  = f.track ? APP_STATE.projects.filter(p=>resolveTrackName(p.track||p.trackId)===f.track) : APP_STATE.projects;
   const milestones = APP_STATE.milestones;
 
   function projectCompletion(p) {
@@ -1501,7 +1501,8 @@ export function renderLeadership() {
     const in3d  = new Date(now); in3d.setDate(in3d.getDate()+3);
     const in3dStr = in3d.toISOString().split('T')[0];
 
-    const completedYesterday = milestones.filter(m=>m.status==='Completed'&&(m.completedDate===yStr||(m.updatedAt||'').startsWith(yStr)));
+    const toDateStr = v => typeof v === 'string' ? v : (v?.toDate?.()?.toISOString?.()?.split('T')[0] || '');
+    const completedYesterday = milestones.filter(m=>m.status==='Completed'&&(m.completedDate===yStr||toDateStr(m.updatedAt).startsWith(yStr)));
     const inProgressProj = projects.filter(p=>normaliseStatus(p.status)==='In Progress');
     const blockers = [
       ...projects.filter(p=>p.status==='On Hold'),
