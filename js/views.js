@@ -51,6 +51,43 @@ function teamArr(val) {
   return val.split(',').map(s=>s.trim()).filter(Boolean);
 }
 
+function resolveTrackName(trackIdOrName) {
+  if (!trackIdOrName) return '—';
+  const byId = APP_STATE.tracks.find(t => t.id === trackIdOrName);
+  if (byId) return byId.name || byId.title || trackIdOrName;
+  const byName = APP_STATE.tracks.find(t =>
+    (t.name || t.title || '').toLowerCase() === trackIdOrName.toLowerCase()
+  );
+  if (byName) return byName.name || byName.title || trackIdOrName;
+  return trackIdOrName;
+}
+
+function calcProjectProgress(projectId, projectName) {
+  const ms = APP_STATE.milestones.filter(m =>
+    (projectId && m.projectId === projectId) ||
+    (projectName && (m.projectName === projectName || m.project === projectName))
+  );
+  if (!ms.length) return null;
+  const completed = ms.filter(m => (m.status||'').toLowerCase().includes('complet')).length;
+  let totalTasks = 0, completedTasks = 0;
+  ms.forEach(m => {
+    const tasks = m.tasks || [];
+    totalTasks += tasks.length;
+    completedTasks += tasks.filter(t => t.done || t.completed ||
+      (t.status||'').toLowerCase().includes('complet')).length;
+  });
+  if (totalTasks > 0) {
+    const msProgress = completed / ms.length;
+    const taskProgress = completedTasks / totalTasks;
+    return Math.round((msProgress * 0.6 + taskProgress * 0.4) * 100);
+  }
+  return Math.round((completed / ms.length) * 100);
+}
+
+function projProgress(p) {
+  return calcProjectProgress(p.id, p.name) ?? p.progress ?? 0;
+}
+
 function filterProjects(projects) {
   const f = APP_STATE.filters;
   return projects.filter(p => {
@@ -193,8 +230,8 @@ function execBanner(active) {
   const capTab = APP_STATE._capTab || 'allocation';
   const subLinks = active==='capacity'
     ? `<div style="display:flex;gap:4px;margin-left:8px">
-        <span onclick="APP_STATE._capTab='allocation';nav('capacity')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;background:${capTab==='allocation'?'rgba(0,168,150,.35)':'rgba(255,255,255,.08)'};color:#fff;font-weight:600">Allocation</span>
-        <span onclick="APP_STATE._capTab='timelog';nav('capacity')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;background:${capTab==='timelog'?'rgba(0,168,150,.35)':'rgba(255,255,255,.08)'};color:#fff;font-weight:600">Time Log</span>
+        <span onclick="switchTab('_capTab','allocation')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;background:${capTab==='allocation'?'rgba(0,168,150,.35)':'rgba(255,255,255,.08)'};color:#fff;font-weight:600">Allocation</span>
+        <span onclick="switchTab('_capTab','timelog')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;background:${capTab==='timelog'?'rgba(0,168,150,.35)':'rgba(255,255,255,.08)'};color:#fff;font-weight:600">Time Log</span>
       </div>`
     : '';
   return `<div class="exec-banner">
@@ -252,7 +289,7 @@ export function renderDashboard() {
   // ── Stat row (always visible) ────────────────────────────
   function statItem(n, lbl, col, clickable) {
     const style = `display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 10px;gap:3px;border-right:1px solid var(--border);flex:1;min-width:0${clickable?';cursor:pointer':''}`;
-    const click = clickable ? `onclick="APP_STATE._pulseTab='flags';nav('dashboard')"` : '';
+    const click = clickable ? `onclick="switchTab('_pulseTab','flags')"` : '';
     return `<div style="${style}" ${click}>
       <span style="font-size:26px;font-weight:800;color:${n>0?col:'#D1C9E0'};line-height:1">${n}</span>
       <span style="font-size:10px;font-weight:700;color:${n>0?col:'#D1C9E0'};text-align:center;line-height:1.3">${lbl}</span>
@@ -322,8 +359,8 @@ export function renderDashboard() {
         ${projects.length ? projects.map(p=>`
           <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer" onclick="nav('project-detail',{id:'${p.id}'})">
             <span class="proj-link" style="font-size:13px;display:block;margin-bottom:4px">${p.name}</span>
-            <div style="font-size:11px;color:var(--lt);margin-bottom:6px">${p.track||'—'} · ${p.phase||'—'}</div>
-            ${progressBar(p.progress||0)}
+            <div style="font-size:11px;color:var(--lt);margin-bottom:6px">${resolveTrackName(p.track||p.trackId)||'—'} · ${p.phase||'—'}</div>
+            ${progressBar(projProgress(p))}
             <div style="display:flex;align-items:center;gap:6px;margin-top:4px">${ragBadge(p.status)}<span style="font-size:11px;color:var(--lt)">${DateHelpers.fmt(p.endDate)}</span></div>
           </div>`).join('') : `<div class="empty"><div class="empty-icon">📋</div>No projects</div>`}
       </div>
@@ -362,9 +399,9 @@ export function renderDashboard() {
   ${statRowHtml}
   <div class="card" style="padding:0">
     <div class="pulse-tabs" style="padding:0 16px">
-      <button class="pt ${activeTab==='flags'?'active':''}"  onclick="APP_STATE._pulseTab='flags';nav('dashboard')">🚩 Flags${openFlagsCount>0?` (${openFlagsCount})`:''}</button>
-      <button class="pt ${activeTab==='health'?'active':''}" onclick="APP_STATE._pulseTab='health';nav('dashboard')">❤️ Health</button>
-      <button class="pt ${activeTab==='activity'?'active':''}" onclick="APP_STATE._pulseTab='activity';nav('dashboard')">⚡ Activity</button>
+      <button class="pt ${activeTab==='flags'?'active':''}"  onclick="switchTab('_pulseTab','flags')">🚩 Flags${openFlagsCount>0?` (${openFlagsCount})`:''}</button>
+      <button class="pt ${activeTab==='health'?'active':''}" onclick="switchTab('_pulseTab','health')">❤️ Health</button>
+      <button class="pt ${activeTab==='activity'?'active':''}" onclick="switchTab('_pulseTab','activity')">⚡ Activity</button>
     </div>
     <div style="padding:14px 16px">
       ${activeTab==='flags' ? (allFlags.length
@@ -442,11 +479,11 @@ export function renderTracks() {
               return `<div class="card" style="padding:12px 14px;cursor:pointer;border-radius:10px;transition:box-shadow .15s" onclick="nav('project-detail',{id:'${p.id}'})" onmouseover="this.style.boxShadow='0 4px 16px rgba(27,43,94,.13)'" onmouseout="this.style.boxShadow=''">
                 <span class="proj-link" style="font-size:13px;display:block;margin-bottom:6px;line-height:1.3">${p.name||p.title||'Unnamed'}</span>
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
-                  ${p.track?`<span class="badge badge-navy" style="font-size:10px">${p.track}</span>`:''}
+                  ${p.track||p.trackId?`<span class="badge badge-navy" style="font-size:10px">${resolveTrackName(p.track||p.trackId)}</span>`:''}
                   ${p.phase?`<span class="badge badge-grey" style="font-size:10px">${p.phase}</span>`:''}
                   ${stale?`<span class="badge badge-amber" style="font-size:10px" title="Days in this stage">${daysInStage}d</span>`:''}
                 </div>
-                ${progressBar(p.progress||0)}
+                ${progressBar(projProgress(p))}
                 <div style="display:flex;align-items:center;margin-top:6px;gap:6px">
                   ${devM?`<div class="av av-sm" style="background:${TRACK_COLORS[devM.track]||'var(--navy)'}">${avatar(devM.name)}</div><span style="font-size:11px;color:var(--lt);flex:1">${devM.name}</span>`:'<span style="flex:1"></span>'}
                   ${p.endDate?`<span style="font-size:10px;color:${DateHelpers.isOverdue(p.endDate)&&stage.label!=='Released'&&stage.label!=='Observation'?'#ef4444':'var(--lt)'}">${DateHelpers.fmt(p.endDate)}</span>`:''}
@@ -582,15 +619,15 @@ export function renderRoadmap() {
               <span class="proj-link gantt-feat-name">${p.name}</span>
               <div class="gantt-feat-sub" style="display:flex;align-items:center;gap:6px">
                 ${ragBadge(p.status)}
-                <span>${p.progress||0}%</span>
+                <span>${projProgress(p)}%</span>
                 ${p.devLead?`<span>· ${teamName(p.devLead)}</span>`:''}
               </div>
             </div>
             <div class="gantt-bar-area" style="position:relative;border-left:1px solid var(--border)">
               ${gridLines}${todayLine}
               ${bar?`<div class="g-bar" title="${p.name}" style="left:${bar.left}%;width:${bar.width}%;background:${color}">
-                <div style="position:absolute;top:0;left:0;height:100%;width:${p.progress||0}%;background:rgba(255,255,255,.22);border-radius:4px 0 0 4px"></div>
-                ${bar.width>5?`<div class="g-bar-lbl">${p.progress||0}%</div>`:''}
+                <div style="position:absolute;top:0;left:0;height:100%;width:${projProgress(p)}%;background:rgba(255,255,255,.22);border-radius:4px 0 0 4px"></div>
+                ${bar.width>5?`<div class="g-bar-lbl">${projProgress(p)}%</div>`:''}
               </div>`:''}
               ${pMs.map(ms=>{
                 const mp = datePct(ms.dueDate);
@@ -712,12 +749,12 @@ export function renderProjects() {
               <span class="proj-link">${p.name||p.title||'Unnamed'}</span>
               <div style="font-size:11px;color:var(--lt)">${p.description||''}</div>
             </td>
-            <td>${p.track?`<span class="badge badge-navy">${p.track}</span>`:'—'}</td>
+            <td>${p.track||p.trackId?`<span class="badge badge-navy">${resolveTrackName(p.track||p.trackId)}</span>`:'—'}</td>
             <td>${ragBadge(p.priority)}</td>
             <td style="font-size:12px">${p.phase||'—'}</td>
             <td style="min-width:110px">
-              ${progressBar(p.progress||0)}
-              <div style="font-size:11px;color:var(--lt);margin-top:3px">${p.progress||0}%</div>
+              ${progressBar(projProgress(p))}
+              <div style="font-size:11px;color:var(--lt);margin-top:3px">${projProgress(p)}%</div>
             </td>
             <td>${ragBadge(p.status)}</td>
             <td style="font-size:12px;color:var(--lt)">${DateHelpers.fmt(p.startDate)}</td>
@@ -750,7 +787,7 @@ export async function renderProjectDetail(params) {
   const activeTab = APP_STATE._detailTab || 'overview';
 
   function tabBtn(key, label) {
-    return `<button class="pt ${activeTab===key?'active':''}" onclick="APP_STATE._detailTab='${key}';nav('project-detail',{id:'${id}'})">${label}</button>`;
+    return `<button class="pt ${activeTab===key?'active':''}" onclick="switchTab('_detailTab','${key}')">${label}</button>`;
   }
 
   // ── TAB 1: Overview ──
@@ -926,7 +963,7 @@ export async function renderProjectDetail(params) {
       <div style="flex:1;min-width:0">
         <h1 style="font-size:22px;font-weight:800;color:var(--navy);line-height:1.2;margin-bottom:8px">${p.name}</h1>
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-          ${p.track?`<span class="badge badge-navy">${p.track}</span>`:''}
+          ${p.track||p.trackId?`<span class="badge badge-navy">${resolveTrackName(p.track||p.trackId)}</span>`:''}
           ${ragBadge(p.priority)}
           ${ragBadge(p.status)}
           ${p.phase?`<span class="badge badge-grey">${p.phase}</span>`:''}
@@ -934,13 +971,13 @@ export async function renderProjectDetail(params) {
       </div>
     </div>
     <div style="height:10px;background:#e8eaf0;border-radius:6px;overflow:hidden;margin-bottom:12px">
-      <div style="height:100%;width:${Math.min(p.progress||0,100)}%;background:${(p.progress||0)>=70?'#22c55e':(p.progress||0)>=40?'#f59e0b':'#ef4444'};border-radius:6px;transition:width .3s"></div>
+      <div style="height:100%;width:${Math.min(projProgress(p),100)}%;background:${projProgress(p)>=70?'#22c55e':projProgress(p)>=40?'#f59e0b':'#ef4444'};border-radius:6px;transition:width .3s"></div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--mid)">
       <span>📅 <strong>${DateHelpers.fmt(p.startDate)}</strong> → <strong style="${DateHelpers.isOverdue(p.endDate)&&normaliseStatus(p.status)!=='Completed'?'color:#dc2626':''}">${DateHelpers.fmt(p.endDate)}</strong></span>
       ${p.devLead?`<span>👤 Dev Lead: <strong>${teamName(p.devLead)}</strong></span>`:''}
       ${p.sprint?`<span>🏃 Sprint: <strong>${p.sprint}</strong></span>`:''}
-      <span>📊 <strong>${p.progress||0}%</strong> complete</span>
+      <span>📊 <strong>${projProgress(p)}%</strong> complete</span>
       ${p.jiraKey?`<span>🔗 Jira: <strong>${p.jiraKey}</strong></span>`:''}
     </div>
   </div>
@@ -975,13 +1012,13 @@ export function renderOnboarding() {
           ${projects.length ? projects.map(p=>`
           <tr class="clk">
             <td><span style="font-size:12px;font-weight:600;color:var(--navy)">👤 ${p.customerName||'—'}</span></td>
-            <td>${p.track?`<span class="badge badge-navy">${p.track}</span>`:'—'}</td>
+            <td>${p.track||p.trackId?`<span class="badge badge-navy">${resolveTrackName(p.track||p.trackId)}</span>`:'—'}</td>
             <td style="font-size:12px">${p.phase||'—'}</td>
             <td>${ragBadge(p.status)}</td>
             <td style="font-size:12px">${teamName(p.devLead)}</td>
             <td style="font-size:12px;color:var(--lt)">${DateHelpers.fmt(p.startDate)}</td>
             <td style="font-size:12px;color:var(--lt)">${DateHelpers.fmt(p.endDate)}</td>
-            <td style="min-width:100px">${progressBar(p.progress||0)}<div style="font-size:11px;color:var(--lt);margin-top:3px">${p.progress||0}%</div></td>
+            <td style="min-width:100px">${progressBar(projProgress(p))}<div style="font-size:11px;color:var(--lt);margin-top:3px">${projProgress(p)}%</div></td>
             <td>${p.jiraKey?`<span class="badge badge-blue">${p.jiraKey}</span>`:'—'}</td>
             <td>
               <button class="btn-icon" onclick="openModal('onboarding','${p.id}')">✏️</button>
@@ -1116,8 +1153,8 @@ function _renderAllocation() {
   function capTabBar() {
     const t = APP_STATE._capTab || 'allocation';
     return `<div class="pulse-tabs no-print" style="margin-bottom:14px">
-      <button class="pt ${t==='allocation'?'active':''}" onclick="APP_STATE._capTab='allocation';nav('capacity')">Allocation</button>
-      <button class="pt ${t==='timelog'?'active':''}" onclick="APP_STATE._capTab='timelog';nav('capacity')">Time Log</button>
+      <button class="pt ${t==='allocation'?'active':''}" onclick="switchTab('_capTab','allocation')">Allocation</button>
+      <button class="pt ${t==='timelog'?'active':''}" onclick="switchTab('_capTab','timelog')">Time Log</button>
     </div>`;
   }
 
@@ -1258,8 +1295,8 @@ function _renderTimeLog() {
     </div>
   </div>
   <div class="pulse-tabs no-print" style="margin-bottom:14px">
-    <button class="pt" onclick="APP_STATE._capTab='allocation';nav('capacity')">Allocation</button>
-    <button class="pt active" onclick="APP_STATE._capTab='timelog';nav('capacity')">Time Log</button>
+    <button class="pt" onclick="switchTab('_capTab','allocation')">Allocation</button>
+    <button class="pt active" onclick="switchTab('_capTab','timelog')">Time Log</button>
   </div>
 
   <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:12px">
@@ -1440,7 +1477,7 @@ export function renderLeadership() {
   const activeTab = APP_STATE._leadershipTab || 'weekly';
 
   function tabBtn(key, lbl) {
-    return `<button class="pt ${activeTab===key?'active':''}" onclick="APP_STATE._leadershipTab='${key}';nav('leadership')">${lbl}</button>`;
+    return `<button class="pt ${activeTab===key?'active':''}" onclick="switchTab('_leadershipTab','${key}')">${lbl}</button>`;
   }
 
   function trackStats(track) {
@@ -1500,7 +1537,7 @@ export function renderLeadership() {
       <h2>🚀 In Progress Today</h2>
       ${inProgressProj.length ? `<div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Phase</th><th>Progress</th><th>Dev Lead</th><th>Sprint</th><th>Next Milestone</th></tr></thead><tbody>${inProgressProj.map(p=>{
         const nextMs = milestones.filter(m=>(m.projectId===p.id||m.projectName===p.name)&&m.status!=='Completed').sort((a,b)=>a.dueDate>b.dueDate?1:-1)[0];
-        return `<tr><td style="font-weight:600">${p.name}</td><td>${p.track||'—'}</td><td>${p.phase||'—'}</td><td>${progressBar(p.progress||0)}<span style="font-size:11px">${p.progress||0}%</span></td><td>${teamName(p.devLead)}</td><td>${p.sprint||'—'}</td><td>${nextMs?`${nextMs.title} · ${DateHelpers.fmt(nextMs.dueDate)}`:'—'}</td></tr>`;
+        return `<tr><td style="font-weight:600">${p.name}</td><td>${resolveTrackName(p.track||p.trackId)||'—'}</td><td>${p.phase||'—'}</td><td>${progressBar(projProgress(p))}<span style="font-size:11px">${projProgress(p)}%</span></td><td>${teamName(p.devLead)}</td><td>${p.sprint||'—'}</td><td>${nextMs?`${nextMs.title} · ${DateHelpers.fmt(nextMs.dueDate)}`:'—'}</td></tr>`;
       }).join('')}</tbody></table></div>` : `<div style="font-size:12px;color:var(--lt);padding:8px 0">No projects in progress</div>`}
     </div>
     <div class="report-section">
@@ -1562,7 +1599,7 @@ export function renderLeadership() {
     </div>
     <div class="report-section">
       <h2>🟢🟡🔴 Project Health (RAG)</h2>
-      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Priority</th><th>Phase</th><th>Progress</th><th>Status</th><th>End Date</th><th>Dev Lead</th></tr></thead><tbody>${projects.map(p=>`<tr><td style="font-weight:600">${p.name||'Unnamed'}</td><td>${p.track||'—'}</td><td>${ragBadge(p.priority)}</td><td>${p.phase||'—'}</td><td>${progressBar(p.progress||0)}<span style="font-size:11px">${p.progress||0}%</span></td><td>${ragBadge(p.status)}</td><td style="${p.endDate<today&&p.status!=='Completed'?'color:#dc2626':''}">${DateHelpers.fmt(p.endDate)}</td><td>${teamName(p.devLead)}</td></tr>`).join('')||`<tr><td colspan="8" class="empty">No projects</td></tr>`}</tbody></table></div>
+      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Priority</th><th>Phase</th><th>Progress</th><th>Status</th><th>End Date</th><th>Dev Lead</th></tr></thead><tbody>${projects.map(p=>`<tr><td style="font-weight:600">${p.name||'Unnamed'}</td><td>${resolveTrackName(p.track||p.trackId)||'—'}</td><td>${ragBadge(p.priority)}</td><td>${p.phase||'—'}</td><td>${progressBar(projProgress(p))}<span style="font-size:11px">${projProgress(p)}%</span></td><td>${ragBadge(p.status)}</td><td style="${p.endDate<today&&p.status!=='Completed'?'color:#dc2626':''}">${DateHelpers.fmt(p.endDate)}</td><td>${teamName(p.devLead)}</td></tr>`).join('')||`<tr><td colspan="8" class="empty">No projects</td></tr>`}</tbody></table></div>
     </div>
     <div class="report-section">
       <h2>🎯 Milestone Status This Week</h2>
@@ -1664,7 +1701,7 @@ export function renderLeadership() {
     </div>
     <div class="report-section">
       <h2>🔄 Projects In Flight</h2>
-      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Priority</th><th>Phase</th><th>Progress</th><th>Status</th><th>End Date</th></tr></thead><tbody>${projects.filter(p=>p.status!=='Completed').map(p=>`<tr><td style="font-weight:600">${p.name}</td><td>${p.track||'—'}</td><td>${ragBadge(p.priority)}</td><td>${p.phase||'—'}</td><td>${progressBar(p.progress||0)}<span style="font-size:11px">${p.progress||0}%</span></td><td>${ragBadge(p.status)}</td><td>${DateHelpers.fmt(p.endDate)}</td></tr>`).join('')||`<tr><td colspan="7" class="empty">No active projects</td></tr>`}</tbody></table></div>
+      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Priority</th><th>Phase</th><th>Progress</th><th>Status</th><th>End Date</th></tr></thead><tbody>${projects.filter(p=>p.status!=='Completed').map(p=>`<tr><td style="font-weight:600">${p.name}</td><td>${resolveTrackName(p.track||p.trackId)||'—'}</td><td>${ragBadge(p.priority)}</td><td>${p.phase||'—'}</td><td>${progressBar(projProgress(p))}<span style="font-size:11px">${projProgress(p)}%</span></td><td>${ragBadge(p.status)}</td><td>${DateHelpers.fmt(p.endDate)}</td></tr>`).join('')||`<tr><td colspan="7" class="empty">No active projects</td></tr>`}</tbody></table></div>
     </div>
     <div class="report-section">
       <h2>📊 Milestone Adherence</h2>
@@ -1730,7 +1767,7 @@ export function renderLeadership() {
     lines.push('');
     lines.push('── PROJECT STATUS ──────────────────────────');
     projects.forEach(p=>{
-      lines.push(`• ${p.name} [${p.status}] ${p.progress||0}% — ${p.track||'—'} · ${teamName(p.devLead)}`);
+      lines.push(`• ${p.name} [${p.status}] ${projProgress(p)}% — ${resolveTrackName(p.track||p.trackId)||'—'} · ${teamName(p.devLead)}`);
     });
     if (!projects.length) lines.push('  No projects');
     lines.push('');
@@ -2004,7 +2041,7 @@ export function renderPledges() {
 
   <div class="filter-row">
     <div class="fg"><label>Status</label>
-      <select onchange="APP_STATE._pledgeFilter=this.value;nav('pledges')">
+      <select onchange="switchTab('_pledgeFilter',this.value)">
         <option value="">All</option>
         <option value="On Track">On Track</option>
         <option value="At Risk">At Risk</option>
@@ -2013,7 +2050,7 @@ export function renderPledges() {
       </select>
     </div>
     <div class="fg"><label>Priority</label>
-      <select onchange="APP_STATE._pledgePriFilter=this.value;nav('pledges')">
+      <select onchange="switchTab('_pledgePriFilter',this.value)">
         <option value="">All</option>
         <option value="Critical">Critical</option>
         <option value="High">High</option>
@@ -2092,7 +2129,7 @@ export function renderKnowledge() {
     <div class="fg" style="flex:1;max-width:400px">
       <label>Search</label>
       <input type="text" placeholder="Search title, tags, content…" value="${search}"
-        oninput="APP_STATE._knowledgeSearch=this.value;nav('knowledge')"
+        oninput="switchTab('_knowledgeSearch',this.value)"
         style="min-width:250px"/>
     </div>
   </div>

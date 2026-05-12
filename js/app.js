@@ -173,6 +173,11 @@ window._resourceWeek = function(direction, mode) {
   navigateTo('capacity');
 };
 
+window.switchTab = function(stateKey, value) {
+  APP_STATE[stateKey] = value;
+  navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
+};
+
 // ─── TOAST ────────────────────────────────────────────────
 window.showToast = function(msg, type = 'success') {
   const t = document.createElement('div');

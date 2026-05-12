@@ -309,9 +309,12 @@ window._wizSave = async function(id) {
   window._wiz.devLead     = document.getElementById('wDevLead')?.value || '';
   window._wiz.description = document.getElementById('wDesc')?.value || '';
   window._wiz.jiraKey     = document.getElementById('wJira')?.value || '';
+  const trackEl = document.getElementById('wTrack');
+  const trackName = trackEl?.options[trackEl?.selectedIndex]?.text || window._wiz.track || '';
   const data = {
     name:        window._wiz.name       || '',
-    track:       window._wiz.track      || '',
+    trackId:     window._wiz.track      || '',
+    track:       trackName,
     priority:    window._wiz.priority   || 'Medium',
     status:      window._wiz.status     || 'Yet to Start',
     phase:       window._wiz.phase      || '',
