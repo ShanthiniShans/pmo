@@ -437,6 +437,32 @@ window.setTimeLogMember = function(memberId) {
   navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
 };
 
+window.assignMemberToProject = async function(collection, projectId) {
+  const sel = document.getElementById('assign-member-select');
+  const memberId = sel?.value;
+  if (!memberId) return;
+  const col = collection === 'onboardingProjects' ? APP_STATE.onboardingProjects : APP_STATE.projects;
+  const p = (col||[]).find(x => x.id === projectId);
+  if (!p) return;
+  const current = p.teamMembers || [];
+  if (current.includes(memberId)) return;
+  try {
+    await DB.update(collection, projectId, { teamMembers: [...current, memberId] });
+    showToast('Team member assigned ✅');
+  } catch(e) { alert('Error: ' + e.message); }
+};
+
+window.removeMemberFromProject = async function(collection, projectId, memberId) {
+  const col = collection === 'onboardingProjects' ? APP_STATE.onboardingProjects : APP_STATE.projects;
+  const p = (col||[]).find(x => x.id === projectId);
+  if (!p) return;
+  const updated = (p.teamMembers||[]).filter(id => id !== memberId);
+  try {
+    await DB.update(collection, projectId, { teamMembers: updated });
+    showToast('Member removed');
+  } catch(e) { alert('Error: ' + e.message); }
+};
+
 window.showLeaveForm = function(memberId, dateStr) {
   document.getElementById('cell-form-'+memberId+'-'+dateStr)?.remove();
   const cell = document.querySelector(`td[onclick*="${memberId}-${dateStr}"]`) || document.body;

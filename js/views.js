@@ -174,6 +174,44 @@ function filterBar() {
 
 const TRACK_COLORS = {'Track 1':'#1B2B5E','Track 2':'#00A896','Track 3':'#E8452C'};
 
+function recentMilestoneNotesSection() {
+  const allNotes = [];
+  (APP_STATE.milestones||[]).forEach(m => {
+    if (m.notes || m.description) {
+      allNotes.push({ type:'milestone', milestoneTitle:m.title||m.name, projectName:m.projectName||m.project||'', projectId:m.projectId, note:m.notes||m.description, date:m.updatedAt||m.createdAt||m.dueDate||'', status:m.status });
+    }
+    (m.tasks||[]).forEach(t => {
+      if (t.notes && t.notes.trim()) {
+        allNotes.push({ type:'task', milestoneTitle:m.title||m.name, taskName:t.name, projectName:m.projectName||m.project||'', projectId:m.projectId, note:t.notes, date:m.updatedAt||m.dueDate||'', done:t.done, owner:t.owner });
+      }
+    });
+  });
+  const latestNotes = allNotes
+    .sort((a,b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 9);
+  return `<div style="margin-top:24px">
+    <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border)">
+      📝 Recent Milestone Notes
+      <span style="font-size:11px;font-weight:400;color:var(--lt);margin-left:8px">Latest updates across all projects</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      ${latestNotes.length ? latestNotes.map(item=>`
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--sh);border-left:3px solid ${item.done?'#22c55e':item.type==='milestone'?'var(--teal)':'var(--navy)'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <span style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.5px">${item.type==='task'?'TASK NOTE':'MILESTONE'}</span>
+          ${item.date?`<span style="font-size:10px;color:var(--lt)">${item.date.toString().slice(0,10)}</span>`:''}
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:3px;cursor:pointer" onclick="nav('project-detail',{id:'${item.projectId||''}'})">
+          ${item.projectName||'—'}
+        </div>
+        <div style="font-size:11px;color:var(--mid);margin-bottom:6px">🎯 ${item.milestoneTitle}${item.taskName?' › '+item.taskName:''}</div>
+        <div style="font-size:12px;color:var(--text);font-style:italic;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">"${item.note}"</div>
+        ${item.owner?`<div style="font-size:10px;color:var(--lt);margin-top:6px">👤 ${item.owner}</div>`:''}
+      </div>`).join('') : `<div style="grid-column:1/-1" class="empty"><div class="empty-icon">📝</div>No milestone notes yet. Add notes to tasks inside milestones to see them here.</div>`}
+    </div>
+  </div>`;
+}
+
 // ─── SHARED STAT BLOCK (used across all tabs) ─────────────
 function statBlock(n, lbl, sub, col) {
   const on = n > 0;
@@ -666,6 +704,21 @@ export function renderRoadmap() {
     '#F59E0B','#3b82f6','#ec4899','#14b8a6','#f97316'
   ];
 
+  // Build track→color map once before rendering
+  const trackColorMap = {};
+  (APP_STATE.tracks||[]).forEach((t, i) => {
+    trackColorMap[t.id] = BAR_COLORS[i % BAR_COLORS.length];
+    trackColorMap[t.name||t.title] = BAR_COLORS[i % BAR_COLORS.length];
+  });
+  trackColorMap['onboarding'] = '#7c3aed';
+
+  function getProjectBarColor(p) {
+    const key = p.trackId || p.track || '';
+    return trackColorMap[key] ||
+      trackColorMap[resolveTrackName(key)] ||
+      '#1B2B5E';
+  }
+
   function datePct(ds) {
     if (!ds) return null;
     const d = new Date(ds);
@@ -703,41 +756,13 @@ export function renderRoadmap() {
   </div>
 
   <div class="legend-bar">
-    ${(APP_STATE.tracks||[]).map((t,i)=>`<span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${BAR_COLORS[i%BAR_COLORS.length]};flex-shrink:0"></span>${t.name||t.title||t}</span>`).join('')}
+    ${(()=>{ const seen=new Set(); const items=[]; (APP_STATE.tracks||[]).forEach((t,i)=>{ if(!seen.has(t.id)){seen.add(t.id); items.push({name:t.name||t.title||t,color:BAR_COLORS[i%BAR_COLORS.length]});} }); return items.map(it=>`<span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${it.color};flex-shrink:0"></span>${it.name}</span>`).join(''); })()}
     <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;flex-shrink:0"></span>Onboarding</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;flex-shrink:0"></span>Milestone</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="height:2px;width:16px;background:#ef4444;opacity:.5;display:inline-block"></span>Today</span>
   </div>
 
   <div class="gantt-wrap" style="overflow-x:auto">
-    ${(() => {
-      const now = new Date();
-      const todayQ = Math.floor(now.getMonth() / 3) + 1;
-      const isCurrentYear = year === now.getFullYear();
-      if (f.quarter) {
-        const qNum = parseInt(f.quarter.slice(1));
-        const isCurrent = isCurrentYear && qNum === todayQ;
-        return `<div class="gantt-hdr">
-          <div class="gantt-hdr-lbl"></div>
-          <div class="gantt-timeline" style="display:flex">
-            <div style="flex:1;text-align:center;font-size:11px;font-weight:800;color:${isCurrent?'#5F259F':'#555'};background:${isCurrent?'#F0EEF8':'#FAFAFA'};padding:6px 0;border-left:1px solid #EEF2F8">
-              ${f.quarter}${isCurrent?` <span style="font-size:9px;font-weight:700;color:#fff;background:#5F259F;padding:1px 5px;border-radius:4px;margin-left:4px">NOW</span>`:''}
-            </div>
-          </div>
-        </div>`;
-      }
-      return `<div class="gantt-hdr">
-        <div class="gantt-hdr-lbl"></div>
-        <div class="gantt-timeline" style="display:flex">
-          ${[1,2,3,4].map(q=>{
-            const isCurrent = isCurrentYear && q === todayQ;
-            return `<div style="flex:3;text-align:center;font-size:11px;font-weight:${isCurrent?800:700};color:${isCurrent?'#5F259F':'#555'};background:${isCurrent?'#F0EEF8':'#FAFAFA'};padding:6px 0;border-left:1px solid #EEF2F8">
-              Q${q}${isCurrent?` <span style="font-size:9px;font-weight:700;color:#fff;background:#5F259F;padding:1px 5px;border-radius:4px;margin-left:4px">NOW</span>`:''}
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
-    })()}
     <div class="gantt-hdr">
       <div class="gantt-hdr-lbl">Project</div>
       <div class="gantt-timeline" style="display:flex">
@@ -756,7 +781,7 @@ export function renderRoadmap() {
           if (!p.startDate || !p.endDate) return '';
           const bar   = barRange(p.startDate, p.endDate);
           const pMs   = milestones.filter(m=>m.projectId===p.id);
-          const color = BAR_COLORS[ti % BAR_COLORS.length];
+          const color = getProjectBarColor(p);
           return `<div class="gantt-row">
             <div class="gantt-lbl" onclick="nav('project-detail',{id:'${p.id}'})">
               <span class="proj-link gantt-feat-name">${p.name}</span>
@@ -1011,7 +1036,8 @@ export function renderProjects() {
         </tbody>
       </table>
     </div>
-  </div>`;
+  </div>
+  ${recentMilestoneNotesSection()}`;
 }
 
 // ─── PROJECT DETAIL ───────────────────────────────────────
@@ -1052,6 +1078,35 @@ export async function renderProjectDetail(params) {
            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:#92400e">No charter yet</div><div style="font-size:11px;color:#a16207">Define objectives and success metrics</div></div>
            <button class="btn btn-ghost btn-xs" onclick="openModal('charter',null,'${id}')">Create Charter</button>
          </div>`;
+    // Milestone notes section
+    const msNotesHtml = (() => {
+      if (!pMs.length) return `<div class="empty" style="padding:24px"><div class="empty-icon">🎯</div>No milestones yet. <span class="proj-link" onclick="APP_STATE._detailTab='milestones';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Add the first milestone →</span></div>`;
+      const notesHtml = pMs.map(m => {
+        const tasksWithNotes = (m.tasks||[]).filter(t=>t.notes&&t.notes.trim());
+        const msNote = m.notes||m.description||'';
+        if (!tasksWithNotes.length && !msNote) return '';
+        return `<div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:13px;font-weight:700;color:var(--navy)">${m.title||m.name}</span>
+            <span class="badge ${(m.status||'').toLowerCase().includes('complet')?'badge-teal':'badge-amber'}">${m.status||''}</span>
+          </div>
+          ${msNote?`<div style="font-size:12px;color:var(--mid);font-style:italic;margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:var(--rs)">${msNote}</div>`:''}
+          ${tasksWithNotes.map(t=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border)">
+            <span style="width:14px;height:14px;border-radius:50%;flex-shrink:0;margin-top:2px;background:${t.done?'#22c55e':'var(--border-dk)'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white">${t.done?'✓':''}</span>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);${t.done?'text-decoration:line-through;':''}">${t.name||''}</div>
+              <div style="font-size:11px;color:var(--lt);font-style:italic;margin-top:2px">${t.notes}</div>
+            </div>
+          </div>`).join('')}
+        </div>`;
+      }).join('');
+      if (!notesHtml.replace(/\s/g,'')) return '';
+      return `<div style="margin-top:20px">
+        <div style="font-size:11px;font-weight:800;color:var(--lt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Milestone Notes &amp; Updates</div>
+        ${notesHtml}
+      </div>`;
+    })();
+
     return `
       <div class="card">
         <div class="card-title">Description</div>
@@ -1059,6 +1114,7 @@ export async function renderProjectDetail(params) {
         ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
         ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
         ${charterBlock}
+        ${msNotesHtml}
       </div>`;
   }
 
@@ -1161,22 +1217,6 @@ export async function renderProjectDetail(params) {
     ].filter(x=>x.date).sort((a,b)=>b.date>a.date?1:-1).slice(0,5);
     return `
       <div class="card" style="margin-bottom:12px">
-        <div class="card-title">Team Members</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
-          ${trackMembers.length ? trackMembers.map(m=>`
-            <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:8px">
-              <div class="av" style="background:${TRACK_COLORS[m.track]||'var(--navy)'}">${avatar(m.name)}</div>
-              <div>
-                <div style="font-size:12px;font-weight:700;color:var(--navy)">${m.name}</div>
-                <div style="font-size:10px;color:var(--lt)">${m.role||''} · ${m.availability||100}% avail</div>
-              </div>
-            </div>`).join('') : `<div style="font-size:12px;color:var(--lt)">No team assigned</div>`}
-        </div>
-        <div style="margin-top:12px;font-size:12px;color:var(--mid)">
-          Total hours logged by this team: <strong>${totalHours}h</strong>
-        </div>
-      </div>
-      <div class="card">
         <div class="card-title">Recent Activity</div>
         ${recentActivity.length ? recentActivity.map(a=>`
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -1184,13 +1224,45 @@ export async function renderProjectDetail(params) {
             <div style="flex:1;font-size:13px;color:var(--navy);font-weight:500">${a.label}</div>
             <span style="font-size:11px;color:var(--lt)">${DateHelpers.fmt(a.date)}</span>
           </div>`).join('') : `<div class="empty"><div class="empty-icon">📝</div>No recent activity</div>`}
+        <div style="margin-top:12px;font-size:12px;color:var(--mid)">Total hours logged: <strong>${totalHours}h</strong></div>
       </div>`;
+  }
+
+  // ── TAB 5: Assign Team ──
+  function tabTeamAssign() {
+    const assigned = (p.teamMembers||[]).map(mid=>{
+      const m = APP_STATE.teamMembers.find(x=>x.id===mid);
+      if (!m) return '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px">
+        <div class="av" style="background:${TRACK_COLORS[m.track]||'var(--navy)'}">${avatar(m.name)}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:var(--navy)">${m.name}</div>
+          <div style="font-size:11px;color:var(--lt)">${m.role||'—'} · ${m.track||'—'} · ${m.availability||100}% avail</div>
+        </div>
+        <button class="btn btn-danger btn-xs" onclick="removeMemberFromProject('projects','${id}','${mid}')">Remove</button>
+      </div>`;
+    }).join('');
+    const unassigned = (APP_STATE.teamMembers||[])
+      .filter(m=>!(p.teamMembers||[]).includes(m.id))
+      .sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    return `<div class="card">
+      <div class="card-title">Assigned Team Members</div>
+      ${assigned || `<div style="font-size:12px;color:var(--lt);margin-bottom:12px">No members assigned yet</div>`}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <select id="assign-member-select" class="form-control" style="flex:1">
+          <option value="">Select team member…</option>
+          ${unassigned.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="assignMemberToProject('projects','${id}')">+ Assign</button>
+      </div>
+    </div>`;
   }
 
   const tabContent = activeTab==='overview'    ? tabOverview()
                    : activeTab==='milestones'  ? tabMilestones()
                    : activeTab==='risks'        ? tabRisks()
-                   : activeTab==='team'         ? tabTeam()
+                   : activeTab==='activity'     ? tabTeam()
+                   : activeTab==='team'         ? tabTeamAssign()
                    : tabOverview();
 
   const priorityColor = { Critical:'#dc2626', High:'#d97706', Medium:'var(--navy)', Low:'#16a34a' };
@@ -1228,13 +1300,19 @@ export async function renderProjectDetail(params) {
       <span>📊 <strong>${projProgress(p)}%</strong> complete</span>
       ${p.jiraKey?`<span>🔗 Jira: <strong>${p.jiraKey}</strong></span>`:''}
     </div>
+    ${(p.teamMembers||[]).length||true?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--lt)">Team:</span>
+      ${(p.teamMembers||[]).map(mid=>{const m=APP_STATE.teamMembers.find(x=>x.id===mid);if(!m)return '';const ini=(m.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);return `<div class="av av-sm" title="${m.name} — ${m.role||''}" style="background:var(--navy);cursor:default">${ini}</div>`;}).join('')}
+      <button class="btn btn-ghost btn-xs" onclick="APP_STATE._detailTab='team';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">+ Add</button>
+    </div>`:``}
   </div>
 
   <div class="pulse-tabs">
     ${tabBtn('overview',   '📋 Overview')}
     ${tabBtn('milestones', '🎯 Milestones')}
     ${tabBtn('risks',      '⚠️ Risks & Escalations')}
-    ${tabBtn('team',       '👥 Team & Activity')}
+    ${tabBtn('activity',   '📝 Activity')}
+    ${tabBtn('team',       '👥 Team')}
   </div>
   ${tabContent}`;
 }
@@ -1294,7 +1372,8 @@ export function renderOnboarding() {
         </tbody>
       </table>
     </div>
-  </div>`;
+  </div>
+  ${recentMilestoneNotesSection()}`;
 }
 
 export async function renderOnboardingDetail(params) {
@@ -1313,11 +1392,39 @@ export async function renderOnboardingDetail(params) {
   }
 
   function tabOverview() {
+    const onbNotesHtml = (() => {
+      if (!pMs.length) return `<div class="empty" style="padding:24px"><div class="empty-icon">🎯</div>No milestones yet. <span class="proj-link" onclick="APP_STATE._detailTab='milestones';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Add the first milestone →</span></div>`;
+      const notesHtml = pMs.map(m => {
+        const tasksWithNotes = (m.tasks||[]).filter(t=>t.notes&&t.notes.trim());
+        const msNote = m.notes||m.description||'';
+        if (!tasksWithNotes.length && !msNote) return '';
+        return `<div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:13px;font-weight:700;color:var(--navy)">${m.title||m.name}</span>
+            <span class="badge ${(m.status||'').toLowerCase().includes('complet')?'badge-teal':'badge-amber'}">${m.status||''}</span>
+          </div>
+          ${msNote?`<div style="font-size:12px;color:var(--mid);font-style:italic;margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:var(--rs)">${msNote}</div>`:''}
+          ${tasksWithNotes.map(t=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border)">
+            <span style="width:14px;height:14px;border-radius:50%;flex-shrink:0;margin-top:2px;background:${t.done?'#22c55e':'var(--border-dk)'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white">${t.done?'✓':''}</span>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);${t.done?'text-decoration:line-through;':''}">${t.name||''}</div>
+              <div style="font-size:11px;color:var(--lt);font-style:italic;margin-top:2px">${t.notes}</div>
+            </div>
+          </div>`).join('')}
+        </div>`;
+      }).join('');
+      if (!notesHtml.replace(/\s/g,'')) return '';
+      return `<div style="margin-top:20px">
+        <div style="font-size:11px;font-weight:800;color:var(--lt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Milestone Notes &amp; Updates</div>
+        ${notesHtml}
+      </div>`;
+    })();
     return `<div class="card">
       <div class="card-title">Description</div>
       <div style="font-size:13px;color:var(--text)">${p.description||'<span style="color:var(--lt)">No description provided.</span>'}</div>
       ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
       ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
+      ${onbNotesHtml}
     </div>`;
   }
 
@@ -1365,8 +1472,39 @@ export async function renderOnboardingDetail(params) {
     </div>`;
   }
 
+  function tabTeamAssignOnb() {
+    const assigned = (p.teamMembers||[]).map(mid=>{
+      const m = APP_STATE.teamMembers.find(x=>x.id===mid);
+      if (!m) return '';
+      const ini = (m.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px">
+        <div class="av" style="background:#7c3aed">${ini}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:var(--navy)">${m.name}</div>
+          <div style="font-size:11px;color:var(--lt)">${m.role||'—'} · ${m.track||'—'} · ${m.availability||100}% avail</div>
+        </div>
+        <button class="btn btn-danger btn-xs" onclick="removeMemberFromProject('onboardingProjects','${id}','${mid}')">Remove</button>
+      </div>`;
+    }).join('');
+    const unassigned = (APP_STATE.teamMembers||[])
+      .filter(m=>!(p.teamMembers||[]).includes(m.id))
+      .sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    return `<div class="card">
+      <div class="card-title">Assigned Team Members</div>
+      ${assigned || `<div style="font-size:12px;color:var(--lt);margin-bottom:12px">No members assigned yet</div>`}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <select id="assign-member-select" class="form-control" style="flex:1">
+          <option value="">Select team member…</option>
+          ${unassigned.map(m=>`<option value="${m.id}">${m.name}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="assignMemberToProject('onboardingProjects','${id}')">+ Assign</button>
+      </div>
+    </div>`;
+  }
+
   const tabContent = activeTab==='milestones' ? tabMilestones()
                    : activeTab==='risks'      ? tabRisks()
+                   : activeTab==='team'       ? tabTeamAssignOnb()
                    : tabOverview();
 
   return `
@@ -1399,11 +1537,17 @@ export async function renderOnboardingDetail(params) {
       <span>📊 <strong>${projProgress(p)}%</strong> complete</span>
       ${p.jiraKey?`<span>🔗 Jira: <strong>${p.jiraKey}</strong></span>`:''}
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--lt)">Team:</span>
+      ${(p.teamMembers||[]).map(mid=>{const m=APP_STATE.teamMembers.find(x=>x.id===mid);if(!m)return '';const ini=(m.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);return `<div class="av av-sm" title="${m.name} — ${m.role||''}" style="background:#7c3aed;cursor:default">${ini}</div>`;}).join('')}
+      <button class="btn btn-ghost btn-xs" onclick="APP_STATE._detailTab='team';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">+ Add</button>
+    </div>
   </div>
   <div class="pulse-tabs">
     ${tabBtn('overview',   '📋 Overview')}
     ${tabBtn('milestones', '🎯 Milestones')}
     ${tabBtn('risks',      '⚠️ Risks')}
+    ${tabBtn('team',       '👥 Team')}
   </div>
   ${tabContent}`;
 }
@@ -2658,15 +2802,292 @@ export function renderLeadership() {
     </div>`;
   }
 
-  const chartsHtml = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      ${milestoneHealthDonut()}
-      ${hoursSparkline()}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px">
-      ${projectStatusBar()}
-      ${trackUtilChart()}
+  // ── KPI CARDS ─────────────────────────────────────────────
+  function kpiCards() {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString().split('T')[0];
+    const day = now.getDay();
+    const diffToMon = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now); monday.setDate(now.getDate() + diffToMon); monday.setHours(0,0,0,0);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+    const weekStartStr = monday.toISOString().split('T')[0];
+    const weekEndStr   = sunday.toISOString().split('T')[0];
+
+    function card(label, value, sub, color) {
+      return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;border-top:3px solid ${color}">
+        <div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">${label}</div>
+        <div style="font-size:28px;font-weight:800;color:var(--navy);line-height:1">${value}</div>
+        <div style="font-size:11px;color:var(--lt);margin-top:4px">${sub}</div>
+      </div>`;
+    }
+
+    let cards = [];
+    if (activeTab === 'daily') {
+      const activeProjCount = projects.filter(p=>normaliseStatus(p.status)==='In Progress').length;
+      const dueTodayMs = milestones.filter(m=>m.dueDate===today&&m.status!=='Completed').length;
+      const blockerCount = projects.filter(p=>p.status==='On Hold').length + openEscL34.length + highRisks.length;
+      const hoursToday = resources.filter(r=>r.date===today&&!r.isLeave).reduce((s,r)=>s+(parseFloat(r.hours)||0),0);
+      const activeMembers = new Set(resources.filter(r=>r.date===today&&!r.isLeave&&(parseFloat(r.hours)||0)>0).map(r=>r.memberId)).size;
+      const overdueCount = projects.filter(p=>p.endDate<today&&normaliseStatus(p.status)!=='Completed').length;
+      cards = [
+        card('Active Projects', activeProjCount, 'in progress today', '#2563eb'),
+        card('Due Today', dueTodayMs, 'milestones', '#d97706'),
+        card('Blockers', blockerCount, 'need action', '#dc2626'),
+        card('Hours Today', hoursToday, 'hrs logged', '#059669'),
+        card('Team On Duty', activeMembers, 'active', '#7c3aed'),
+        card('Overdue', overdueCount, 'past deadline', '#ef4444'),
+      ];
+    } else if (activeTab === 'weekly') {
+      const avgProgress = projects.length ? Math.round(projects.reduce((s,p)=>s+(projProgress(p)||0),0)/projects.length) : 0;
+      const msDueWeek = milestones.filter(m=>m.dueDate>=weekStartStr&&m.dueDate<=weekEndStr&&m.status!=='Completed').length;
+      const msCompWeek = milestones.filter(m=>m.dueDate>=weekStartStr&&m.dueDate<=weekEndStr&&m.status==='Completed').length;
+      const msTotalWeek = milestones.filter(m=>m.dueDate>=weekStartStr&&m.dueDate<=weekEndStr).length;
+      const ontimeRate = msTotalWeek>0 ? Math.round(msCompWeek/msTotalWeek*100) : 100;
+      const hoursWeek = resources.filter(r=>r.date>=weekStartStr&&r.date<=weekEndStr&&!r.isLeave).reduce((s,r)=>s+(parseFloat(r.hours)||0),0);
+      const risksOpen = openRisks.filter(r=>{ const s=(r.likelihood||1)*(r.impact||1); return s>=4; }).length;
+      const pledgesDueWeek = pledges.filter(p=>p.dueDate>=weekStartStr&&p.dueDate<=weekEndStr&&p.status!=='Honored').length;
+      cards = [
+        card('Sprint Progress', avgProgress+'%', 'across projects', '#2563eb'),
+        card('Milestones Due', msDueWeek, 'this week', '#d97706'),
+        card('On-Time Rate', ontimeRate+'%', 'this week', '#059669'),
+        card('Hours This Week', Math.round(hoursWeek), 'team total', '#7c3aed'),
+        card('Risks Open', risksOpen, 'active risks', '#dc2626'),
+        card('Pledges Due', pledgesDueWeek, 'commitments', '#f59e0b'),
+      ];
+    } else {
+      const deliveredMonth = projects.filter(p=>p.status==='Completed'&&(p.endDate||'')>=monthStart&&(p.endDate||'')<nextMonthStart).length;
+      const msTotalMonth = milestones.filter(m=>m.dueDate>=monthStart&&m.dueDate<nextMonthStart).length;
+      const msCompMonth = milestones.filter(m=>m.dueDate>=monthStart&&m.dueDate<nextMonthStart&&m.status==='Completed').length;
+      const otRateMonth = msTotalMonth>0 ? Math.round(msCompMonth/msTotalMonth*100) : 100;
+      const hoursMonth = resources.filter(r=>r.date>=monthStart&&r.date<nextMonthStart&&!r.isLeave).reduce((s,r)=>s+(parseFloat(r.hours)||0),0);
+      const avgUtil = members.length ? Math.round(members.reduce((s,m)=>s+(m.capacity||m.availability||80),0)/members.length) : 0;
+      const risksClosedMonth = risks.filter(r=>(r.closedAt||'')>=monthStart&&r.status!=='Open').length;
+      const pledgesHonoredMonth = pledges.filter(p=>p.status==='Honored').length;
+      cards = [
+        card('Delivered', deliveredMonth, 'projects', '#059669'),
+        card('On-Time Rate', otRateMonth+'%', '%', '#2563eb'),
+        card('Total Hours', Math.round(hoursMonth), 'hrs', '#7c3aed'),
+        card('Team Utilisation', avgUtil+'%', 'avg', '#d97706'),
+        card('Risks Closed', risksClosedMonth, 'resolved', '#14b8a6'),
+        card('Pledges Honoured', pledgesHonoredMonth, 'commitments', '#059669'),
+      ];
+    }
+    return `<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px">
+      ${cards.join('')}
     </div>`;
+  }
+
+  // ── PLEDGE GAUGE ──────────────────────────────────────────
+  function pledgeGauge() {
+    const onTrack  = pledges.filter(p=>p.status==='On Track').length;
+    const atRisk   = pledges.filter(p=>p.status==='At Risk').length;
+    const breached = pledges.filter(p=>p.status==='Breached').length;
+    const honored  = pledges.filter(p=>p.status==='Honored').length;
+    const total    = pledges.length || 1;
+    function row(label, count, color) {
+      const pct = Math.round(count/total*100);
+      return `<div style="display:flex;align-items:center;gap:10px">
+        <span style="width:80px;font-size:12px;font-weight:600;color:var(--mid)">${label}</span>
+        <div style="flex:1;height:10px;background:var(--bg);border-radius:5px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${color};border-radius:5px;${count>0?'min-width:4px':''}"></div>
+        </div>
+        <span style="font-size:14px;font-weight:800;color:var(--navy);min-width:24px;text-align:right">${count}</span>
+      </div>`;
+    }
+    const periodLabel = activeTab === 'daily' ? 'Today' : activeTab === 'weekly' ? 'This Week' : 'This Month';
+    return `<div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px">Customer Commitments</div>
+      <div style="font-size:11px;color:var(--lt);margin-bottom:14px">${periodLabel} · ${pledges.length} pledges total</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+        ${row('On Track', onTrack, '#22c55e')}
+        ${row('At Risk', atRisk, '#f59e0b')}
+        ${row('Breached', breached, '#ef4444')}
+        ${row('Honored', honored, '#14b8a6')}
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--lt)">Total: <strong>${pledges.length}</strong> pledges</div>
+    </div>`;
+  }
+
+  // ── TRACK PERFORMANCE TABLE ───────────────────────────────
+  function trackPerfTable() {
+    if (!tracks.length) return `<div class="card"><div class="empty">No tracks configured</div></div>`;
+    return `<div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Track Performance</div>
+      <div class="tbl-wrap">
+        <table class="dt">
+          <thead><tr><th>Track</th><th>Projects</th><th>Avg Progress</th><th>On-Time %</th><th>Util%</th><th>Signal</th></tr></thead>
+          <tbody>
+            ${tracks.map(track=>{
+              const tm2 = members.filter(m=>m.track===track);
+              const tp2 = projects.filter(p=>p.track===track||resolveTrackName(p.track||p.trackId)===track);
+              const avgProg = tp2.length ? Math.round(tp2.reduce((s,p)=>s+(projProgress(p)||0),0)/tp2.length) : 0;
+              const tMs2 = milestones.filter(m=>tp2.some(p=>p.id===m.projectId||p.name===m.projectName));
+              const onTimePct2 = tMs2.length>0 ? Math.round(tMs2.filter(m=>m.status==='Completed').length/tMs2.length*100) : 100;
+              const avgUtil2 = tm2.length ? Math.round(tm2.reduce((s,m)=>s+(m.capacity||m.availability||80),0)/tm2.length) : 0;
+              const signal = avgUtil2>100?'🔴':onTimePct2<70?'⚠️':'✅';
+              return `<tr>
+                <td style="font-weight:700">${track}</td>
+                <td>${tp2.length}</td>
+                <td>${avgProg}%</td>
+                <td>${onTimePct2}%</td>
+                <td>${avgUtil2}%</td>
+                <td>${signal}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // ── ENLARGED MILESTONE DONUT ──────────────────────────────
+  function milestoneHealthDonutLarge() {
+    const d = getMilestoneDataForPeriod(activeTab);
+    return `<div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px">Milestone Health</div>
+      <div style="font-size:11px;color:var(--lt);margin-bottom:14px">${d.periodLabel} · ${d.total} milestone${d.total!==1?'s':''}</div>
+      <div style="display:flex;gap:20px;align-items:center">
+        <div style="width:160px;height:160px;border-radius:50%;background:conic-gradient(#22c55e 0% ${d.onTimePct}%,#f59e0b ${d.onTimePct}% ${Math.min(100,d.onTimePct+d.atRiskPct)}%,#ef4444 ${Math.min(100,d.onTimePct+d.atRiskPct)}% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <div style="width:112px;height:112px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--navy)">${d.onTimePct}%</div>
+        </div>
+        <div style="font-size:12px;line-height:2">
+          <div>✅ On time: <strong>${d.onTime}</strong></div>
+          <div>⚠️ At risk: <strong>${d.atRisk}</strong></div>
+          <div>❌ Overdue: <strong>${d.overdue}</strong></div>
+          <div style="color:var(--lt)">✓ Completed: <strong>${d.completed}</strong></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── ENLARGED HOURS SPARKLINE ──────────────────────────────
+  function hoursSparklineLarge() {
+    if (!tracks.length) return '';
+    const data = getHoursDataForPeriod(activeTab);
+    const maxH = Math.max(1, ...data.map(t => t.hrs));
+    const totalHrs = data.reduce((s,t)=>s+t.hrs,0);
+    const periodLabel = activeTab === 'daily' ? 'Today' : activeTab === 'weekly' ? 'This Week' : 'This Month';
+    return `<div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px">Hours Logged by Track</div>
+      <div style="font-size:11px;color:var(--lt);margin-bottom:14px">${periodLabel}</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${data.map(t => {
+          const pct = Math.round((t.hrs / maxH) * 100);
+          return `<div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:12px;font-weight:600;color:var(--text)">${t.name}</span>
+              <span style="font-size:12px;font-weight:700;color:var(--navy)">${t.hrs}h</span>
+            </div>
+            <div style="height:14px;background:var(--bg);border-radius:6px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:var(--teal);border-radius:6px;transition:width .4s;${t.hrs>0?'min-width:4px':''}"></div>
+            </div>
+          </div>`;
+        }).join('')}
+        <div style="border-top:2px solid var(--border);padding-top:8px">
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:12px;font-weight:800;color:var(--navy)">TOTAL</span>
+            <span style="font-size:12px;font-weight:800;color:var(--navy)">${Math.round(totalHrs)}h</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── PROJECT STATUS BAR LARGE ──────────────────────────────
+  function projectStatusBarLarge() {
+    const total = projects.length || 1;
+    const completedProj = projects.filter(p=>normaliseStatus(p.status)==='Completed').length;
+    const inProgProj    = projects.filter(p=>normaliseStatus(p.status)==='In Progress').length;
+    const atRiskProj    = projects.filter(p=>['At Risk','Overdue'].includes(normaliseStatus(p.status))).length;
+    const blockedProj   = projects.filter(p=>p.status==='On Hold').length;
+    const completedPct  = Math.round(completedProj/total*100);
+    const inProgPct     = Math.round(inProgProj/total*100);
+    const atRiskPct     = Math.round(atRiskProj/total*100);
+    const blockedPct    = Math.round(blockedProj/total*100);
+    return `<div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Project Status Distribution</div>
+      <div style="height:48px;border-radius:8px;overflow:hidden;display:flex;margin:12px 0">
+        ${completedPct>0?`<div style="width:${completedPct}%;background:#22c55e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${completedPct}%</div>`:''}
+        ${inProgPct>0?`<div style="width:${inProgPct}%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${inProgPct}%</div>`:''}
+        ${atRiskPct>0?`<div style="width:${atRiskPct}%;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${atRiskPct}%</div>`:''}
+        ${blockedPct>0?`<div style="width:${blockedPct}%;background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${blockedPct}%</div>`:''}
+        ${100-completedPct-inProgPct-atRiskPct-blockedPct>0?`<div style="flex:1;background:#e2e8f0"></div>`:''}
+      </div>
+      <div style="display:flex;gap:14px;font-size:11px;flex-wrap:wrap">
+        <span style="color:#22c55e;font-weight:600">■ Completed (${completedProj})</span>
+        <span style="color:var(--navy);font-weight:600">■ In Progress (${inProgProj})</span>
+        <span style="color:#f59e0b;font-weight:600">■ At Risk (${atRiskProj})</span>
+        <span style="color:#ef4444;font-weight:600">■ Blocked (${blockedProj})</span>
+      </div>
+    </div>`;
+  }
+
+  // ── TOP RISKS ────────────────────────────────────────────
+  function topRisksSection() {
+    const topRisks = openRisks
+      .sort((a,b)=>((b.likelihood||1)*(b.impact||1))-((a.likelihood||1)*(a.impact||1)))
+      .slice(0,3);
+    if (!topRisks.length) return '';
+    return `<div style="margin-top:16px">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Top Risks This Period</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        ${topRisks.map(r=>{
+          const score = (r.likelihood||1)*(r.impact||1);
+          const cls = score>=12?'#dc2626':score>=6?'#d97706':'#d97706';
+          return `<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--sh)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div style="width:36px;height:36px;border-radius:50%;background:${cls};color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0">${score}</div>
+              <div style="font-size:13px;font-weight:700;color:var(--navy);flex:1;line-height:1.3">${r.title}</div>
+            </div>
+            <div style="font-size:11px;color:var(--lt);margin-bottom:4px">${r.project||'—'}</div>
+            ${r.mitigation?`<div style="font-size:11px;color:var(--mid);font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.mitigation}</div>`:''}
+            ${r.owner?`<div style="font-size:10px;color:var(--lt);margin-top:6px">👤 ${r.owner}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── PERIOD-AWARE PROJECT TABLE ────────────────────────────
+  function periodProjectTable() {
+    let tableProjects = [];
+    let title = '';
+    if (activeTab === 'daily') {
+      const todayMsIds = new Set(milestones.filter(m=>m.dueDate===today).map(m=>m.projectId));
+      const todayResProjects = new Set(resources.filter(r=>r.date===today).map(r=>r.memberId));
+      const blockerProjects = new Set([...openEscL34.map(e=>e.projectId),...highRisks.map(r=>r.projectId)].filter(Boolean));
+      tableProjects = projects.filter(p=>todayMsIds.has(p.id)||blockerProjects.has(p.id)||normaliseStatus(p.status)==='In Progress');
+      title = 'Projects with Activity Today';
+    } else if (activeTab === 'weekly') {
+      tableProjects = projects.filter(p=>normaliseStatus(p.status)!=='Completed'||p.endDate>=weekStartStr);
+      title = 'Active Projects — This Week';
+    } else {
+      const monthStart2 = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const nextMonthStart2 = new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString().split('T')[0];
+      tableProjects = projects;
+      title = 'All Projects — This Month';
+    }
+    if (!tableProjects.length) return `<div class="empty"><div class="empty-icon">📋</div>No projects to show</div>`;
+    return `<div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:10px">${title}</div>
+      <div class="tbl-wrap">
+        <table class="dt">
+          <thead><tr><th>Project</th><th>Track</th><th>Progress</th><th>Status</th><th>End Date</th><th>Dev Lead</th></tr></thead>
+          <tbody>
+            ${tableProjects.map(p=>`<tr style="cursor:pointer" onclick="nav('project-detail',{id:'${p.id}'})">
+              <td style="font-weight:700">${p.name}</td>
+              <td>${resolveTrackName(p.track||p.trackId)||'—'}</td>
+              <td style="min-width:110px">${progressBar(projProgress(p))}<span style="font-size:11px">${projProgress(p)}%</span></td>
+              <td>${ragBadge(p.status)}</td>
+              <td style="font-size:12px;${p.endDate<today&&normaliseStatus(p.status)!=='Completed'?'color:#dc2626':''}">${DateHelpers.fmt(p.endDate)}</td>
+              <td style="font-size:12px">${teamName(p.devLead)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${topRisksSection()}
+    </div>`;
+  }
 
   const tabContent = activeTab==='daily'   ? dailyTab()
                    : activeTab==='monthly' ? monthlyTab()
@@ -2684,12 +3105,27 @@ export function renderLeadership() {
         ${tabBtn('weekly',  'Weekly')}
         ${tabBtn('monthly', 'Monthly')}
       </div>
-      <button class="btn btn-ghost btn-sm no-print" onclick="window.print()">🖨 Export PDF</button>
     </div>
   </div>
   ${summaryBanner()}
-  ${chartsHtml}
-  ${tabContent}`;
+  ${kpiCards()}
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">
+    ${milestoneHealthDonutLarge()}
+    ${hoursSparklineLarge()}
+    ${pledgeGauge()}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+    ${projectStatusBarLarge()}
+    ${trackPerfTable()}
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    ${periodProjectTable()}
+  </div>
+  ${tabContent}
+  <button class="btn btn-ghost btn-sm no-print" onclick="window.print()"
+    style="position:fixed;bottom:24px;right:24px;z-index:100;background:var(--white);box-shadow:var(--shm)">
+    🖨 Print / Export PDF
+  </button>`;
 }
 
 // ─── IMPACTS ──────────────────────────────────────────────
