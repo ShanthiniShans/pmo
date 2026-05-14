@@ -229,15 +229,17 @@ function wizFooter(step, editId) {
   const back = step > 1
     ? `<button class="btn btn-ghost" onclick="window._wizGo(${step - 1})">← Back</button>`
     : `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>`;
+  const saveLabel = window._wizCollection === 'onboardingProjects' ? 'Save Onboarding Project' : 'Save Project';
   const next = step < 3
     ? `<button class="btn btn-primary" onclick="window._wizGo(${step + 1})">Next →</button>`
-    : `<button class="btn btn-primary" onclick="window._wizSave('${editId||''}')">Save Project</button>`;
+    : `<button class="btn btn-primary" onclick="window._wizSave('${editId||''}')">${saveLabel}</button>`;
   return `<div class="mo-foot">${back}${next}</div>`;
 }
 
 function wizRender(step, editId) {
   const stepContent = step === 1 ? wizRenderStep1() : step === 2 ? wizRenderStep2() : wizRenderStep3();
-  const title = editId ? 'Edit Project' : 'New Project';
+  const isOnboarding = window._wizCollection === 'onboardingProjects';
+  const title = editId ? (isOnboarding ? 'Edit Onboarding Project' : 'Edit Project') : (isOnboarding ? 'New Onboarding Project' : 'New Project');
   return `<div class="mo" onclick="if(event.target===this)closeModal()">
     <div class="mo-box">
       <div class="mo-hdr">
@@ -331,15 +333,19 @@ window._wizSave = async function(id) {
     team:        window._wiz.team       || []
   };
   if (!data.name) return alert('Project name is required');
+  const col = window._wizCollection || 'projects';
   try {
-    if (id) await DB.update('projects', id, data);
-    else await DB.add('projects', data);
+    if (id) await DB.update(col, id, data);
+    else await DB.add(col, data);
     closeModal();
   } catch(e) { alert('Error: ' + e.message); }
 };
 
-async function modalProject(id) {
-  const p = id ? APP_STATE.projects.find(x=>x.id===id) : null;
+async function modalProject(id, collection) {
+  window._wizCollection = collection || null;
+  const col = collection || 'projects';
+  const src = col === 'onboardingProjects' ? (APP_STATE.onboardingProjects||[]) : APP_STATE.projects;
+  const p = id ? src.find(x=>x.id===id) : null;
   // Initialise wizard state from existing project or defaults
   window._wiz = {
     _step:    1,
@@ -368,6 +374,10 @@ window.saveProject = async function(id) {
   return window._wizSave(id);
 };
 
+window.modalProject = function(id, collection) {
+  return modalProject(id, collection);
+};
+
 // kept for backward compat — old flat form referenced these
 window._filterTeamOptions = function() {};
 
@@ -382,14 +392,14 @@ window._renderMsTasks = function() {
     : window._msTasks.map((t,i)=>`
       <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:${t.done?'#f0fdf4':'#f8fafc'};border-radius:6px;border:1px solid ${t.done?'#bbf7d0':'#e2e8f0'}">
         <input type="checkbox" ${t.done?'checked':''} onchange="window._msTasks[${i}].done=this.checked;window._renderMsTasks()"/>
-        <span style="flex:1;font-size:12px;${t.done?'text-decoration:line-through;color:var(--lt)':'color:var(--navy)'}">${t.text}</span>
+        <span style="flex:1;font-size:12px;${t.done?'text-decoration:line-through;color:var(--lt)':'color:var(--navy)'}">${t.name||t.text||''}</span>
         <button style="border:none;background:none;cursor:pointer;color:#ef4444;font-size:16px;line-height:1;padding:0 2px" onclick="window._msTasks.splice(${i},1);window._renderMsTasks()">×</button>
       </div>`).join('');
 };
 window._addMsTask = function() {
   const inp = document.getElementById('msNewTask');
   if (!inp || !inp.value.trim()) return;
-  window._msTasks.push({ text: inp.value.trim(), done: false });
+  window._msTasks.push({ id: 't'+Date.now(), name: inp.value.trim(), done: false });
   inp.value = '';
   window._renderMsTasks();
 };
@@ -412,9 +422,10 @@ async function modalMilestone(id, projectId) {
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Project</label>
-            <select class="form-control" id="msProject">
+            <select class="form-control" id="msProject" ${projectId?'disabled':''}>
               <option value="">—</option>
               ${APP_STATE.projects.map(p=>`<option value="${p.id}" data-name="${p.name}" ${(m?.projectId===p.id||projectId===p.id)?'selected':''}>${p.name}</option>`).join('')}
+              ${(APP_STATE.onboardingProjects||[]).length ? `<optgroup label="Onboarding">${(APP_STATE.onboardingProjects||[]).map(p=>`<option value="${p.id}" data-name="${p.name}" ${(m?.projectId===p.id||projectId===p.id)?'selected':''}>${p.name}</option>`).join('')}</optgroup>` : ''}
             </select>
           </div>
           <div class="form-group">

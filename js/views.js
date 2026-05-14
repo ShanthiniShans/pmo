@@ -375,7 +375,10 @@ export function renderDashboard() {
       ...(risks).map(r=>({ icon:'⚠️', label:r.title, proj:r.project||'—', date:r.updatedAt||r.createdAt||'' })),
       ...(escs).map(e=>({ icon:'🚨', label:e.title||'Escalation', proj:e.project||'—', date:e.date||e.createdAt||'' })),
       ...(pledges).map(p=>({ icon:'🤝', label:p.title||'Pledge', proj:p.customer||'—', date:p.updatedAt||p.createdAt||p.dueDate||'' }))
-    ].filter(x=>x.date).sort((a,b)=>b.date>a.date?1:-1).slice(0,15);
+    ].filter(x=>x.date).sort((a,b)=>{
+      const toMs = d => d && typeof d.toMillis==='function' ? d.toMillis() : new Date(d).getTime()||0;
+      return toMs(b.date)-toMs(a.date);
+    }).slice(0,15);
     return `<div class="card">
       ${items.length ? items.map(a=>`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
@@ -565,6 +568,7 @@ export function renderRoadmap() {
     ${Object.entries(STATUS_COLOR).map(([s,c])=>`<div style="display:flex;align-items:center;gap:5px"><div style="width:22px;height:9px;border-radius:3px;background:${c}"></div><span>${s}</span></div>`).join('')}
     <div style="display:flex;align-items:center;gap:5px"><div style="width:2px;height:14px;background:#E8452C;border-radius:1px"></div>Today</div>
     <div style="display:flex;align-items:center;gap:5px"><div style="width:10px;height:10px;background:#1B2B5E;transform:rotate(45deg)"></div>Milestone</div>
+    <div style="display:flex;align-items:center;gap:5px"><div style="width:22px;height:9px;border-radius:3px;background:#7c3aed"></div>Onboarding</div>
   </div>
 
   <div class="gantt-wrap">
@@ -642,6 +646,33 @@ export function renderRoadmap() {
           </div>`;
         }).join('')}`;
       }).join('')}
+    ${(() => {
+      const onb = (APP_STATE.onboardingProjects||[]).filter(p=>p.startDate||p.endDate).sort((a,b)=>{ const da=a.startDate||''; const db=b.startDate||''; return da<db?-1:da>db?1:0; });
+      if (!onb.length) return '';
+      return `<div class="gantt-seg-hdr" style="background:#7c3aed0D;border-left:4px solid #7c3aed;border-top:2px solid #F0EEF4;border-bottom:1px solid #7c3aed28">
+        <div class="gantt-seg-name" style="color:#7c3aed;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">── ONBOARDING PROJECTS ── <span style="font-weight:400;color:#7c3aed88;text-transform:none;letter-spacing:0">— ${onb.length} project${onb.length!==1?'s':''}</span></div>
+        <div style="border-left:1px solid var(--border);position:relative;min-height:32px">${gridLines}${todayLine}</div>
+      </div>
+      ${onb.map(p => {
+        const bar = barRange(p.startDate, p.endDate);
+        return `<div class="gantt-row">
+          <div class="gantt-lbl" onclick="nav('onboarding-detail',{id:'${p.id}'})">
+            <span class="proj-link gantt-feat-name" style="color:#7c3aed">${p.name||p.customerName}</span>
+            <div class="gantt-feat-sub" style="display:flex;align-items:center;gap:6px">
+              ${ragBadge(p.status)}
+              <span>${projProgress(p)}%</span>
+            </div>
+          </div>
+          <div class="gantt-bar-area" style="position:relative;border-left:1px solid var(--border)">
+            ${gridLines}${todayLine}
+            ${bar?`<div class="g-bar" title="${p.name||p.customerName}" style="left:${bar.left}%;width:${bar.width}%;background:#7c3aed">
+              <div style="position:absolute;top:0;left:0;height:100%;width:${projProgress(p)}%;background:rgba(255,255,255,.22);border-radius:4px 0 0 4px"></div>
+              ${bar.width>5?`<div class="g-bar-lbl">${projProgress(p)}%</div>`:''}
+            </div>`:''}
+          </div>
+        </div>`;
+      }).join('')}`;
+    })()}
   </div>
 
 `;
@@ -649,65 +680,140 @@ export function renderRoadmap() {
 
 // ─── MILESTONES ───────────────────────────────────────────
 export function renderMilestones() {
-  const all = APP_STATE.milestones;
-  const f   = APP_STATE.filters;
-  const ms  = f.track ? all.filter(m=>m.track===f.track) : all;
-  ms.sort((a,b)=>{ if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate > b.dueDate ? 1 : -1; });
-  const overdue   = ms.filter(m=>normaliseStatus(m.status)==='Overdue');
-  const atRisk    = ms.filter(m=>normaliseStatus(m.status)==='At Risk');
-  const onTrack   = ms.filter(m=>['On Track','Yet to Start'].includes(normaliseStatus(m.status)));
-  const completed = ms.filter(m=>normaliseStatus(m.status)==='Completed');
+  const all  = APP_STATE.milestones;
+  const fp   = APP_STATE._msFilterProject || '';
+  const ft   = APP_STATE._msFilterTrack   || '';
+  const fo   = APP_STATE._msFilterOwner   || '';
+  const fs   = (APP_STATE._msFilterSearch || '').toLowerCase();
+  const view = APP_STATE._msView || 'kanban';
+  const today = DateHelpers.today();
 
+  let ms = all;
+  if (fp) ms = ms.filter(m => m.projectId === fp);
+  if (ft) ms = ms.filter(m => m.track === ft);
+  if (fo) ms = ms.filter(m => (m.owner||m.ownerId||'').includes(fo));
+  if (fs) ms = ms.filter(m => (m.title||'').toLowerCase().includes(fs) || (m.projectName||'').toLowerCase().includes(fs));
+  ms = [...ms].sort((a,b) => { if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate > b.dueDate ? 1 : -1; });
+
+  function isOverdueNow(m) {
+    return m.dueDate && m.dueDate < today && normaliseStatus(m.status) !== 'Completed';
+  }
+  function laneFor(m) {
+    const s = normaliseStatus(m.status);
+    if (s === 'Completed' || isOverdueNow(m)) return 'done';
+    if (s === 'At Risk' || s === 'Overdue') return 'atrisk';
+    if (s === 'In Progress' || s === 'On Track') return 'inprog';
+    return 'yts';
+  }
+  function taskProgress(m) {
+    const tasks = m.tasks || [];
+    if (!tasks.length) return null;
+    const done = tasks.filter(t => t.done).length;
+    return { done, total: tasks.length, pct: Math.round(done / tasks.length * 100) };
+  }
   function msCard(m) {
-    const status     = normaliseStatus(m.status);
-    const isComplete = status==='Completed';
-    const borderCol  = status==='Overdue'?'#ef4444':status==='At Risk'?'#f59e0b':status==='Completed'?'#22c55e':'#3b82f6';
-    return `<div class="flag-card ${status==='Overdue'?'high':status==='At Risk'?'med':''}" style="border-left-color:${borderCol}">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <div style="flex:1;font-size:13px;font-weight:700;color:var(--navy);${isComplete?'text-decoration:line-through;opacity:.6':''}">${m.title}</div>
-        ${ragBadge(m.status)}
+    const lane = laneFor(m);
+    const tp   = taskProgress(m);
+    const trackName = resolveTrackName(m.track) || m.track || '';
+    return `<div class="ms-card ${lane}" data-ms-id="${m.id}" onclick="openMilestoneDrawer('${m.id}')">
+      <div class="ms-card-title">${m.title}</div>
+      <div class="ms-card-meta">
+        ${m.projectName ? `<span>📁 ${m.projectName}</span>` : ''}
+        ${trackName ? `<span class="badge badge-navy" style="font-size:9px">${trackName}</span>` : ''}
       </div>
-      <div style="font-size:11px;color:var(--lt);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-        <span>📁 ${m.projectName||'—'}</span>
+      <div class="ms-card-meta" style="margin-top:4px">
         <span>📅 ${DateHelpers.fmt(m.dueDate)}</span>
-        ${m.track?`<span>🗂 ${m.track}</span>`:''}
+        ${m.owner ? `<span>👤 ${m.owner}</span>` : ''}
       </div>
-      ${m.revisedETA?`<div style="font-size:11px;color:#d97706;margin-bottom:4px">⚠️ Revised: ${DateHelpers.fmt(m.revisedETA)}</div>`:''}
-      ${m.delayReason?`<div style="font-size:11px;color:var(--mid);font-style:italic;margin-bottom:4px">${m.delayReason}</div>`:''}
-      ${m.completedDate?`<div style="font-size:11px;color:#16a34a;margin-bottom:4px">✅ Done: ${DateHelpers.fmt(m.completedDate)}</div>`:''}
-      <div style="display:flex;gap:6px;margin-top:4px">
-        ${!isComplete?`<button class="btn btn-primary btn-xs" onclick="markMilestoneComplete('${m.id}')">✓ Complete</button>`:''}
-        <button class="btn btn-ghost btn-xs" onclick="openModal('notes','${m.id}','milestone')">📝</button>
+      ${tp ? `<div class="ms-task-bar">
+        <div class="ms-task-progress"><div class="ms-task-progress-fill" style="width:${tp.pct}%"></div></div>
+        <span class="ms-task-count">${tp.done}/${tp.total} tasks</span>
+      </div>` : ''}
+      <div style="display:flex;gap:4px;margin-top:8px" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-xs" onclick="openModal('milestone','${m.id}')">Edit</button>
         <button class="btn btn-danger btn-xs" onclick="deleteItem('milestones','${m.id}')">🗑</button>
       </div>
     </div>`;
   }
 
-  function section(title, items, col) {
-    if (!items.length) return '';
-    return `<div style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:700;color:${col};margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border)">${title} (${items.length})</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">${items.map(msCard).join('')}</div>
-    </div>`;
-  }
+  const lanes = [
+    { key:'yts',    title:'Yet to Start',       items: ms.filter(m=>laneFor(m)==='yts') },
+    { key:'inprog', title:'In Progress',         items: ms.filter(m=>laneFor(m)==='inprog') },
+    { key:'atrisk', title:'At Risk',             items: ms.filter(m=>laneFor(m)==='atrisk') },
+    { key:'done',   title:'Completed / Overdue', items: ms.filter(m=>laneFor(m)==='done') },
+  ];
+
+  const allProjects = [...APP_STATE.projects, ...(APP_STATE.onboardingProjects||[])];
+  const projectOpts = allProjects.map(p => `<option value="${p.id}" ${fp===p.id?'selected':''}>${p.name||p.customerName}</option>`).join('');
+  const trackOpts   = APP_STATE.tracks.map(t => `<option value="${t.name}" ${ft===t.name?'selected':''}>${t.name}</option>`).join('');
+  const ownerOpts   = APP_STATE.teamMembers.map(t => `<option value="${t.name||t.id}" ${fo===(t.name||t.id)?'selected':''}>${t.name}</option>`).join('');
+
+  const filterSection = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+    <select class="form-control" style="width:160px;font-size:12px" onchange="APP_STATE._msFilterProject=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+      <option value="">All Projects</option>${projectOpts}
+    </select>
+    <select class="form-control" style="width:130px;font-size:12px" onchange="APP_STATE._msFilterTrack=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+      <option value="">All Tracks</option>${trackOpts}
+    </select>
+    <select class="form-control" style="width:130px;font-size:12px" onchange="APP_STATE._msFilterOwner=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+      <option value="">All Owners</option>${ownerOpts}
+    </select>
+    <input class="form-control" style="width:160px;font-size:12px" placeholder="Search…" value="${APP_STATE._msFilterSearch||''}" oninput="APP_STATE._msFilterSearch=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)"/>
+    ${(fp||ft||fo||fs)?`<button class="btn btn-ghost btn-sm" onclick="APP_STATE._msFilterProject='';APP_STATE._msFilterTrack='';APP_STATE._msFilterOwner='';APP_STATE._msFilterSearch='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Reset</button>`:''}
+    <div style="margin-left:auto;display:flex;gap:4px">
+      <button class="btn ${view==='kanban'?'btn-primary':'btn-ghost'} btn-sm" onclick="APP_STATE._msView='kanban';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)" title="Kanban">⬛ Kanban</button>
+      <button class="btn ${view==='list'?'btn-primary':'btn-ghost'} btn-sm" onclick="APP_STATE._msView='list';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)" title="List">≡ List</button>
+    </div>
+  </div>`;
+
+  const kanbanView = `<div class="kanban-board">
+    ${lanes.map(l => `<div class="kanban-lane">
+      <div class="kanban-lane-hdr">
+        <span class="kanban-lane-title">${l.title}</span>
+        <span class="kanban-lane-count">${l.items.length}</span>
+      </div>
+      ${l.items.map(msCard).join('') || `<div style="font-size:11px;color:var(--lt);padding:12px 0;text-align:center">Empty</div>`}
+    </div>`).join('')}
+  </div>`;
+
+  const listView = `<div class="card" style="padding:0">
+    <div class="tbl-wrap">
+      <table class="dt">
+        <thead><tr><th>Milestone</th><th>Project</th><th>Track</th><th>Due</th><th>Status</th><th>Tasks</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${ms.length ? ms.map(m => {
+            const tp = taskProgress(m);
+            return `<tr>
+              <td style="font-weight:600;color:var(--navy);cursor:pointer" onclick="openMilestoneDrawer('${m.id}')">${m.title}</td>
+              <td style="font-size:12px">${m.projectName||'—'}</td>
+              <td style="font-size:12px">${resolveTrackName(m.track)||m.track||'—'}</td>
+              <td style="font-size:12px">${DateHelpers.fmt(m.dueDate)}</td>
+              <td>${ragBadge(m.status)}</td>
+              <td style="font-size:12px">${tp ? `${tp.done}/${tp.total}` : '—'}</td>
+              <td onclick="event.stopPropagation()">
+                <button class="btn-icon" onclick="openMilestoneDrawer('${m.id}')">📋</button>
+                <button class="btn-icon" onclick="openModal('milestone','${m.id}')">✏️</button>
+                <button class="btn-icon" onclick="deleteItem('milestones','${m.id}')">🗑</button>
+              </td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="7"><div class="empty"><div class="empty-icon">🎯</div>No milestones found</div></td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
 
   return `
-  ${filterBar()}
   <div class="vh">
     <div class="vh-left">
       <h1>Milestones</h1>
-      <div class="sub">${ms.length} milestones tracked</div>
+      <div class="sub">${ms.length} milestone${ms.length!==1?'s':''} shown</div>
     </div>
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('milestone')">+ Add Milestone</button>
     </div>
   </div>
-  ${!ms.length?`<div class="empty"><div class="empty-icon">🎯</div>No milestones found</div>`:''}
-  ${section('🔴 Overdue', overdue, 'var(--red)')}
-  ${section('🟡 At Risk', atRisk, 'var(--amber)')}
-  ${section('🔵 On Track / Yet to Start', onTrack, 'var(--blue)')}
-  ${section('✅ Completed', completed, 'var(--green)')}`;
+  ${filterSection}
+  ${view === 'list' ? listView : kanbanView}`;
 }
 
 // ─── PROJECTS ─────────────────────────────────────────────
@@ -838,7 +944,7 @@ export async function renderProjectDetail(params) {
         </div>
         <div class="tbl-wrap">
           <table class="dt">
-            <thead><tr><th>Milestone</th><th>Due Date</th><th>Status</th><th>Owner</th><th>Timing</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Milestone</th><th>Due Date</th><th>Status</th><th>Owner</th><th>Timing</th><th>Tasks</th><th>Actions</th></tr></thead>
             <tbody>
               ${sorted.map(m=>{
                 const daysLeft = m.dueDate ? DateHelpers.daysBetween(today, m.dueDate) : null;
@@ -847,15 +953,19 @@ export async function renderProjectDetail(params) {
                   isOverdue ? `<span style="color:#dc2626;font-weight:700">${Math.abs(daysLeft)}d overdue</span>` :
                   daysLeft <= 3 ? `<span style="color:#d97706;font-weight:700">${daysLeft}d left</span>` :
                   `<span style="color:var(--lt)">${daysLeft}d left</span>`;
+                const mTasks = m.tasks || [];
+                const mDone  = mTasks.filter(t=>t.done).length;
                 return `<tr>
                   <td style="font-weight:600;color:var(--navy)">${m.title}</td>
                   <td style="font-size:12px;${isOverdue?'color:#dc2626':''}">${DateHelpers.fmt(m.dueDate)}</td>
                   <td>${ragBadge(m.status)}</td>
                   <td style="font-size:12px">${m.owner||teamName(m.ownerId)||'—'}</td>
                   <td>${timing}</td>
+                  <td style="font-size:12px">${mTasks.length ? `● ${mDone}/${mTasks.length} complete` : '—'}</td>
                   <td onclick="event.stopPropagation()">
+                    <button class="btn btn-ghost btn-xs" onclick="openMilestoneDrawer('${m.id}')">Tasks (${mTasks.length})</button>
                     ${normaliseStatus(m.status)!=='Completed'?`<button class="btn-icon" onclick="markMilestoneComplete('${m.id}')">✓</button>`:''}
-                    <button class="btn-icon" onclick="openModal('milestone','${m.id}')">✏️</button>
+                    <button class="btn-icon" onclick="openModal('milestone','${m.id}','${id}')">✏️</button>
                     <button class="btn-icon" onclick="deleteItem('milestones','${m.id}')">🗑</button>
                   </td>
                 </tr>`;
@@ -993,42 +1103,171 @@ export async function renderProjectDetail(params) {
 
 // ─── ONBOARDING ───────────────────────────────────────────
 export function renderOnboarding() {
-  const projects = APP_STATE.onboardingProjects;
+  const projects = filterProjects(APP_STATE.onboardingProjects || [])
+    .sort((a,b) => { const da=a.endDate||a.startDate||''; const db=b.endDate||b.startDate||''; return da<db?-1:da>db?1:0; });
+  const total     = projects.length;
+  const inProg    = projects.filter(p=>normaliseStatus(p.status)==='In Progress').length;
+  const completed = projects.filter(p=>normaliseStatus(p.status)==='Completed').length;
+  const atRisk    = projects.filter(p=>['At Risk','Overdue'].includes(normaliseStatus(p.status))).length;
+
   return `
+  ${filterBar()}
   <div class="vh">
     <div class="vh-left">
       <h1>Onboarding Projects</h1>
-      <div class="sub">${projects.length} customer onboardings</div>
+      <div class="sub">${total} onboarding project${total!==1?'s':''}</div>
     </div>
     <div class="vh-right">
-      <button class="btn btn-primary" onclick="openModal('onboarding')">+ New Onboarding</button>
+      <button class="btn btn-primary" onclick="modalProject(null,'onboardingProjects')">+ New Onboarding</button>
     </div>
   </div>
+  ${statRow(
+    statBlock(total,'Total','onboarding projects','#7c3aed') +
+    statBlock(inProg,'In Progress','currently active','#2563EB') +
+    statBlock(completed,'Completed','done','#059669') +
+    statBlock(atRisk,'At Risk / Overdue','needs attention','#DC2626')
+  )}
   <div class="card" style="padding:0">
     <div class="tbl-wrap">
       <table class="dt">
-        <thead><tr><th>Customer</th><th>Track</th><th>Phase</th><th>Status</th><th>Dev Lead</th><th>Start</th><th>End</th><th>Progress</th><th>Jira</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Project</th><th>Track</th><th>Priority</th><th>Phase</th><th>Progress</th><th>Status</th><th>Start</th><th>End</th><th>Actions</th></tr></thead>
         <tbody>
           ${projects.length ? projects.map(p=>`
-          <tr class="clk">
-            <td><span style="font-size:12px;font-weight:600;color:var(--navy)">👤 ${p.customerName||'—'}</span></td>
-            <td>${p.track||p.trackId?`<span class="badge badge-navy">${resolveTrackName(p.track||p.trackId)}</span>`:'—'}</td>
-            <td style="font-size:12px">${p.phase||'—'}</td>
-            <td>${ragBadge(p.status)}</td>
-            <td style="font-size:12px">${teamName(p.devLead)}</td>
-            <td style="font-size:12px;color:var(--lt)">${DateHelpers.fmt(p.startDate)}</td>
-            <td style="font-size:12px;color:var(--lt)">${DateHelpers.fmt(p.endDate)}</td>
-            <td style="min-width:100px">${progressBar(projProgress(p))}<div style="font-size:11px;color:var(--lt);margin-top:3px">${projProgress(p)}%</div></td>
-            <td>${p.jiraKey?`<span class="badge badge-blue">${p.jiraKey}</span>`:'—'}</td>
+          <tr class="clk ${normaliseStatus(p.status)==='Completed'?'done':''}" onclick="nav('onboarding-detail',{id:'${p.id}'})">
             <td>
-              <button class="btn-icon" onclick="openModal('onboarding','${p.id}')">✏️</button>
+              <span class="proj-link" style="color:#7c3aed">${p.name||p.customerName||'Unnamed'}</span>
+              <div style="font-size:11px;color:var(--lt)">${p.description||''}</div>
+            </td>
+            <td>${p.track||p.trackId?`<span class="badge badge-navy">${resolveTrackName(p.track||p.trackId)}</span>`:'—'}</td>
+            <td>${ragBadge(p.priority)}</td>
+            <td style="font-size:12px">${p.phase||'—'}</td>
+            <td style="min-width:110px">
+              ${progressBar(projProgress(p))}
+              <div style="font-size:11px;color:var(--lt);margin-top:3px">${projProgress(p)}%</div>
+            </td>
+            <td>${ragBadge(p.status)}</td>
+            <td style="font-size:12px;color:var(--lt)">${DateHelpers.fmt(p.startDate)}</td>
+            <td style="font-size:12px;color:${DateHelpers.isOverdue(p.endDate)&&normaliseStatus(p.status)!=='Completed'?'#ef4444':'var(--lt)'}">${DateHelpers.fmt(p.endDate)}</td>
+            <td onclick="event.stopPropagation()">
+              <button class="btn-icon" onclick="modalProject('${p.id}','onboardingProjects')">✏️</button>
               <button class="btn-icon" onclick="deleteItem('onboardingProjects','${p.id}')">🗑</button>
             </td>
-          </tr>`).join(''):`<tr><td colspan="10"><div class="empty"><div class="empty-icon">🏗️</div>No onboarding projects</div></td></tr>`}
+          </tr>`).join(''):`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🏗️</div>No onboarding projects found</div></td></tr>`}
         </tbody>
       </table>
     </div>
   </div>`;
+}
+
+export async function renderOnboardingDetail(params) {
+  const id = params && params.id;
+  const p  = (APP_STATE.onboardingProjects||[]).find(x=>x.id===id);
+  if (!p) return `<div class="empty"><div class="empty-icon">❌</div>Onboarding project not found.</div>`;
+
+  const today   = DateHelpers.today();
+  const pMs     = APP_STATE.milestones.filter(m=>m.projectId===id||m.projectName===(p.name||p.customerName));
+  const pRisks  = APP_STATE.risks.filter(r=>r.projectId===id||r.project===(p.name||p.customerName));
+  const pEscs   = APP_STATE.escalations.filter(e=>e.projectId===id||e.project===(p.name||p.customerName));
+  const activeTab = APP_STATE._detailTab || 'overview';
+
+  function tabBtn(key, label) {
+    return `<button class="pt ${activeTab===key?'active':''}" onclick="switchTab('_detailTab','${key}')">${label}</button>`;
+  }
+
+  function tabOverview() {
+    return `<div class="card">
+      <div class="card-title">Description</div>
+      <div style="font-size:13px;color:var(--text)">${p.description||'<span style="color:var(--lt)">No description provided.</span>'}</div>
+      ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
+      ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
+    </div>`;
+  }
+
+  function tabMilestones() {
+    const sorted = [...pMs].sort((a,b)=>{ if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate>b.dueDate?1:-1; });
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">Milestones (${sorted.length})</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('milestone',null,'${id}')">+ Add Milestone</button>
+      </div>
+      ${sorted.length ? `<div class="tbl-wrap"><table class="dt">
+        <thead><tr><th>Milestone</th><th>Due Date</th><th>Status</th><th>Tasks</th><th>Actions</th></tr></thead>
+        <tbody>${sorted.map(m=>{
+          const mTasks = m.tasks||[]; const mDone = mTasks.filter(t=>t.done).length;
+          return `<tr>
+            <td style="font-weight:600;color:var(--navy)">${m.title}</td>
+            <td style="font-size:12px">${DateHelpers.fmt(m.dueDate)}</td>
+            <td>${ragBadge(m.status)}</td>
+            <td style="font-size:12px">${mTasks.length ? `● ${mDone}/${mTasks.length} complete` : '—'}</td>
+            <td onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-xs" onclick="openMilestoneDrawer('${m.id}')">Tasks (${mTasks.length})</button>
+              <button class="btn-icon" onclick="openModal('milestone','${m.id}','${id}')">✏️</button>
+              <button class="btn-icon" onclick="deleteItem('milestones','${m.id}')">🗑</button>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>` : `<div class="empty"><div class="empty-icon">🎯</div>No milestones yet</div>`}
+    </div>`;
+  }
+
+  function tabRisks() {
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">Risks (${pRisks.length})</div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('risk')">+ Add Risk</button>
+      </div>
+      ${pRisks.length ? `<div class="tbl-wrap"><table class="dt">
+        <thead><tr><th>Risk</th><th>Severity</th><th>Status</th></tr></thead>
+        <tbody>${pRisks.map(r=>`<tr>
+          <td style="font-size:13px">${r.title||r.description||'—'}</td>
+          <td>${ragBadge(r.severity||r.impact)}</td>
+          <td>${ragBadge(r.status)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : `<div class="empty"><div class="empty-icon">⚠️</div>No risks logged</div>`}
+    </div>`;
+  }
+
+  const tabContent = activeTab==='milestones' ? tabMilestones()
+                   : activeTab==='risks'      ? tabRisks()
+                   : tabOverview();
+
+  return `
+  <div class="vh">
+    <div class="vh-left">
+      <button class="btn btn-ghost btn-sm no-print" onclick="nav('onboarding')" style="margin-bottom:6px">← Back to Onboarding</button>
+    </div>
+    <div class="vh-right no-print">
+      <button class="btn btn-ghost btn-sm" onclick="modalProject('${p.id}','onboardingProjects')">✏️ Edit</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px;border-top:4px solid #7c3aed">
+    <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">
+      <div style="flex:1;min-width:0">
+        <h1 style="font-size:22px;font-weight:800;color:#7c3aed;line-height:1.2;margin-bottom:8px">${p.name||p.customerName}</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          ${p.track||p.trackId?`<span class="badge badge-navy">${resolveTrackName(p.track||p.trackId)}</span>`:''}
+          ${ragBadge(p.priority)}
+          ${ragBadge(p.status)}
+          ${p.phase?`<span class="badge badge-grey">${p.phase}</span>`:''}
+        </div>
+      </div>
+    </div>
+    <div style="height:10px;background:#e8eaf0;border-radius:6px;overflow:hidden;margin-bottom:12px">
+      <div style="height:100%;width:${Math.min(projProgress(p),100)}%;background:#7c3aed;border-radius:6px;transition:width .3s"></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--mid)">
+      <span>📅 <strong>${DateHelpers.fmt(p.startDate)}</strong> → <strong>${DateHelpers.fmt(p.endDate)}</strong></span>
+      ${p.devLead?`<span>👤 Dev Lead: <strong>${teamName(p.devLead)}</strong></span>`:''}
+      <span>📊 <strong>${projProgress(p)}%</strong> complete</span>
+      ${p.jiraKey?`<span>🔗 Jira: <strong>${p.jiraKey}</strong></span>`:''}
+    </div>
+  </div>
+  <div class="pulse-tabs">
+    ${tabBtn('overview',   '📋 Overview')}
+    ${tabBtn('milestones', '🎯 Milestones')}
+    ${tabBtn('risks',      '⚠️ Risks')}
+  </div>
+  ${tabContent}`;
 }
 
 // ─── WORKFLOWS ────────────────────────────────────────────

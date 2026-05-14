@@ -51,16 +51,21 @@ export const APP_STATE = {
 // ─── DATE HELPERS ─────────────────────────────────────────
 export const DateHelpers = {
   today() { return new Date().toISOString().split('T')[0]; },
+  _toDate(d) {
+    if (!d) return null;
+    if (d instanceof Date) return d;
+    if (typeof d.toDate === 'function') return d.toDate(); // Firestore Timestamp
+    const dt = new Date(d);
+    return isNaN(dt) ? null : dt;
+  },
   fmt(d) {
-    if (!d) return '—';
-    const dt = typeof d === 'string' ? new Date(d) : d;
-    if (isNaN(dt)) return '—';
+    const dt = this._toDate(d);
+    if (!dt) return '—';
     return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   },
   fmtShort(d) {
-    if (!d) return '—';
-    const dt = typeof d === 'string' ? new Date(d) : d;
-    if (isNaN(dt)) return '—';
+    const dt = this._toDate(d);
+    if (!dt) return '—';
     return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
   },
   parse(d) { return d ? new Date(d) : null; },

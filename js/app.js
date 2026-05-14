@@ -5,7 +5,7 @@ import { initData, APP_STATE, DB, DateHelpers } from './data.js';
 import { openModal, closeModal } from './modals.js';
 import {
   renderDashboard, renderTracks, renderRoadmap, renderMilestones,
-  renderProjects, renderProjectDetail, renderOnboarding, renderWorkflows,
+  renderProjects, renderProjectDetail, renderOnboarding, renderOnboardingDetail, renderWorkflows,
   renderTeam, renderCapacityResources, renderCapacity, renderResources,
   renderRisks, renderEscalations,
   renderLeadership, renderImpacts, renderCharters, renderSettings,
@@ -21,7 +21,8 @@ const VIEWS = {
   projects:         { title: '', render: renderProjects },
   'project-detail': { title: '', render: renderProjectDetail },
   milestones:       { title: '', render: renderMilestones },
-  onboarding:       { title: '', render: renderOnboarding },
+  onboarding:          { title: '', render: renderOnboarding },
+  'onboarding-detail': { title: '', render: (params) => renderOnboardingDetail(params) },
   workflows:        { title: '', render: renderWorkflows },
   team:             { title: '', render: renderTeam },
   capacity:         { title: '', render: renderCapacityResources },
@@ -183,6 +184,113 @@ window.switchTab = function(stateKey, value) {
   navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
 };
 
+// ─── MILESTONE DRAWER ─────────────────────────────────────
+window.openMilestoneDrawer = function(msId) {
+  const m = APP_STATE.milestones.find(x => x.id === msId);
+  if (!m) return;
+
+  document.getElementById('ms-drawer-overlay')?.remove();
+  document.getElementById('ms-drawer')?.remove();
+
+  const tasks = m.tasks || [];
+  function taskHtml(t, i) {
+    return `<div class="task-row" id="task-row-${i}">
+      <input type="checkbox" class="task-cb" ${t.done?'checked':''} onchange="toggleTask('${msId}',${i},this.checked)"/>
+      <div class="task-info">
+        <div class="task-name-text ${t.done?'done':''}">${t.name||t.text||''}</div>
+        ${t.dueDate?`<div class="task-due ${t.dueDate<DateHelpers.today()?'overdue':''}">📅 ${DateHelpers.fmt(t.dueDate)}</div>`:''}
+        ${t.owner?`<div class="task-due">👤 ${t.owner}</div>`:''}
+      </div>
+    </div>`;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'drawer-overlay';
+  overlay.id = 'ms-drawer-overlay';
+  overlay.onclick = closeDrawer;
+  document.body.appendChild(overlay);
+
+  const drawer = document.createElement('div');
+  drawer.className = 'ms-drawer';
+  drawer.id = 'ms-drawer';
+  drawer.innerHTML = `
+    <div class="ms-drawer-hdr">
+      <div>
+        <div class="ms-drawer-title">${m.title}</div>
+        <div class="ms-drawer-meta">${m.projectName||''} ${m.dueDate?'· 📅 '+DateHelpers.fmt(m.dueDate):''}</div>
+      </div>
+      <button style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--mid);line-height:1" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="ms-drawer-body">
+      <div id="drawer-task-list">${tasks.length ? tasks.map((t,i)=>taskHtml(t,i)).join('') : '<div style="font-size:12px;color:var(--lt);padding:8px 0">No tasks yet</div>'}</div>
+      <div class="add-task-form">
+        <div style="font-size:11px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:8px">Add Task</div>
+        <input class="form-control" id="drawer-task-name" placeholder="Task name…" style="margin-bottom:6px;font-size:12px"/>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="date" class="form-control" id="drawer-task-due" style="font-size:12px;flex:1"/>
+          <input class="form-control" id="drawer-task-owner" placeholder="Owner…" style="font-size:12px;flex:1"/>
+        </div>
+        <input class="form-control" id="drawer-task-notes" placeholder="Notes (optional)…" style="margin-bottom:8px;font-size:12px"/>
+        <button class="btn btn-primary btn-sm" style="width:100%" onclick="addTaskToMilestone('${msId}')">+ Add Task</button>
+      </div>
+    </div>`;
+  document.body.appendChild(drawer);
+
+  requestAnimationFrame(() => {
+    overlay.classList.add('show');
+    drawer.classList.add('open');
+  });
+};
+
+window.closeDrawer = function() {
+  const drawer  = document.getElementById('ms-drawer');
+  const overlay = document.getElementById('ms-drawer-overlay');
+  if (drawer)  { drawer.classList.remove('open'); }
+  if (overlay) { overlay.classList.remove('show'); }
+  setTimeout(() => {
+    drawer?.remove();
+    overlay?.remove();
+  }, 260);
+};
+
+window.addTaskToMilestone = async function(msId) {
+  const name  = document.getElementById('drawer-task-name')?.value.trim();
+  if (!name) return;
+  const due   = document.getElementById('drawer-task-due')?.value || '';
+  const owner = document.getElementById('drawer-task-owner')?.value.trim() || '';
+  const notes = document.getElementById('drawer-task-notes')?.value.trim() || '';
+
+  const m = APP_STATE.milestones.find(x => x.id === msId);
+  if (!m) return;
+  const newTask = { id: 't'+Date.now(), name, done: false, dueDate: due, owner, notes };
+  const tasks = [...(m.tasks||[]), newTask];
+  m.tasks = tasks;
+
+  const card = document.querySelector(`.ms-card[data-ms-id="${msId}"] .ms-task-progress-fill`);
+  if (card) {
+    const done = tasks.filter(t=>t.done).length;
+    card.style.width = Math.round(done/tasks.length*100)+'%';
+  }
+
+  try {
+    await DB.update('milestones', msId, { tasks });
+    window.openMilestoneDrawer(msId);
+  } catch(e) { alert('Error: '+e.message); }
+};
+
+window.toggleTask = async function(msId, idx, done) {
+  const m = APP_STATE.milestones.find(x => x.id === msId);
+  if (!m || !m.tasks) return;
+  m.tasks[idx] = { ...m.tasks[idx], done };
+
+  const nameEl = document.querySelector(`#task-row-${idx} .task-name-text`);
+  if (nameEl) nameEl.classList.toggle('done', done);
+
+  try {
+    await DB.update('milestones', msId, { tasks: m.tasks });
+  } catch(e) { console.error(e); }
+};
+
 // ─── TOAST ────────────────────────────────────────────────
 window.showToast = function(msg, type = 'success') {
   const t = document.createElement('div');
@@ -196,10 +304,11 @@ window.showToast = function(msg, type = 'success') {
 window.downloadTemplate = function(type) {
   if (typeof XLSX === 'undefined') { alert('SheetJS not loaded'); return; }
   const templates = {
-    projects: [['Name','Track','Priority','Phase','Start Date','End Date','Progress%','Status','Description']],
-    pledges:  [['Customer','Commitment Title','Due Date','Owner','Priority','Status','Notes']],
-    risks:    [['Title','Project','Probability','Impact','Status','Owner','Mitigation']],
-    team:     [['Name','Role','Track','Email','Availability%']]
+    projects:   [['Name','Track','Priority','Phase','Start Date','End Date','Progress%','Status','Description']],
+    onboarding: [['Name','Track','Priority','Phase','Start Date','End Date','Progress%','Status','Description']],
+    pledges:    [['Customer','Commitment Title','Due Date','Owner','Priority','Status','Notes']],
+    risks:      [['Title','Project','Probability','Impact','Status','Owner','Mitigation']],
+    team:       [['Name','Role','Track','Email','Availability%']]
   };
   const rows = templates[type];
   if (!rows) return;
@@ -260,15 +369,17 @@ window._showImportPreview = function(type, rows) {
 
 window._confirmImport = async function(type, rows) {
   document.getElementById('importMo')?.remove();
+  const projMapper = r => ({ name: r.Name||r.name||'', track: r.Track||r.track||'', priority: r.Priority||r.priority||'Medium', phase: r.Phase||r.phase||'', startDate: r['Start Date']||'', endDate: r['End Date']||'', progress: parseInt(r['Progress%']||0), status: r.Status||r.status||'Yet to Start', description: r.Description||r.description||'' });
   const colMap = {
-    projects: r => ({ name: r.Name||r.name||'', track: r.Track||r.track||'', priority: r.Priority||r.priority||'Medium', phase: r.Phase||r.phase||'', startDate: r['Start Date']||'', endDate: r['End Date']||'', progress: parseInt(r['Progress%']||0), status: r.Status||r.status||'Yet to Start', description: r.Description||r.description||'' }),
-    pledges:  r => ({ customer: r.Customer||r.customer||'', title: r['Commitment Title']||r.title||'', dueDate: r['Due Date']||r.dueDate||'', owner: r.Owner||r.owner||'', priority: r.Priority||r.priority||'Medium', status: r.Status||r.status||'On Track', notes: r.Notes||r.notes||'' }),
-    risks:    r => ({ title: r.Title||r.title||'', project: r.Project||r.project||'', probability: r.Probability||r.probability||'Medium', impact: r.Impact||r.impact||'Medium', status: r.Status||r.status||'Open', owner: r.Owner||r.owner||'', mitigation: r.Mitigation||r.mitigation||'' }),
-    team:     r => ({ name: r.Name||r.name||'', role: r.Role||r.role||'', track: r.Track||r.track||'', email: r.Email||r.email||'', availability: parseInt(r['Availability%']||100) })
+    projects:   projMapper,
+    onboarding: projMapper,
+    pledges:    r => ({ customer: r.Customer||r.customer||'', title: r['Commitment Title']||r.title||'', dueDate: r['Due Date']||r.dueDate||'', owner: r.Owner||r.owner||'', priority: r.Priority||r.priority||'Medium', status: r.Status||r.status||'On Track', notes: r.Notes||r.notes||'' }),
+    risks:      r => ({ title: r.Title||r.title||'', project: r.Project||r.project||'', probability: r.Probability||r.probability||'Medium', impact: r.Impact||r.impact||'Medium', status: r.Status||r.status||'Open', owner: r.Owner||r.owner||'', mitigation: r.Mitigation||r.mitigation||'' }),
+    team:       r => ({ name: r.Name||r.name||'', role: r.Role||r.role||'', track: r.Track||r.track||'', email: r.Email||r.email||'', availability: parseInt(r['Availability%']||100) })
   };
   const mapper = colMap[type];
   if (!mapper) return;
-  const collectionMap = { projects: 'projects', pledges: 'pledges', risks: 'risks', team: 'teamMembers' };
+  const collectionMap = { projects: 'projects', onboarding: 'onboardingProjects', pledges: 'pledges', risks: 'risks', team: 'teamMembers' };
   const col = collectionMap[type];
   let count = 0;
   for (const r of rows) {
