@@ -1070,7 +1070,7 @@ export async function renderProjectDetail(params) {
            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:#92400e">No charter yet</div><div style="font-size:11px;color:#a16207">Define objectives and success metrics</div></div>
            <button class="btn btn-ghost btn-xs" onclick="openModal('charter',null,'${id}')">Create Charter</button>
          </div>`;
-    const msNotesCards = pMs.map(m => {
+    const msNotesCards = [...pMs].sort((a,b)=>{ if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate>b.dueDate?1:-1; }).map(m => {
       const tasksWithNotes = (m.tasks||[]).filter(t => t.notes && t.notes.trim());
       const msNote = m.notes || m.description || '';
       if (!tasksWithNotes.length && !msNote) return '';
@@ -1381,7 +1381,7 @@ export async function renderOnboardingDetail(params) {
   }
 
   function tabOverview() {
-    const onbNotesCards = pMs.map(m => {
+    const onbNotesCards = [...pMs].sort((a,b)=>{ if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate>b.dueDate?1:-1; }).map(m => {
       const tasksWithNotes = (m.tasks||[]).filter(t => t.notes && t.notes.trim());
       const msNote = m.notes || m.description || '';
       if (!tasksWithNotes.length && !msNote) return '';
