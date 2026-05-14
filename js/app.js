@@ -96,6 +96,17 @@ window.markMilestoneComplete = async function(id) {
   } catch(e) { alert('Error: ' + e.message); }
 };
 
+// ─── ALLOC FILTER ─────────────────────────────────────────
+window.setAllocFilter = function(key, value) {
+  APP_STATE[key] = value;
+  navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
+};
+
+window.toggleMemberExpand = function(memberId) {
+  APP_STATE._expandedMember = APP_STATE._expandedMember === memberId ? null : memberId;
+  navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
+};
+
 // ─── MILESTONE FILTER ────────────────────────────────────
 window.setMsFilter = function(key, value) {
   APP_STATE[key] = value;
@@ -365,13 +376,16 @@ window.updateAllocation = async function(memberId, val) {
 };
 
 window.saveTimeLog = async function(memberId, dateStr) {
-  const hours   = parseFloat(document.getElementById('tl-hours-'+dateStr)?.value || 0);
-  const note    = document.getElementById('tl-note-'+dateStr)?.value?.trim() || '';
-  const project = document.getElementById('tl-proj-'+dateStr)?.value || '';
+  const h = document.getElementById('tl-h-'+memberId+'-'+dateStr) || document.getElementById('tl-hours-'+dateStr);
+  const p = document.getElementById('tl-p-'+memberId+'-'+dateStr) || document.getElementById('tl-proj-'+dateStr);
+  const n = document.getElementById('tl-n-'+memberId+'-'+dateStr) || document.getElementById('tl-note-'+dateStr);
+  const hours   = parseFloat(h?.value || 0);
+  const project = p?.value || '';
+  const note    = n?.value?.trim() || '';
   const docId   = memberId+'_'+dateStr;
   try {
-    await DB.set('resources', docId, { memberId, date: dateStr, hours, note, project, isLeave: false, leaveType: '' });
-    showToast('Time logged ✅');
+    await DB.set('resources', docId, { memberId, date: dateStr, hours, project, note, isLeave: false, leaveType: '' });
+    showToast('Time saved ✅');
     document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove());
     navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
   } catch(e) { alert('Error: '+e.message); }
@@ -385,6 +399,27 @@ window.markLeave = async function(memberId, dateStr, leaveType) {
     document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove());
     navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
   } catch(e) { alert('Error: '+e.message); }
+};
+
+window.markLeavePrompt = function(memberId, dateStr) {
+  const type = prompt('Leave type:\n1. Annual\n2. Sick\n3. Public Holiday\n4. Other\n\nEnter number:');
+  const types = { '1':'Annual','2':'Sick','3':'Public Holiday','4':'Other' };
+  const leaveType = types[type] || 'Annual';
+  window.markLeave(memberId, dateStr, leaveType);
+};
+
+window.clearTimeLog = async function(memberId, dateStr) {
+  const docId = memberId+'_'+dateStr;
+  try {
+    await DB.remove('resources', docId);
+    showToast('Entry cleared');
+    navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
+  } catch(e) { alert('Error: '+e.message); }
+};
+
+window.setTimeLogMember = function(memberId) {
+  APP_STATE._timeLogMember = memberId;
+  navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
 };
 
 window.showLeaveForm = function(memberId, dateStr) {

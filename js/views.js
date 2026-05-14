@@ -189,6 +189,7 @@ window._showMsDetail = function(msId, event) {
   const pop = document.createElement('div');
   pop.className = 'ms-popover';
   pop.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:16px;min-width:240px;max-width:300px;font-family:"DM Sans",sans-serif';
+  const taskList = (tasks).filter(t => t && t.name);
   pop.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
       <div style="width:10px;height:10px;background:${sc};border-radius:50%;flex-shrink:0"></div>
@@ -199,14 +200,12 @@ window._showMsDetail = function(msId, event) {
       <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${sc}18;color:${sc}">${ms.status||'—'}</span>
       ${ms.dueDate?`<span style="font-size:10px;color:#64748b;padding:2px 6px;background:#f1f5f9;border-radius:20px">📅 ${ms.dueDate}</span>`:''}
     </div>
-    ${tasks.length>0?`
+    ${taskList.length>0?`
     <div style="border-top:1px solid #f1f5f9;padding-top:10px">
-      <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Tasks (${tasks.filter(t=>t.done).length}/${tasks.length})</div>
-      ${tasks.map(t=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f8fafc">
-        <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid ${t.done?'#22c55e':'#cbd5e1'};background:${t.done?'#22c55e':'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center">
-          ${t.done?'<svg width="8" height="8" viewBox="0 0 10 10"><polyline points="1,5 4,8 9,2" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>':''}
-        </div>
-        <span style="font-size:11px;${t.done?'text-decoration:line-through;color:#94a3b8':'color:#1B2B5E'}">${t.text}</span>
+      <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Tasks (${taskList.filter(t=>t.done).length}/${taskList.length} complete)</div>
+      ${taskList.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" ${t.done?'checked':''} disabled style="accent-color:var(--teal)"/>
+        <span style="font-size:12px;${t.done?'text-decoration:line-through;color:var(--lt)':''}">${t.name||''}</span>
       </div>`).join('')}
     </div>`:''}
     ${ms.notes?`<div style="margin-top:10px;font-size:11px;color:#64748b;border-top:1px solid #f1f5f9;padding-top:8px">${ms.notes}</div>`:''}
@@ -368,18 +367,116 @@ export function renderDashboard() {
     return msBar + trackTable + ragGrid;
   }
 
-  // ── Activity tab ─────────────────────────────────────────
+  // ── Activity & Insights tab ──────────────────────────────
+  function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const d = typeof dateStr.toMillis === 'function' ? new Date(dateStr.toMillis()) : new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const diff = (new Date() - d) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff/60)+'m ago';
+    if (diff < 86400) return Math.floor(diff/3600)+'h ago';
+    if (diff < 604800) return Math.floor(diff/86400)+'d ago';
+    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  }
+
   function activityTab() {
+    const toMs = d => d && typeof d.toMillis==='function' ? d.toMillis() : new Date(d).getTime()||0;
     const items = [
-      ...milestones.map(m=>({ icon:'🎯', label:m.title, proj:m.projectName||'—', date:m.updatedAt||m.createdAt||m.dueDate||'' })),
-      ...(risks).map(r=>({ icon:'⚠️', label:r.title, proj:r.project||'—', date:r.updatedAt||r.createdAt||'' })),
-      ...(escs).map(e=>({ icon:'🚨', label:e.title||'Escalation', proj:e.project||'—', date:e.date||e.createdAt||'' })),
-      ...(pledges).map(p=>({ icon:'🤝', label:p.title||'Pledge', proj:p.customer||'—', date:p.updatedAt||p.createdAt||p.dueDate||'' }))
-    ].filter(x=>x.date).sort((a,b)=>{
-      const toMs = d => d && typeof d.toMillis==='function' ? d.toMillis() : new Date(d).getTime()||0;
-      return toMs(b.date)-toMs(a.date);
-    }).slice(0,15);
-    return `<div class="card">
+      ...milestones.map(m=>({ icon:'🎯', label:m.title, proj:m.projectName||'—', date:m.updatedAt||m.createdAt||m.dueDate||'', status:m.status, projId:m.projectId })),
+      ...(risks).map(r=>({ icon:'⚠️', label:r.title, proj:r.project||'—', date:r.updatedAt||r.createdAt||'', status:r.status, projId:null })),
+      ...(escs).map(e=>({ icon:'🚨', label:e.title||'Escalation', proj:e.project||'—', date:e.date||e.createdAt||'', status:e.status, projId:null })),
+      ...(pledges).map(p=>({ icon:'🤝', label:p.title||'Pledge', proj:p.customer||'—', date:p.updatedAt||p.createdAt||p.dueDate||'', status:p.status, projId:null }))
+    ].filter(x=>x.date).sort((a,b)=>toMs(b.date)-toMs(a.date)).slice(0,20);
+
+    // ── Insights ──
+    const now2 = new Date();
+    const weekAgo2 = new Date(now2); weekAgo2.setDate(weekAgo2.getDate()-7);
+    const twoWeeksAgo = new Date(now2); twoWeeksAgo.setDate(twoWeeksAgo.getDate()-14);
+    const wsStr2 = weekAgo2.toISOString().split('T')[0];
+    const twStr  = twoWeeksAgo.toISOString().split('T')[0];
+
+    const msCompThisWeek = milestones.filter(m=>m.status==='Completed'&&(m.completedDate||'')>=wsStr2).length;
+    const msCompLastWeek = milestones.filter(m=>m.status==='Completed'&&(m.completedDate||'')>=twStr&&(m.completedDate||'')<wsStr2).length;
+    const velocityDelta  = msCompLastWeek>0 ? Math.round((msCompThisWeek-msCompLastWeek)/msCompLastWeek*100) : 0;
+    const velocityUp     = msCompThisWeek >= msCompLastWeek;
+
+    const newRisksWk   = risks.filter(r=>(r.createdAt||r.date||'')>=wsStr2).length;
+    const highRisksOpen = openRisks.filter(r=>(r.likelihood||1)*(r.impact||1)>=7).length;
+    const closedRisksWk = risks.filter(r=>(r.closedAt||'')>=wsStr2&&r.status!=='Open').length;
+    const monthStart2    = new Date(now2.getFullYear(),now2.getMonth(),1).toISOString().split('T')[0];
+    const msTotal2 = milestones.length||1;
+    const onTrackMs2 = milestones.filter(m=>!(m.dueDate<today&&m.status!=='Completed')&&m.status!=='Completed').length;
+    const onTrackPct = Math.round((msTotal2-overdueMilestones.length)/msTotal2*100);
+    const overloaded2  = (APP_STATE.teamMembers||[]).filter(m=>(m.capacity||m.availability||80)>100).length;
+    const atCap2       = (APP_STATE.teamMembers||[]).filter(m=>{const c=m.capacity||m.availability||80;return c>=80&&c<=100;}).length;
+    const avgUtil2     = members2 => members2.length ? Math.round(members2.reduce((s,m)=>s+(m.capacity||m.availability||80),0)/members2.length) : 0;
+    const avgU = avgUtil2(APP_STATE.teamMembers||[]);
+
+    const in7d = new Date(now2); in7d.setDate(in7d.getDate()+7);
+    const in7dStr = in7d.toISOString().split('T')[0];
+    const msNext7 = milestones.filter(m=>m.dueDate>=today&&m.dueDate<=in7dStr&&m.status!=='Completed');
+    const pledgesNext7 = pledges.filter(p=>p.dueDate>=today&&p.dueDate<=in7dStr&&p.status!=='Honored');
+    const nearestDeadline = [...msNext7,...pledgesNext7].sort((a,b)=>(a.dueDate||'')>(b.dueDate||'')?1:-1)[0];
+
+    const topBlocker = openEscL34.sort((a,b)=>{
+      const la = parseInt((a.level||'L0').slice(1)||0);
+      const lb = parseInt((b.level||'L0').slice(1)||0);
+      return lb-la;
+    })[0] || highRisks.sort((a,b)=>(b.likelihood||1)*(b.impact||1)-(a.likelihood||1)*(a.impact||1))[0];
+
+    const projectsBehind = projects.filter(p=>p.endDate<today&&normaliseStatus(p.status)!=='Completed').length;
+
+    const insights = [
+      {
+        title:'🚀 Sprint Velocity',
+        cls: velocityUp?'good':'danger',
+        metric: msCompThisWeek,
+        body:`${msCompThisWeek} milestones completed this week vs ${msCompLastWeek} last week${msCompLastWeek>0?` — <strong style="color:${velocityUp?'#22c55e':'#ef4444'}">${velocityUp?'↑':'↓'} ${Math.abs(velocityDelta)}%</strong>`:''}.`
+      },
+      {
+        title:'⚠️ Risk Trend',
+        cls: highRisksOpen>3?'danger':'warn',
+        metric: highRisksOpen,
+        body:`${newRisksWk} new risks this week. ${highRisksOpen} high-priority risks open. ${closedRisksWk} risks closed this month.`
+      },
+      {
+        title:'📊 Delivery Health',
+        cls: onTrackPct>=80?'good':onTrackPct>=60?'warn':'danger',
+        metric: onTrackPct+'%',
+        body:`${onTrackPct}% milestones on track. ${projectsBehind} projects behind schedule.`
+      },
+      {
+        title:'👥 Capacity',
+        cls: overloaded2>0?'warn':'good',
+        metric: avgU+'%',
+        body:`${overloaded2} team members overallocated. ${atCap2} at capacity. ${avgU}% avg team utilisation.`
+      },
+      {
+        title:'🔴 Top Blocker',
+        cls:'danger',
+        metric: topBlocker ? (topBlocker.level||'Risk') : '—',
+        body: topBlocker ? `<strong>${topBlocker.title||topBlocker.project||'—'}</strong> · ${topBlocker.project||topBlocker.projectName||'—'}` : 'No critical blockers.'
+      },
+      {
+        title:'📅 Next 7 Days',
+        cls: msNext7.length>5?'warn':'good',
+        metric: msNext7.length,
+        body:`${msNext7.length} milestones due. ${pledgesNext7.length} pledges due.${nearestDeadline?` Critical: <strong>${nearestDeadline.title||nearestDeadline.name||'—'}</strong> on ${DateHelpers.fmt(nearestDeadline.dueDate)}.`:''}`
+      }
+    ];
+
+    return `
+    <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:12px">Programme Insights</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      ${insights.map(ins=>`<div class="insight-card ${ins.cls}">
+        <div class="insight-title">${ins.title}</div>
+        <div class="insight-metric">${ins.metric}</div>
+        <div class="insight-body">${ins.body}</div>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:12px">Recent Activity</div>
+    <div class="card">
       ${items.length ? items.map(a=>`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:16px;flex-shrink:0">${a.icon}</span>
@@ -387,7 +484,8 @@ export function renderDashboard() {
             <span style="font-size:13px;font-weight:600;color:var(--navy)">${a.label}</span>
             <span style="font-size:11px;color:var(--lt)"> · ${a.proj}</span>
           </div>
-          <span style="font-size:11px;color:var(--lt);flex-shrink:0">${DateHelpers.fmt(a.date)}</span>
+          ${a.status?ragBadge(a.status):''}
+          <span style="font-size:11px;color:var(--lt);flex-shrink:0;margin-left:6px">${timeAgo(a.date)}</span>
         </div>`).join('') : `<div class="empty"><div class="empty-icon">📝</div>No recent activity</div>`}
     </div>`;
   }
@@ -404,7 +502,7 @@ export function renderDashboard() {
     <div class="pulse-tabs" style="padding:0 16px">
       <button class="pt ${activeTab==='flags'?'active':''}"  onclick="switchTab('_pulseTab','flags')">🚩 Flags${openFlagsCount>0?` (${openFlagsCount})`:''}</button>
       <button class="pt ${activeTab==='health'?'active':''}" onclick="switchTab('_pulseTab','health')">❤️ Health</button>
-      <button class="pt ${activeTab==='activity'?'active':''}" onclick="switchTab('_pulseTab','activity')">⚡ Activity</button>
+      <button class="pt ${activeTab==='activity'?'active':''}" onclick="switchTab('_pulseTab','activity')">⚡ Activity &amp; Insights</button>
     </div>
     <div style="padding:14px 16px">
       ${activeTab==='flags' ? (allFlags.length
@@ -445,31 +543,34 @@ export function renderTracks() {
     </div>
   </div>
 
-  <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;flex-wrap:nowrap;scrollbar-width:thin;margin-bottom:14px;">
+  <div style="width:100%;overflow:hidden">
+  <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;margin-bottom:14px;-webkit-overflow-scrolling:touch">
     ${['All',...tracks].map(t => {
       const isActive = activeTrack === t;
       const cnt = t==='All' ? projects.length : projects.filter(p=>p.track===t).length;
       const col = t==='All' ? '#1B2B5E' : (TRACK_COLORS[t]||'#1B2B5E');
       return `<button onclick="window._filterChange('track','${t==='All'?'':t}')"
-        style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${isActive?col:'var(--border)'};background:${isActive?col:'#fff'};color:${isActive?'#fff':col};font-family:'DM Sans',sans-serif;transition:all .15s">
+        style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${isActive?col:'var(--border)'};background:${isActive?col:'#fff'};color:${isActive?'#fff':col};font-family:'DM Sans',sans-serif;transition:all .15s;flex-shrink:0">
         ${t} (${cnt})
       </button>`;
     }).join('')}
   </div>
+  <style>.clarity-track-tabs::-webkit-scrollbar{display:none}</style>
 
-  <div style="overflow-x:auto;overflow-y:visible;padding-bottom:20px;width:100%">
-    <div style="display:flex;gap:14px;min-width:max-content;align-items:flex-start">
+  <div style="overflow-x:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch">
+    <div style="display:flex;gap:14px;min-width:max-content;align-items:flex-start;padding-bottom:8px">
     ${STAGES.map(stage => {
       const colProjects = filtered.filter(p => stageOf(p) === stage.label);
       return `
-      <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 220px);overflow-y:auto">
-        <div style="padding:12px 14px;border-radius:10px;background:#fff;border:1px solid var(--border);border-top:3px solid ${stage.color}">
+      <div style="width:270px;flex-shrink:0;background:var(--bg);border-radius:var(--r);display:flex;flex-direction:column">
+        <div style="padding:10px 12px;position:sticky;top:0;z-index:2;background:var(--bg);border-radius:var(--r) var(--r) 0 0;border-bottom:1px solid var(--border);border-top:3px solid ${stage.color}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
             <span style="font-weight:700;font-size:12px;color:var(--navy)">${stage.label}</span>
             <span style="font-size:11px;font-weight:700;color:${stage.color};background:${stage.color}18;border-radius:980px;padding:1px 8px">${colProjects.length}</span>
           </div>
           <div style="font-size:11px;color:var(--lt);line-height:1.4">${stage.desc}</div>
         </div>
+        <div style="overflow-y:auto;max-height:calc(100vh - 280px);padding:8px;display:flex;flex-direction:column;gap:8px">
         ${colProjects.length === 0
           ? `<div style="padding:16px 12px;border-radius:10px;background:rgba(0,0,0,.02);border:1px dashed var(--border);text-align:center"><span style="font-size:12px;color:var(--lt)">Empty</span></div>`
           : colProjects.map(p => {
@@ -496,9 +597,11 @@ export function renderTracks() {
               </div>`;
             }).join('')
         }
+        </div>
       </div>`;
     }).join('')}
     </div>
+  </div>
   </div>`;
 }
 
@@ -549,14 +652,12 @@ export function renderRoadmap() {
     return { left, width };
   }
 
-  const todayPct    = datePct(DateHelpers.today());
+  const todayPct    = Math.max(0, Math.min(100, (new Date() - rangeStart) / (rangeEnd - rangeStart) * 100));
   const uniqueTracks = [...new Set(projects.map(p => resolveTrackName(p.track||p.trackId) || 'Unassigned'))];
   const gridLines   = months.map((_,i) => i===0 ? '' :
     `<div style="position:absolute;top:0;bottom:0;left:${(i/months.length*100).toFixed(2)}%;width:1px;background:#EEF2F8;pointer-events:none;z-index:1"></div>`
   ).join('');
-  const todayLine   = todayPct !== null
-    ? `<div class="today-line" style="left:${todayPct}%"></div>`
-    : '';
+  const todayLine   = `<div class="today-line" style="left:${todayPct.toFixed(2)}%"></div>`;
 
   return `
   ${filterBar()}
@@ -574,7 +675,7 @@ export function renderRoadmap() {
     <div style="display:flex;align-items:center;gap:5px"><div style="width:22px;height:9px;border-radius:3px;background:#7c3aed"></div>Onboarding</div>
   </div>
 
-  <div class="gantt-wrap">
+  <div class="gantt-wrap" style="overflow-x:auto">
     ${(() => {
       const now = new Date();
       const todayQ = Math.floor(now.getMonth() / 3) + 1;
@@ -613,11 +714,12 @@ export function renderRoadmap() {
       uniqueTracks.map((track,ti) => {
         const tc    = TC[ti % TC.length];
         const tProj = projects.filter(p=>(resolveTrackName(p.track||p.trackId)||'Unassigned')===track);
-        return `<div class="gantt-seg-hdr" style="background:${tc}0D;border-left:4px solid ${tc};border-top:2px solid #F0EEF4;border-bottom:1px solid ${tc}28">
+        return `<div class="gantt-seg-hdr" style="background:${tc}0D;border-left:4px solid ${tc};border-top:2px solid #F0EEF4;border-bottom:1px solid ${tc}28;min-width:900px">
           <div class="gantt-seg-name" style="color:${tc};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">${track} <span style="font-weight:400;color:${tc}88;text-transform:none;letter-spacing:0">— ${tProj.length} project${tProj.length!==1?'s':''}</span></div>
           <div style="border-left:1px solid var(--border);position:relative;min-height:32px">${gridLines}${todayLine}</div>
         </div>
         ${tProj.map((p,pi) => {
+          if (!p.startDate || !p.endDate) return '';
           const bar   = barRange(p.startDate, p.endDate);
           const pMs   = milestones.filter(m=>m.projectId===p.id);
           const color = STATUS_COLOR[normaliseStatus(p.status)]||'#94A3B8';
@@ -687,7 +789,6 @@ export function renderMilestones() {
   const ft   = APP_STATE._msFilterTrack   || '';
   const fo   = APP_STATE._msFilterOwner   || '';
   const fs   = (APP_STATE._msFilterSearch || '').toLowerCase().trim();
-  const view = APP_STATE._msView || 'kanban';
   const today = DateHelpers.today();
 
   function applyMilestoneFilters(milestones) {
@@ -719,10 +820,14 @@ export function renderMilestones() {
   function isOverdueNow(m) {
     return m.dueDate && m.dueDate < today && normaliseStatus(m.status) !== 'Completed';
   }
+  function isCompleted(m) {
+    return (m.status||'').toLowerCase().includes('complet');
+  }
   function laneFor(m) {
     const s = normaliseStatus(m.status);
-    if (s === 'Completed' || isOverdueNow(m)) return 'done';
-    if (s === 'At Risk' || s === 'Overdue') return 'atrisk';
+    if (isCompleted(m)) return 'done';
+    if (isOverdueNow(m)) return 'overdue';
+    if (s === 'At Risk') return 'atrisk';
     if (s === 'In Progress' || s === 'On Track') return 'inprog';
     return 'yts';
   }
@@ -758,10 +863,11 @@ export function renderMilestones() {
   }
 
   const lanes = [
-    { key:'yts',    title:'Yet to Start',       items: ms.filter(m=>laneFor(m)==='yts') },
-    { key:'inprog', title:'In Progress',         items: ms.filter(m=>laneFor(m)==='inprog') },
-    { key:'atrisk', title:'At Risk',             items: ms.filter(m=>laneFor(m)==='atrisk') },
-    { key:'done',   title:'Completed / Overdue', items: ms.filter(m=>laneFor(m)==='done') },
+    { key:'yts',     title:'Yet to Start', borderColor:'', headerColor:'', items: ms.filter(m=>laneFor(m)==='yts') },
+    { key:'inprog',  title:'In Progress',  borderColor:'', headerColor:'', items: ms.filter(m=>laneFor(m)==='inprog') },
+    { key:'atrisk',  title:'At Risk',      borderColor:'#f59e0b', headerColor:'#d97706', items: ms.filter(m=>laneFor(m)==='atrisk') },
+    { key:'overdue', title:'Overdue',      borderColor:'#ef4444', headerColor:'#dc2626', items: ms.filter(m=>laneFor(m)==='overdue') },
+    { key:'done',    title:'Completed',    borderColor:'#22c55e', headerColor:'#15803d', items: ms.filter(m=>laneFor(m)==='done') },
   ];
 
   const allProjects = [...(APP_STATE.projects||[]), ...(APP_STATE.onboardingProjects||[])];
@@ -783,15 +889,11 @@ export function renderMilestones() {
     </select>
     <input class="form-control" style="width:160px;font-size:12px" placeholder="Search…" value="${APP_STATE._msFilterSearch||''}" oninput="setMsFilter('_msFilterSearch',this.value)"/>
     ${activeFilterCount>0?`<span class="badge badge-teal" style="font-size:11px">${activeFilterCount} active</span><button class="btn btn-ghost btn-sm" onclick="APP_STATE._msFilterProject='';APP_STATE._msFilterTrack='';APP_STATE._msFilterOwner='';APP_STATE._msFilterSearch='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Reset</button>`:''}
-    <div style="margin-left:auto;display:flex;gap:4px">
-      <button class="btn ${view==='kanban'?'btn-primary':'btn-ghost'} btn-sm" onclick="APP_STATE._msView='kanban';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">⬛ Kanban</button>
-      <button class="btn ${view==='list'?'btn-primary':'btn-ghost'} btn-sm" onclick="APP_STATE._msView='list';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">≡ List</button>
-    </div>
   </div>`;
 
-  const kanbanView = `<div class="kanban-board">
-    ${lanes.map(l => `<div class="kanban-lane">
-      <div class="kanban-lane-hdr">
+  const kanbanView = `<div style="display:grid;grid-template-columns:repeat(5,minmax(240px,1fr));gap:12px;overflow-x:auto">
+    ${lanes.map(l => `<div class="kanban-lane" style="${l.borderColor?`border-color:${l.borderColor}`:''}">
+      <div class="kanban-lane-hdr" style="${l.headerColor?`color:${l.headerColor}`:''}">
         <span class="kanban-lane-title">${l.title}</span>
         <span class="kanban-lane-count">${l.items.length}</span>
       </div>
@@ -799,31 +901,6 @@ export function renderMilestones() {
     </div>`).join('')}
   </div>`;
 
-  const listView = `<div class="card" style="padding:0">
-    <div class="tbl-wrap">
-      <table class="dt">
-        <thead><tr><th>Milestone</th><th>Project</th><th>Track</th><th>Due</th><th>Status</th><th>Tasks</th><th>Actions</th></tr></thead>
-        <tbody>
-          ${ms.length ? ms.map(m => {
-            const tp = taskProgress(m);
-            return `<tr>
-              <td style="font-weight:600;color:var(--navy);cursor:pointer" onclick="openMilestoneDrawer('${m.id}')">${m.title}</td>
-              <td style="font-size:12px">${m.projectName||'—'}</td>
-              <td style="font-size:12px">${resolveTrackName(m.track)||m.track||'—'}</td>
-              <td style="font-size:12px">${DateHelpers.fmt(m.dueDate)}</td>
-              <td>${ragBadge(m.status)}</td>
-              <td style="font-size:12px">${tp ? `${tp.done}/${tp.total}` : '—'}</td>
-              <td onclick="event.stopPropagation()">
-                <button class="btn-icon" onclick="openMilestoneDrawer('${m.id}')">📋</button>
-                <button class="btn-icon" onclick="openModal('milestone','${m.id}')">✏️</button>
-                <button class="btn-icon" onclick="deleteItem('milestones','${m.id}')">🗑</button>
-              </td>
-            </tr>`;
-          }).join('') : `<tr><td colspan="7"><div class="empty"><div class="empty-icon">🎯</div>No milestones found</div></td></tr>`}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
 
   return `
   <div class="vh">
@@ -836,7 +913,7 @@ export function renderMilestones() {
     </div>
   </div>
   ${filterSection}
-  ${view === 'list' ? listView : kanbanView}`;
+  ${kanbanView}`;
 }
 
 // ─── PROJECTS ─────────────────────────────────────────────
@@ -1325,12 +1402,22 @@ export function renderWorkflows() {
 }
 
 // ─── TEAM ─────────────────────────────────────────────────
+function getAvatarColor(name) {
+  const colors = ['#1B2B5E','#00A896','#E8452C','#7c3aed','#d97706','#059669'];
+  const i = (name||'').split('').reduce((s,c)=>s+c.charCodeAt(0),0) % colors.length;
+  return colors[i];
+}
+function initials(name) { return (name||'').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+
 export function renderTeam() {
   const allMembers  = APP_STATE.teamMembers;
   const tracks      = ['All',...(APP_STATE.settings.trackNames||['Track 1','Track 2','Track 3'])];
   const activeTrack = APP_STATE._teamTrackFilter||'All';
-  const unsorted    = activeTrack==='All' ? allMembers : allMembers.filter(m=>m.track===activeTrack);
-  const members     = [...unsorted].sort((a,b)=>(b.availability||100)-(a.availability||100));
+  const teamSearch  = (APP_STATE._teamSearch||'').toLowerCase();
+
+  let members = [...allMembers].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if (activeTrack !== 'All') members = members.filter(m=>m.track===activeTrack||resolveTrackName(m.track||m.trackId)===activeTrack);
+  if (teamSearch) members = members.filter(m=>(m.name||'').toLowerCase().includes(teamSearch)||(m.role||'').toLowerCase().includes(teamSearch));
 
   return `
   ${execBanner('team')}
@@ -1344,60 +1431,91 @@ export function renderTeam() {
     </div>
   </div>
 
-  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-    ${tracks.map(t=>{
-      const isActive = activeTrack===t;
-      const count    = t==='All' ? allMembers.length : allMembers.filter(m=>m.track===t).length;
-      const color    = t==='All' ? '#1B2B5E' : (TRACK_COLORS[t]||'#1B2B5E');
-      return `<button onclick="window._setTeamTrack('${t}')"
-        style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${isActive?color:'var(--border)'};background:${isActive?color:'#fff'};color:${isActive?'#fff':color};font-family:'DM Sans',sans-serif;transition:all .15s">
-        ${t} (${count})
-      </button>`;
-    }).join('')}
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${tracks.map(t=>{
+        const isActive = activeTrack===t;
+        const count    = t==='All' ? allMembers.length : allMembers.filter(m=>m.track===t||resolveTrackName(m.track||m.trackId)===t).length;
+        const color    = t==='All' ? '#1B2B5E' : (TRACK_COLORS[t]||'#1B2B5E');
+        return `<button onclick="window._setTeamTrack('${t}')"
+          style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${isActive?color:'var(--border)'};background:${isActive?color:'#fff'};color:${isActive?'#fff':color};font-family:'DM Sans',sans-serif;transition:all .15s">
+          ${t} (${count})
+        </button>`;
+      }).join('')}
+    </div>
+    <input class="form-control" style="width:200px;font-size:12px;margin-left:auto" placeholder="Search team members…"
+      value="${APP_STATE._teamSearch||''}"
+      oninput="APP_STATE._teamSearch=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)"/>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
-    ${members.length ? members.map(m=>`
-    <div class="card" style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="av av-lg" style="background:${TRACK_COLORS[m.track]||'var(--navy)'}">${avatar(m.name)}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--navy)">${m.name}</div>
-          <div style="font-size:12px;color:var(--mid)">${m.role||'—'}</div>
-        </div>
-        <div style="display:flex;gap:4px">
-          <button class="btn-icon" onclick="openModal('teamMember','${m.id}')">✏️</button>
-          <button class="btn-icon" onclick="deleteItem('teamMembers','${m.id}')">🗑</button>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        ${m.track?`<span class="badge" style="background:${TRACK_COLORS[m.track]||'#1B2B5E'}20;color:${TRACK_COLORS[m.track]||'#1B2B5E'};font-weight:700">${m.track}</span>`:''}
-        ${m.jiraId?`<span class="badge badge-grey" style="font-family:monospace">${m.jiraId}</span>`:''}
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:4px">Availability</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          ${progressBar(m.availability||100)}
-          <span style="font-size:12px;font-weight:700;color:var(--navy)">${m.availability||100}%</span>
-        </div>
-      </div>
-      ${(() => {
-        const mProj = APP_STATE.projects.filter(p=>p.devLead===m.id||p.devLead===m.name||(Array.isArray(p.team)?p.team.includes(m.id):(p.team||'').includes(m.id)));
-        const mOnb  = (APP_STATE.onboardingProjects||[]).filter(p=>p.devLead===m.id||p.devLead===m.name);
-        const mMs   = APP_STATE.milestones.filter(ms=>ms.owner===m.name||ms.owner===m.id||ms.ownerId===m.id);
-        const openMs = mMs.filter(ms=>normaliseStatus(ms.status)!=='Completed').length;
-        if (!mProj.length && !mOnb.length && !mMs.length) return '';
-        return `<div>
-          ${mProj.length||mOnb.length ? `<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:4px">Assigned To</div>
-          <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">
-            ${mProj.map(p=>`<span class="badge badge-navy" style="font-size:10px;cursor:pointer" onclick="nav('project-detail',{id:'${p.id}'})">${p.name||'—'}</span>`).join('')}
-            ${mOnb.map(p=>`<span class="badge badge-purple" style="font-size:10px;cursor:pointer" onclick="nav('onboarding-detail',{id:'${p.id}'})">🎓 ${p.name||p.customerName||'—'}</span>`).join('')}
-          </div>` : ''}
-          ${mMs.length ? `<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:2px">Milestones</div>
-          <div style="font-size:12px;color:var(--mid)">${mMs.length} total · <span style="color:${openMs>0?'#d97706':'#16a34a'}">${openMs} open</span></div>` : ''}
-        </div>`;
-      })()}
-    </div>`).join('') : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👥</div>No members in ${activeTrack}</div>`}
+  <div class="card" style="padding:0">
+    <div class="tbl-wrap">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Member</th>
+            <th>Role</th>
+            <th>Track</th>
+            <th>Projects Assigned</th>
+            <th>Milestones</th>
+            <th>Allocation</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${members.length ? members.map(m=>{
+            const mProj = APP_STATE.projects.filter(p=>p.devLead===m.id||p.devLead===m.name||(Array.isArray(p.team)?p.team.includes(m.id):(p.team||'').includes(m.id)));
+            const mOnb  = (APP_STATE.onboardingProjects||[]).filter(p=>p.devLead===m.id||p.devLead===m.name);
+            const mMs   = APP_STATE.milestones.filter(ms=>ms.owner===m.name||ms.owner===m.id||ms.ownerId===m.id);
+            const openMs = mMs.filter(ms=>normaliseStatus(ms.status)!=='Completed').length;
+            const cap = m.capacity||m.availability||80;
+            const capCls = cap>100?'badge-red':cap>=80?'badge-amber':'badge-teal';
+            return `<tr data-member-id="${m.id}" class="clk" onclick="toggleMemberExpand('${m.id}')">
+              <td>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div class="av" style="background:${getAvatarColor(m.name)}">${initials(m.name)}</div>
+                  <div>
+                    <div style="font-weight:700;font-size:13px">${m.name}</div>
+                    <div style="font-size:11px;color:var(--lt)">${m.email||''}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="font-size:12px">${m.role||'—'}</td>
+              <td><span class="badge badge-navy">${resolveTrackName(m.track||m.trackId)||m.track||'—'}</span></td>
+              <td>
+                <div style="display:flex;flex-wrap:wrap;gap:3px">
+                  ${[...mProj,...mOnb].slice(0,3).map(p=>`<span class="badge badge-grey" style="font-size:10px">${p.name||p.customerName}</span>`).join('')}
+                  ${mProj.length+mOnb.length>3?`<span class="badge badge-grey" style="font-size:10px">+${mProj.length+mOnb.length-3}</span>`:''}
+                  ${!mProj.length&&!mOnb.length?'<span style="font-size:11px;color:var(--lt)">None</span>':''}
+                </div>
+              </td>
+              <td style="font-size:12px">
+                ${mMs.length ? `${mMs.length} total · <span style="color:${openMs>0?'#d97706':'#16a34a'};font-weight:600">${openMs} open</span>` : '—'}
+              </td>
+              <td><span class="badge ${capCls}">${cap}%</span></td>
+              <td onclick="event.stopPropagation()">
+                <button class="btn btn-ghost btn-xs" onclick="openModal('teamMember','${m.id}')">Edit</button>
+                <button class="btn-icon" onclick="deleteItem('teamMembers','${m.id}')">🗑</button>
+              </td>
+            </tr>
+            ${APP_STATE._expandedMember===m.id ? `<tr>
+              <td colspan="7" style="padding:0;background:var(--bg)">
+                <div class="member-detail-panel">
+                  <div class="member-detail-section">
+                    <div class="member-detail-title">Assigned Projects</div>
+                    ${mProj.length||mOnb.length ? [...mProj.map(p=>`<div style="margin-bottom:6px"><span class="badge badge-navy" style="cursor:pointer;font-size:10px" onclick="nav('project-detail',{id:'${p.id}'})">${p.name||'—'}</span></div>`), ...mOnb.map(p=>`<div style="margin-bottom:6px"><span class="badge badge-purple" style="cursor:pointer;font-size:10px" onclick="nav('onboarding-detail',{id:'${p.id}'})">🎓 ${p.name||p.customerName}</span></div>`)].join('') : '<div style="font-size:11px;color:var(--lt)">No projects assigned</div>'}
+                  </div>
+                  <div class="member-detail-section">
+                    <div class="member-detail-title">Open Milestones</div>
+                    ${mMs.filter(ms=>normaliseStatus(ms.status)!=='Completed').slice(0,4).map(ms=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)">${ms.title} <span style="color:var(--lt)">${DateHelpers.fmt(ms.dueDate)}</span></div>`).join('')||'<div style="font-size:11px;color:var(--lt)">None</div>'}
+                  </div>
+                </div>
+              </td>
+            </tr>` : ''}`;
+          }).join('') : `<tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div>No members found</div></td></tr>`}
+        </tbody>
+      </table>
+    </div>
   </div>`;
 }
 
@@ -1415,9 +1533,15 @@ function _renderAllocation() {
   const filterTrack = APP_STATE._allocFilterTrack || '';
   const searchStr   = (APP_STATE._allocSearch || '').toLowerCase();
 
-  let members = [...APP_STATE.teamMembers];
-  if (filterTrack) members = members.filter(m => m.track === filterTrack);
-  if (searchStr)   members = members.filter(m => (m.name||'').toLowerCase().includes(searchStr));
+  let members = [...APP_STATE.teamMembers].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  if (filterTrack) members = members.filter(m => {
+    const tn = resolveTrackName(m.track||m.trackId);
+    return m.track === filterTrack || m.trackId === filterTrack || tn === filterTrack;
+  });
+  if (searchStr) members = members.filter(m =>
+    (m.name||'').toLowerCase().includes(searchStr) ||
+    (m.role||'').toLowerCase().includes(searchStr)
+  );
 
   const allProjects = [...APP_STATE.projects, ...(APP_STATE.onboardingProjects||[])];
   const activeProjects = allProjects.filter(p => normaliseStatus(p.status) !== 'Completed');
@@ -1499,12 +1623,12 @@ function _renderAllocation() {
   </div>
   ${capTabBar()}
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-    <select class="form-control" style="width:160px;font-size:12px" onchange="APP_STATE._allocFilterTrack=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+    <select class="form-control" style="width:160px;font-size:12px" onchange="setAllocFilter('_allocFilterTrack',this.value)">
       <option value="">All Tracks</option>
-      ${APP_STATE.tracks.map(t=>`<option value="${t.name}" ${filterTrack===t.name?'selected':''}>${t.name}</option>`).join('')}
+      ${APP_STATE.tracks.map(t=>`<option value="${t.id||t.name||t.title}" ${(filterTrack===(t.id||t.name||t.title)||filterTrack===(t.name||t.title))?'selected':''}>${resolveTrackName(t.id)||t.name||t.title}</option>`).join('')}
     </select>
-    <input class="form-control" style="width:160px;font-size:12px" placeholder="Search member…" value="${APP_STATE._allocSearch||''}" oninput="APP_STATE._allocSearch=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)"/>
-    ${(filterTrack||searchStr)?`<button class="btn btn-ghost btn-sm" onclick="APP_STATE._allocFilterTrack='';APP_STATE._allocSearch='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Reset</button>`:''}
+    <input class="form-control" style="width:160px;font-size:12px" placeholder="Search member…" value="${APP_STATE._allocSearch||''}" oninput="setAllocFilter('_allocSearch',this.value)"/>
+    ${(filterTrack||searchStr)?`<button class="btn btn-ghost btn-sm" onclick="setAllocFilter('_allocFilterTrack','');setAllocFilter('_allocSearch','')">Reset</button>`:''}
   </div>
   ${statRow(
     statBlock(members.length,'Total Members','on team','var(--navy)') +
@@ -1535,7 +1659,7 @@ function _renderAllocation() {
             const mProj = memberProjects(m);
             const tcol = TRACK_COLORS[m.track] || '#1B2B5E';
             const isExpanded = expandedId === m.id;
-            return `<tr data-member-id="${m.id}" style="cursor:pointer" onclick="APP_STATE._expandedMember=(APP_STATE._expandedMember==='${m.id}'?'':'${m.id}');navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+            return `<tr data-member-id="${m.id}" style="cursor:pointer" onclick="toggleMemberExpand('${m.id}')">
               <td>
                 <div style="display:flex;align-items:center;gap:8px">
                   <div class="av" style="background:${tcol}">${avatar(m.name)}</div>
@@ -1564,12 +1688,66 @@ function _renderAllocation() {
               </td>
               <td style="font-size:12px;font-weight:700;color:${avail<20?'#dc2626':avail<50?'#d97706':'#059669'}">${avail}%</td>
               <td>${allocBadge(cap)}</td>
-              <td style="font-size:11px;color:var(--lt)">${isExpanded?'▲':'▼'}</td>
+              <td>
+                <button class="btn btn-icon btn-xs" onclick="event.stopPropagation();toggleMemberExpand('${m.id}')"
+                  style="transform:rotate(${isExpanded?'180':'0'}deg);transition:transform .2s">▼</button>
+              </td>
             </tr>
             ${isExpanded ? memberDetail(m) : ''}`;
           }).join('')}
         </tbody>
       </table>
+    </div>
+  </div>`;
+}
+
+// ─── TIMELOG CELL BUILDER ─────────────────────────────────
+function buildTimeLogCell(memberId, dateStr, existing, projects) {
+  const isLeave = existing?.isLeave;
+  const hours = existing?.hours || 0;
+  const note = existing?.note || '';
+  const proj = existing?.project || '';
+  const leaveType = existing?.leaveType || '';
+
+  if (isLeave) {
+    return `<div style="text-align:center;padding:8px 4px">
+      <span class="badge badge-purple" style="font-size:10px">🏖 ${leaveType||'Leave'}</span>
+      <div style="margin-top:4px">
+        <button class="btn btn-ghost btn-xs" onclick="clearTimeLog('${memberId}','${dateStr}')">Clear</button>
+      </div>
+    </div>`;
+  }
+
+  const projOptions = projects.map(p =>
+    `<option value="${p.id||p.name||p.customerName||''}" ${proj===(p.id||p.name||p.customerName||'')?'selected':''}>
+      ${p.name||p.customerName}
+    </option>`
+  ).join('');
+
+  return `<div style="padding:4px">
+    <div style="font-size:11px;font-weight:700;color:var(--lt);text-align:center;margin-bottom:4px">
+      ${hours > 0 ? hours+'h'+(note?'  📝':'') : '—'}
+    </div>
+    <input type="number" min="0" max="24" step="0.5"
+      id="tl-h-${memberId}-${dateStr}"
+      value="${hours||''}"
+      placeholder="hrs"
+      style="width:100%;padding:4px 6px;border:1px solid var(--border-dk);border-radius:var(--rs);font-size:12px;text-align:center;margin-bottom:3px"/>
+    <select id="tl-p-${memberId}-${dateStr}"
+      style="width:100%;padding:4px 6px;border:1px solid var(--border-dk);border-radius:var(--rs);font-size:11px;margin-bottom:3px">
+      <option value="">Project...</option>
+      ${projOptions}
+    </select>
+    <input type="text"
+      id="tl-n-${memberId}-${dateStr}"
+      value="${note}"
+      placeholder="Note..."
+      style="width:100%;padding:4px 6px;border:1px solid var(--border-dk);border-radius:var(--rs);font-size:11px;margin-bottom:4px"/>
+    <div style="display:flex;gap:3px">
+      <button class="btn btn-primary btn-xs" style="flex:1;font-size:10px"
+        onclick="saveTimeLog('${memberId}','${dateStr}')">Save</button>
+      <button class="btn btn-ghost btn-xs" style="font-size:10px"
+        onclick="markLeavePrompt('${memberId}','${dateStr}')">🏖</button>
     </div>
   </div>`;
 }
@@ -1653,19 +1831,13 @@ function _renderTimeLog() {
 
   function cellForm(memberId, dateStr) {
     const log = getLog(memberId, dateStr);
-    const allProjectOpts = allProjects.map(p=>`<option value="${p.name||p.customerName}" ${(log?.project===p.name)?'selected':''}>${p.name||p.customerName}</option>`).join('');
-    return `<div style="background:#f8faff;border:1px solid var(--border);border-radius:var(--rs);padding:8px;min-width:160px;position:absolute;z-index:20;top:100%;left:0;box-shadow:var(--shm)" id="cell-form-${memberId}-${dateStr}">
-      <div style="font-size:10px;font-weight:700;color:var(--lt);margin-bottom:4px">${fmtD(dateStr)}</div>
-      <input type="number" min="0" max="24" step="0.5" class="form-control" id="tl-hours-${dateStr}" value="${log?.hours||''}" placeholder="Hours…" style="font-size:12px;margin-bottom:4px"/>
-      <select class="form-control" id="tl-proj-${dateStr}" style="font-size:12px;margin-bottom:4px">
-        <option value="">Project…</option>${allProjectOpts}
-      </select>
-      <input class="form-control" id="tl-note-${dateStr}" value="${log?.note||''}" placeholder="Note…" style="font-size:12px;margin-bottom:6px"/>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-primary btn-xs" onclick="saveTimeLog('${memberId}','${dateStr}');event.stopPropagation()">Save</button>
+    const inner = buildTimeLogCell(memberId, dateStr, log, allProjects);
+    return `<div style="background:#f8faff;border:1px solid var(--border);border-radius:var(--rs);padding:8px;min-width:200px;position:absolute;z-index:20;top:100%;left:0;box-shadow:var(--shm)" id="cell-form-${memberId}-${dateStr}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:10px;font-weight:700;color:var(--lt)">${fmtD(dateStr)}</div>
         <button class="btn btn-ghost btn-xs" onclick="document.getElementById('cell-form-${memberId}-${dateStr}')?.remove();event.stopPropagation()">×</button>
-        <button class="btn btn-ghost btn-xs" style="color:#7c3aed" onclick="showLeaveForm('${memberId}','${dateStr}');event.stopPropagation()">🏖 Leave</button>
       </div>
+      ${inner}
     </div>`;
   }
 
@@ -1715,11 +1887,11 @@ function _renderTimeLog() {
     <span class="badge badge-teal" style="margin-left:auto">${weekOffset===0?'Current Week':`${Math.abs(weekOffset)} week${Math.abs(weekOffset)!==1?'s':''} ago`}</span>
   </div>
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
-    <select class="form-control" style="width:180px;font-size:12px" onchange="APP_STATE._timeLogMember=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+    <select class="form-control" style="width:180px;font-size:12px" onchange="setTimeLogMember(this.value)">
       <option value="">All Members</option>
       ${members.map(m=>`<option value="${m.id}" ${selMember===m.id?'selected':''}>${m.name}</option>`).join('')}
     </select>
-    ${selMember?`<button class="btn btn-ghost btn-sm" onclick="APP_STATE._timeLogMember='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Show All</button>`:''}
+    ${selMember?`<button class="btn btn-ghost btn-sm" onclick="setTimeLogMember('')">Show All</button>`:''}
   </div>
   ${selectedMember ? memberSummaryCard(selectedMember) : ''}
   <div class="card" style="padding:0" onclick="document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove())">
@@ -2250,34 +2422,177 @@ export function renderLeadership() {
     return lines.join('\n');
   }
 
+  // ── SUMMARY BANNER ───────────────────────────────────────
+  function summaryBanner() {
+    const inProgCount = projects.filter(p=>normaliseStatus(p.status)==='In Progress').length;
+    const avgUtil = members.length ? Math.round(members.reduce((s,m)=>s+(m.capacity||m.availability||80),0)/members.length) : 0;
+    const completedProj = projects.filter(p=>normaliseStatus(p.status)==='Completed').length;
+    const weekStart = new Date(now); weekStart.setDate(weekStart.getDate()-3);
+    const weekEnd   = new Date(now); weekEnd.setDate(weekEnd.getDate()+3);
+    const wsStr = weekStart.toISOString().split('T')[0];
+    const weStr = weekEnd.toISOString().split('T')[0];
+    const weekMs = milestones.filter(m=>m.dueDate>=wsStr&&m.dueDate<=weStr);
+    const weekMsOnTrack = weekMs.filter(m=>m.status!=='Completed'&&!(m.dueDate<today&&m.status!=='Completed')).length;
+    const weekMsAtRisk  = weekMs.filter(m=>m.dueDate<today&&m.status!=='Completed').length;
+    const monthStart = new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];
+    const msThisMonth = milestones.filter(m=>m.dueDate>=monthStart);
+    const msCompMonth = msThisMonth.filter(m=>m.status==='Completed').length;
+    const otRate = msThisMonth.length>0 ? Math.round(msCompMonth/msThisMonth.length*100) : 100;
+    const monthName = now.toLocaleString('en-GB',{month:'long'});
+
+    let summaryText = '';
+    let pills = [];
+    if (activeTab === 'daily') {
+      const in3d = new Date(now); in3d.setDate(in3d.getDate()+3);
+      const in3dStr = in3d.toISOString().split('T')[0];
+      const upcoming3d = milestones.filter(m=>m.dueDate>=today&&m.dueDate<=in3dStr&&m.status!=='Completed').length;
+      const blockerCount = projects.filter(p=>p.status==='On Hold').length + openEscL34.length + highRisks.length;
+      summaryText = `Today ${DateHelpers.fmt(today)}: <strong>${inProgCount}</strong> projects active, <strong>${upcoming3d}</strong> milestones due in next 3 days, <strong>${blockerCount}</strong> blockers. Team utilisation: <strong>${avgUtil}%</strong> avg.`;
+      pills = [`${inProgCount} Active`,`${upcoming3d} Due Soon`,`${blockerCount} Blockers`,`${avgUtil}% Util`];
+    } else if (activeTab === 'weekly') {
+      summaryText = `<strong>${inProgCount}</strong> projects in flight across <strong>${tracks.length||'—'}</strong> tracks. <strong>${weekMs.length}</strong> milestones due this week — <strong>${weekMsOnTrack}</strong> on track, <strong>${weekMsAtRisk}</strong> at risk. <strong>${openRisks.length}</strong> open risks. <strong>${openEscL34.length}</strong> escalations pending.`;
+      pills = [`${weekMs.length} This Week`,`${weekMsOnTrack} On Track`,`${openRisks.length} Risks`,`${openEscL34.length} Escalations`];
+    } else {
+      summaryText = `${monthName}: <strong>${completedProj}</strong> delivered, <strong>${inProgCount}</strong> in progress. On-time delivery: <strong>${otRate}%</strong>. Team avg utilisation: <strong>${avgUtil}%</strong>.`;
+      pills = [`${completedProj} Delivered`,`${inProgCount} In Progress`,`${otRate}% On-time`,`${avgUtil}% Util`];
+    }
+
+    return `<div style="background:linear-gradient(135deg,#0a1740,var(--navy));border-radius:var(--r);padding:20px 24px;margin-bottom:20px;color:#fff">
+      <div style="font-size:13px;font-weight:600;opacity:.6;margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px">Executive Summary</div>
+      <div style="font-size:15px;line-height:1.8;opacity:.92">${summaryText}</div>
+      <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
+        ${pills.map(p=>`<div style="background:rgba(255,255,255,.12);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#fff">${p}</div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── CSS CHARTS ───────────────────────────────────────────
+  function projectStatusBar() {
+    const total = projects.length || 1;
+    const completedProj = projects.filter(p=>normaliseStatus(p.status)==='Completed').length;
+    const inProgProj    = projects.filter(p=>normaliseStatus(p.status)==='In Progress').length;
+    const atRiskProj    = projects.filter(p=>['At Risk','Overdue'].includes(normaliseStatus(p.status))).length;
+    const blockedProj   = projects.filter(p=>p.status==='On Hold').length;
+    const completedPct  = Math.round(completedProj/total*100);
+    const inProgPct     = Math.round(inProgProj/total*100);
+    const atRiskPct     = Math.round(atRiskProj/total*100);
+    const blockedPct    = Math.round(blockedProj/total*100);
+    return `<div class="card" style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Project Status Distribution</div>
+      <div style="height:28px;border-radius:14px;overflow:hidden;display:flex;margin:12px 0">
+        ${completedPct>0?`<div style="width:${completedPct}%;background:#22c55e;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;transition:width .4s">${completedPct>8?completedProj+' Done':''}</div>`:''}
+        ${inProgPct>0?`<div style="width:${inProgPct}%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;transition:width .4s">${inProgPct>8?inProgProj+' Active':''}</div>`:''}
+        ${atRiskPct>0?`<div style="width:${atRiskPct}%;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;transition:width .4s">${atRiskPct>8?atRiskProj+' At Risk':''}</div>`:''}
+        ${blockedPct>0?`<div style="width:${blockedPct}%;background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;transition:width .4s">${blockedPct>8?blockedProj+' Blocked':''}</div>`:''}
+        ${100-completedPct-inProgPct-atRiskPct-blockedPct>0?`<div style="flex:1;background:#e2e8f0"></div>`:''}
+      </div>
+      <div style="display:flex;gap:14px;font-size:11px;flex-wrap:wrap">
+        <span style="color:#22c55e;font-weight:600">■ Completed (${completedProj})</span>
+        <span style="color:var(--navy);font-weight:600">■ In Progress (${inProgProj})</span>
+        <span style="color:#f59e0b;font-weight:600">■ At Risk (${atRiskProj})</span>
+        <span style="color:#ef4444;font-weight:600">■ Blocked (${blockedProj})</span>
+      </div>
+    </div>`;
+  }
+
+  function trackUtilChart() {
+    if (!tracks.length) return '';
+    const trackData = tracks.map(track=>{
+      const s = trackStats(track);
+      const pct = Math.min(200, s.avgAlloc);
+      const capColor = pct>100?'#ef4444':pct>=80?'#f59e0b':'#22c55e';
+      return { name:track, pct, capColor };
+    });
+    return `<div class="card" style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:14px">Track Utilisation</div>
+      ${trackData.map(t=>`<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:12px;font-weight:600">${t.name}</span>
+          <span style="font-size:12px;font-weight:700;color:${t.capColor}">${t.pct}%</span>
+        </div>
+        <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${Math.min(100,t.pct)}%;background:${t.capColor};border-radius:4px;transition:width .4s"></div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  function milestoneHealthDonut() {
+    const total = milestones.length || 1;
+    const onTime = milestones.filter(m=>['On Track','Yet to Start','In Progress','Completed'].includes(normaliseStatus(m.status))&&!(m.dueDate<today&&m.status!=='Completed')).length;
+    const atRisk = milestones.filter(m=>normaliseStatus(m.status)==='At Risk').length;
+    const overdue = overdueMilestones.length;
+    const onTimePct  = Math.round(onTime/total*100);
+    const atRiskPct  = Math.round(atRisk/total*100);
+    return `<div class="card" style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:14px">Milestone Health</div>
+      <div style="display:flex;gap:20px;align-items:center">
+        <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(#22c55e 0% ${onTimePct}%,#f59e0b ${onTimePct}% ${Math.min(100,onTimePct+atRiskPct)}%,#ef4444 ${Math.min(100,onTimePct+atRiskPct)}% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <div style="width:56px;height:56px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--navy)">${onTimePct}%</div>
+        </div>
+        <div style="font-size:12px">
+          <div style="margin-bottom:4px">✅ On time: <strong>${onTime}</strong></div>
+          <div style="margin-bottom:4px">⚠️ At risk: <strong>${atRisk}</strong></div>
+          <div>❌ Overdue: <strong>${overdue}</strong></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function hoursSparkline() {
+    if (!tracks.length) return '';
+    const trackHrs = tracks.map(track=>{
+      const s = trackStats(track);
+      return { name:track, hrs:s.hrsLogged };
+    });
+    const maxH = Math.max(1, ...trackHrs.map(t=>t.hrs));
+    return `<div class="card" style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Hours Logged This Week by Track</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;height:48px;margin-bottom:8px">
+        ${trackHrs.map(t=>{
+          const h = t.hrs;
+          const barH = Math.max(4, (h/maxH*44));
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div title="${t.name}: ${h}h" style="width:28px;height:${barH}px;background:var(--teal);border-radius:3px 3px 0 0;transition:height .4s"></div>
+            <div style="font-size:9px;color:var(--lt);font-weight:600">${h}h</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        ${trackHrs.map(t=>`<span style="font-size:11px;color:var(--mid)">${t.name}</span>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  const chartsHtml = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px">
+    ${projectStatusBar()}
+    ${milestoneHealthDonut()}
+    ${trackUtilChart()}
+    ${hoursSparkline()}
+  </div>`;
+
   const tabContent = activeTab==='daily'   ? dailyTab()
                    : activeTab==='monthly' ? monthlyTab()
                    : weeklyTab();
-
-  const emailSubj = `Klarion Programme Report — ${activeTab.charAt(0).toUpperCase()+activeTab.slice(1)} — ${DateHelpers.fmt(today)}`;
 
   return `
   <div class="vh">
     <div class="vh-left">
       <h1>Leadership Report</h1>
-      <div class="sub">Generated: ${DateHelpers.fmt(today)}</div>
+      <div class="sub">Auto-generated · ${now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
     </div>
     <div class="vh-right no-print">
-      <button class="btn btn-ghost btn-sm" onclick="(function(){navigator.clipboard.writeText(window._leadershipText||'').then(()=>showToast('Copied to clipboard ✅')).catch(()=>showToast('Copy failed','error'))})()">📋 Copy Text</button>
-      <button class="btn btn-ghost btn-sm" onclick="window.print()">📄 Export PDF</button>
-      <button class="btn btn-ghost btn-sm" onclick="window.location.href='mailto:?subject='+encodeURIComponent(window._leadershipSubject||'')+'&body='+encodeURIComponent(window._leadershipText||'')">✉️ Email</button>
+      <div class="pulse-tabs" style="margin-bottom:0;border-bottom:none">
+        ${tabBtn('daily',   'Daily')}
+        ${tabBtn('weekly',  'Weekly')}
+        ${tabBtn('monthly', 'Monthly')}
+      </div>
+      <button class="btn btn-ghost btn-sm no-print" onclick="window.print()">🖨 Export PDF</button>
     </div>
   </div>
-  <div class="pulse-tabs no-print">
-    ${tabBtn('daily',   'Daily')}
-    ${tabBtn('weekly',  'Weekly')}
-    ${tabBtn('monthly', 'Monthly')}
-  </div>
-  ${tabContent}
-  <script>
-    window._leadershipText = ${JSON.stringify(buildPlainText())};
-    window._leadershipSubject = ${JSON.stringify(emailSubj)};
-  </script>`;
+  ${summaryBanner()}
+  ${chartsHtml}
+  ${tabContent}`;
 }
 
 // ─── IMPACTS ──────────────────────────────────────────────
