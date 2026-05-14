@@ -1070,7 +1070,33 @@ export async function renderProjectDetail(params) {
            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:#92400e">No charter yet</div><div style="font-size:11px;color:#a16207">Define objectives and success metrics</div></div>
            <button class="btn btn-ghost btn-xs" onclick="openModal('charter',null,'${id}')">Create Charter</button>
          </div>`;
-    // Milestone notes section
+    const msNotesCards = pMs.map(m => {
+      const tasksWithNotes = (m.tasks||[]).filter(t => t.notes && t.notes.trim());
+      const msNote = m.notes || m.description || '';
+      if (!tasksWithNotes.length && !msNote) return '';
+      return `<div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:700;color:var(--navy)">${m.title||m.name}</span>
+          <span class="badge ${(m.status||'').toLowerCase().includes('complet')?'badge-teal':'badge-amber'}">${m.status||''}</span>
+        </div>
+        ${msNote?`<div style="font-size:12px;color:var(--mid);font-style:italic;margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:var(--rs)">${msNote}</div>`:''}
+        ${tasksWithNotes.map(t=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border)">
+          <span style="width:14px;height:14px;border-radius:50%;flex-shrink:0;margin-top:2px;background:${t.done?'#22c55e':'var(--border-dk)'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white">${t.done?'✓':''}</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);${t.done?'text-decoration:line-through;':''}">${t.name||''}</div>
+            <div style="font-size:11px;color:var(--lt);font-style:italic;margin-top:2px">${t.notes}</div>
+          </div>
+        </div>`).join('')}
+      </div>`;
+    }).join('');
+
+    const msNotesSection = msNotesCards.replace(/\s/g,'')
+      ? `<div class="card" style="margin-top:0">
+          <div style="font-size:11px;font-weight:800;color:var(--lt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Milestone Notes &amp; Updates</div>
+          ${msNotesCards}
+        </div>`
+      : '';
+
     return `
       <div class="card">
         <div class="card-title">Description</div>
@@ -1078,7 +1104,8 @@ export async function renderProjectDetail(params) {
         ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
         ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
         ${charterBlock}
-      </div>`;
+      </div>
+      ${msNotesSection}`;
   }
 
   // ── TAB 2: Milestones ──
@@ -1354,12 +1381,40 @@ export async function renderOnboardingDetail(params) {
   }
 
   function tabOverview() {
+    const onbNotesCards = pMs.map(m => {
+      const tasksWithNotes = (m.tasks||[]).filter(t => t.notes && t.notes.trim());
+      const msNote = m.notes || m.description || '';
+      if (!tasksWithNotes.length && !msNote) return '';
+      return `<div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:700;color:var(--navy)">${m.title||m.name}</span>
+          <span class="badge ${(m.status||'').toLowerCase().includes('complet')?'badge-teal':'badge-amber'}">${m.status||''}</span>
+        </div>
+        ${msNote?`<div style="font-size:12px;color:var(--mid);font-style:italic;margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:var(--rs)">${msNote}</div>`:''}
+        ${tasksWithNotes.map(t=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border)">
+          <span style="width:14px;height:14px;border-radius:50%;flex-shrink:0;margin-top:2px;background:${t.done?'#22c55e':'var(--border-dk)'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white">${t.done?'✓':''}</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);${t.done?'text-decoration:line-through;':''}">${t.name||''}</div>
+            <div style="font-size:11px;color:var(--lt);font-style:italic;margin-top:2px">${t.notes}</div>
+          </div>
+        </div>`).join('')}
+      </div>`;
+    }).join('');
+
+    const onbNotesSection = onbNotesCards.replace(/\s/g,'')
+      ? `<div class="card" style="margin-top:0">
+          <div style="font-size:11px;font-weight:800;color:var(--lt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Milestone Notes &amp; Updates</div>
+          ${onbNotesCards}
+        </div>`
+      : '';
+
     return `<div class="card">
       <div class="card-title">Description</div>
       <div style="font-size:13px;color:var(--text)">${p.description||'<span style="color:var(--lt)">No description provided.</span>'}</div>
       ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
       ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
-    </div>`;
+    </div>
+    ${onbNotesSection}`;
   }
 
   function tabMilestones() {
