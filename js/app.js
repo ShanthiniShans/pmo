@@ -184,6 +184,18 @@ window._setTeamTrack = function(track) {
   navigateTo('team');
 };
 
+window.changeWeek = function(direction) {
+  if (direction === null) {
+    APP_STATE._timeLogWeekOffset = 0;
+  } else {
+    const current = parseInt(APP_STATE._timeLogWeekOffset) || 0;
+    const next = current + direction;
+    if (next > 0) return;
+    APP_STATE._timeLogWeekOffset = next;
+  }
+  navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
+};
+
 window._resourceWeek = function(direction, mode) {
   if (mode === 'reset') {
     APP_STATE._resourceWeekOffset = 0;
@@ -272,7 +284,10 @@ window.openMilestoneDrawer = function(msId) {
         <input class="form-control" id="drawer-task-name" placeholder="Task name…" style="margin-bottom:6px;font-size:12px"/>
         <div style="display:flex;gap:6px;margin-bottom:6px">
           <input type="date" class="form-control" id="drawer-task-due" style="font-size:12px;flex:1"/>
-          <input class="form-control" id="drawer-task-owner" placeholder="Owner…" style="font-size:12px;flex:1"/>
+          <select class="form-control" id="drawer-task-owner" style="font-size:12px;flex:1">
+            <option value="">Owner (optional)</option>
+            ${(APP_STATE.teamMembers||[]).sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(m=>'<option value="'+(m.name||m.id)+'">'+(m.name||'Unknown')+'</option>').join('')}
+          </select>
         </div>
         <input class="form-control" id="drawer-task-notes" placeholder="Notes (optional)…" style="margin-bottom:8px;font-size:12px"/>
         <button class="btn btn-primary btn-sm" style="width:100%" onclick="addTaskToMilestone('${msId}')">+ Add Task</button>

@@ -91,9 +91,32 @@ function projProgress(p) {
 function filterProjects(projects) {
   const f = APP_STATE.filters;
   return projects.filter(p => {
-    if (f.track && resolveTrackName(p.track||p.trackId) !== f.track) return false;
-    if (f.startDate && p.endDate && p.endDate < f.startDate) return false;
-    if (f.endDate && p.startDate && p.startDate > f.endDate) return false;
+    // Year filter
+    if (f.year) {
+      const sy = p.startDate ? new Date(p.startDate).getFullYear() : 0;
+      const ey = p.endDate   ? new Date(p.endDate).getFullYear()   : 0;
+      if (sy !== f.year && ey !== f.year) return false;
+    }
+    // Quarter filter
+    if (f.quarter) {
+      const qMap = { Q1:[1,3], Q2:[4,6], Q3:[7,9], Q4:[10,12] };
+      const [qs, qe] = qMap[f.quarter] || [1,12];
+      const sm = p.startDate ? new Date(p.startDate).getMonth()+1 : 0;
+      const em = p.endDate   ? new Date(p.endDate).getMonth()+1   : 0;
+      if (!((sm>=qs&&sm<=qe)||(em>=qs&&em<=qe))) return false;
+    }
+    // Track filter
+    if (f.track && f.track !== 'all') {
+      const pTrack = p.track||p.trackId||'';
+      if (pTrack !== f.track && resolveTrackName(pTrack) !== f.track) return false;
+    }
+    // Date range filter
+    if (f.startDate && p.endDate) {
+      if (new Date(p.endDate) < new Date(f.startDate)) return false;
+    }
+    if (f.endDate && p.startDate) {
+      if (new Date(p.startDate) > new Date(f.endDate)) return false;
+    }
     return true;
   });
 }
@@ -204,7 +227,7 @@ window._showMsDetail = function(msId, event) {
     <div style="border-top:1px solid #f1f5f9;padding-top:10px">
       <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Tasks (${taskList.filter(t=>t.done).length}/${taskList.length} complete)</div>
       ${taskList.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-        <input type="checkbox" ${t.done?'checked':''} disabled style="accent-color:var(--teal)"/>
+        <span style="width:14px;height:14px;border-radius:50%;background:${t.done?'#22c55e':'var(--border-dk)'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white;flex-shrink:0">${t.done?'✓':''}</span>
         <span style="font-size:12px;${t.done?'text-decoration:line-through;color:var(--lt)':''}">${t.name||''}</span>
       </div>`).join('')}
     </div>`:''}
@@ -248,6 +271,7 @@ function execBanner(active) {
 
 // ─── DASHBOARD ────────────────────────────────────────────
 export function renderDashboard() {
+  try {
   const today     = DateHelpers.today();
   const projects  = APP_STATE.projects.map(p=>({...p, name:p.name||p.title||'Unnamed', status:normaliseStatus(p.status||p.rag||'')}));
   const milestones= APP_STATE.milestones.map(m=>({...m, title:m.title||m.name||'Unnamed', status:normaliseStatus(m.status||m.rag||'')}));
@@ -259,8 +283,10 @@ export function renderDashboard() {
   const completed = projects.filter(p=>p.status==='Completed').length;
   const atRiskProj= projects.filter(p=>['At Risk','Overdue'].includes(p.status)).length;
   const overdueMilestones = milestones.filter(m=>m.dueDate<today&&m.status!=='Completed');
-  const openRisks = risks.filter(r=>normaliseStatus(r.status)==='Open');
-  const openEsc   = escs.filter(e=>normaliseStatus(e.status||'Open')==='Open');
+  const openRisks  = risks.filter(r=>normaliseStatus(r.status)==='Open');
+  const openEsc    = escs.filter(e=>normaliseStatus(e.status||'Open')==='Open');
+  const highRisks  = openRisks.filter(r=>(r.likelihood||1)*(r.impact||1)>=7);
+  const openEscL34 = escs.filter(e=>['L3','L4'].includes(e.level||'')&&normaliseStatus(e.status||'Open')!=='Resolved');
   const activeTab = APP_STATE._pulseTab || 'flags';
 
   // ── Auto-surfaced flags ─────────────────────────────────
@@ -512,6 +538,10 @@ export function renderDashboard() {
         : activityTab()}
     </div>
   </div>`;
+  } catch(e) {
+    console.error('renderDashboard error:', e);
+    return `<div class="empty"><div class="empty-icon">⚠️</div><div style="color:#ef4444;font-weight:600">Error: ${e.message}</div><div style="font-size:11px;color:var(--lt);margin-top:6px">Check console for details</div></div>`;
+  }
 }
 
 // ─── TRACKS / CLARITY ────────────────────────────────────
@@ -543,7 +573,7 @@ export function renderTracks() {
     </div>
   </div>
 
-  <div style="width:100%;overflow:hidden">
+  <div style="width:100%">
   <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;margin-bottom:14px;-webkit-overflow-scrolling:touch">
     ${['All',...tracks].map(t => {
       const isActive = activeTrack === t;
@@ -557,20 +587,20 @@ export function renderTracks() {
   </div>
   <style>.clarity-track-tabs::-webkit-scrollbar{display:none}</style>
 
-  <div style="overflow-x:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch">
-    <div style="display:flex;gap:14px;min-width:max-content;align-items:flex-start;padding-bottom:8px">
+  <div style="overflow-x:auto;overflow-y:visible;width:100%;padding-bottom:24px;-webkit-overflow-scrolling:touch">
+    <div style="display:flex;gap:14px;min-width:fit-content;align-items:flex-start">
     ${STAGES.map(stage => {
       const colProjects = filtered.filter(p => stageOf(p) === stage.label);
       return `
-      <div style="width:270px;flex-shrink:0;background:var(--bg);border-radius:var(--r);display:flex;flex-direction:column">
-        <div style="padding:10px 12px;position:sticky;top:0;z-index:2;background:var(--bg);border-radius:var(--r) var(--r) 0 0;border-bottom:1px solid var(--border);border-top:3px solid ${stage.color}">
+      <div style="width:272px;flex-shrink:0;background:var(--bg);border-radius:var(--r)">
+        <div style="padding:10px 12px;background:var(--bg);border-radius:var(--r) var(--r) 0 0;border-bottom:1px solid var(--border);border-top:3px solid ${stage.color}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
             <span style="font-weight:700;font-size:12px;color:var(--navy)">${stage.label}</span>
             <span style="font-size:11px;font-weight:700;color:${stage.color};background:${stage.color}18;border-radius:980px;padding:1px 8px">${colProjects.length}</span>
           </div>
           <div style="font-size:11px;color:var(--lt);line-height:1.4">${stage.desc}</div>
         </div>
-        <div style="overflow-y:auto;max-height:calc(100vh - 280px);padding:8px;display:flex;flex-direction:column;gap:8px">
+        <div style="padding:8px;display:flex;flex-direction:column;gap:8px;min-height:100px">
         ${colProjects.length === 0
           ? `<div style="padding:16px 12px;border-radius:10px;background:rgba(0,0,0,.02);border:1px dashed var(--border);text-align:center"><span style="font-size:12px;color:var(--lt)">Empty</span></div>`
           : colProjects.map(p => {
@@ -631,6 +661,10 @@ export function renderRoadmap() {
   };
   const MS_COLOR = {'Completed':'#059669','Overdue':'#DC2626','At Risk':'#D97706','On Track':'#2563EB'};
   const TC = ['#1B2B5E','#00A896','#E8452C','#7C3AED'];
+  const BAR_COLORS = [
+    '#1B2B5E','#00A896','#7c3aed','#E8452C','#059669',
+    '#F59E0B','#3b82f6','#ec4899','#14b8a6','#f97316'
+  ];
 
   function datePct(ds) {
     if (!ds) return null;
@@ -669,10 +703,10 @@ export function renderRoadmap() {
   </div>
 
   <div class="legend-bar">
-    ${Object.entries(STATUS_COLOR).map(([s,c])=>`<div style="display:flex;align-items:center;gap:5px"><div style="width:22px;height:9px;border-radius:3px;background:${c}"></div><span>${s}</span></div>`).join('')}
-    <div style="display:flex;align-items:center;gap:5px"><div style="width:2px;height:14px;background:#E8452C;border-radius:1px"></div>Today</div>
-    <div style="display:flex;align-items:center;gap:5px"><div style="width:10px;height:10px;background:#1B2B5E;transform:rotate(45deg)"></div>Milestone</div>
-    <div style="display:flex;align-items:center;gap:5px"><div style="width:22px;height:9px;border-radius:3px;background:#7c3aed"></div>Onboarding</div>
+    ${(APP_STATE.tracks||[]).map((t,i)=>`<span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${BAR_COLORS[i%BAR_COLORS.length]};flex-shrink:0"></span>${t.name||t.title||t}</span>`).join('')}
+    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;flex-shrink:0"></span>Onboarding</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;flex-shrink:0"></span>Milestone</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="height:2px;width:16px;background:#ef4444;opacity:.5;display:inline-block"></span>Today</span>
   </div>
 
   <div class="gantt-wrap" style="overflow-x:auto">
@@ -722,7 +756,7 @@ export function renderRoadmap() {
           if (!p.startDate || !p.endDate) return '';
           const bar   = barRange(p.startDate, p.endDate);
           const pMs   = milestones.filter(m=>m.projectId===p.id);
-          const color = STATUS_COLOR[normaliseStatus(p.status)]||'#94A3B8';
+          const color = BAR_COLORS[ti % BAR_COLORS.length];
           return `<div class="gantt-row">
             <div class="gantt-lbl" onclick="nav('project-detail',{id:'${p.id}'})">
               <span class="proj-link gantt-feat-name">${p.name}</span>
@@ -891,14 +925,18 @@ export function renderMilestones() {
     ${activeFilterCount>0?`<span class="badge badge-teal" style="font-size:11px">${activeFilterCount} active</span><button class="btn btn-ghost btn-sm" onclick="APP_STATE._msFilterProject='';APP_STATE._msFilterTrack='';APP_STATE._msFilterOwner='';APP_STATE._msFilterSearch='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Reset</button>`:''}
   </div>`;
 
-  const kanbanView = `<div style="display:grid;grid-template-columns:repeat(5,minmax(240px,1fr));gap:12px;overflow-x:auto">
-    ${lanes.map(l => `<div class="kanban-lane" style="${l.borderColor?`border-color:${l.borderColor}`:''}">
+  const kanbanView = `<div style="overflow-x:auto;overflow-y:visible;width:100%;padding-bottom:20px">
+    <div style="display:grid;grid-template-columns:repeat(5,minmax(220px,1fr));gap:12px;min-width:1100px;overflow:visible">
+    ${lanes.map(l => `<div style="background:var(--bg);border-radius:var(--r);border:1px solid var(--border);${l.borderColor?`border-color:${l.borderColor}`:''}">
       <div class="kanban-lane-hdr" style="${l.headerColor?`color:${l.headerColor}`:''}">
         <span class="kanban-lane-title">${l.title}</span>
         <span class="kanban-lane-count">${l.items.length}</span>
       </div>
+      <div style="padding:8px;display:flex;flex-direction:column;gap:8px">
       ${l.items.map(msCard).join('') || `<div style="font-size:11px;color:var(--lt);padding:12px 0;text-align:center">Empty</div>`}
+      </div>
     </div>`).join('')}
+    </div>
   </div>`;
 
 
@@ -1376,8 +1414,8 @@ export function renderWorkflows() {
   return `
   <div class="vh">
     <div class="vh-left">
-      <h1>Workflows</h1>
-      <div class="sub">Reusable process templates</div>
+      <h1>WoW — Way of Work</h1>
+      <div class="sub">Standard operating workflows and process templates</div>
     </div>
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('workflow')">+ New Workflow</button>
@@ -1763,15 +1801,17 @@ function _renderTimeLog() {
   const members    = APP_STATE.teamMembers;
 
   function getWeekDates(offset) {
+    const off = parseInt(offset) || 0;
     const now = new Date();
     const day = now.getDay();
+    const diffToMon = day === 0 ? -6 : 1 - day;
     const monday = new Date(now);
-    monday.setDate(now.getDate() - (day===0?6:day-1) + (offset*7));
+    monday.setDate(now.getDate() + diffToMon + (off * 7));
     monday.setHours(0,0,0,0);
     const days = [];
-    for (let i=0;i<5;i++) {
+    for (let i = 0; i < 5; i++) {
       const d = new Date(monday);
-      d.setDate(monday.getDate()+i);
+      d.setDate(monday.getDate() + i);
       days.push(d);
     }
     return days;
@@ -1841,6 +1881,12 @@ function _renderTimeLog() {
     </div>`;
   }
 
+  // Pre-compute cell forms into a global dict to avoid JSON.stringify/attribute escaping issues
+  window._tlForms = {};
+  (selectedMember ? [selectedMember] : members).forEach(m => {
+    dayStrs.forEach(d => { window._tlForms[m.id+'___'+d] = cellForm(m.id, d); });
+  });
+
   const memberRows = (selectedMember ? [selectedMember] : members).map(m => {
     const weekTotal = dayStrs.reduce((s,d)=>{const l=getLog(m.id,d);return s+(l&&!l.isLeave?parseFloat(l.hours)||0:0);}, 0);
     return `<tr>
@@ -1856,8 +1902,9 @@ function _renderTimeLog() {
       ${dayStrs.map(d => {
         const log = getLog(m.id, d);
         const isToday = d === today;
-        const isLeave = log?.isLeave;
-        return `<td style="cursor:pointer;position:relative;${isToday?'background:#f8faff;':''}" onclick="(function(e){if(!document.getElementById('cell-form-${m.id}-${d}')){document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove());const td=e.currentTarget;td.style.position='relative';td.insertAdjacentHTML('beforeend',${JSON.stringify(cellForm(m.id, d))});}e.stopPropagation();})(event)">
+        const fkey = m.id+'___'+d;
+        const cellId = 'cell-form-'+m.id+'-'+d;
+        return `<td style="cursor:pointer;position:relative;${isToday?'background:#f8faff;':''}" onclick="(function(e){if(!document.getElementById('${cellId}')){document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove());const td=e.currentTarget;td.style.position='relative';td.insertAdjacentHTML('beforeend',window._tlForms['${fkey}']);}e.stopPropagation();})(event)">
           ${cellDisplay(m.id, d)}
         </td>`;
       }).join('')}
@@ -1880,10 +1927,10 @@ function _renderTimeLog() {
     <button class="pt active" onclick="switchTab('_capTab','timelog')">Time Log</button>
   </div>
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-    <button class="btn btn-ghost btn-sm" onclick="APP_STATE._timeLogWeekOffset=(APP_STATE._timeLogWeekOffset||0)-1;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">← Prev Week</button>
+    <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">← Prev Week</button>
     <span style="font-size:13px;font-weight:700;color:var(--navy)">${monStr} – ${friStr}</span>
-    <button class="btn btn-ghost btn-sm" onclick="if((APP_STATE._timeLogWeekOffset||0)<0){APP_STATE._timeLogWeekOffset=(APP_STATE._timeLogWeekOffset||0)+1;navigateTo(APP_STATE.currentView,APP_STATE.currentParams);}" ${weekOffset>=0?'disabled style="opacity:.4"':''}>Next Week →</button>
-    ${weekOffset!==0?`<button class="btn btn-ghost btn-sm" onclick="APP_STATE._timeLogWeekOffset=0;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">This Week</button>`:''}
+    <button class="btn btn-ghost btn-sm" onclick="changeWeek(1)" ${weekOffset>=0?'disabled style="opacity:.4"':''}>Next Week →</button>
+    ${weekOffset!==0?`<button class="btn btn-ghost btn-sm" onclick="changeWeek(null)">This Week</button>`:''}
     <span class="badge badge-teal" style="margin-left:auto">${weekOffset===0?'Current Week':`${Math.abs(weekOffset)} week${Math.abs(weekOffset)!==1?'s':''} ago`}</span>
   </div>
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
@@ -2517,23 +2564,70 @@ export function renderLeadership() {
     </div>`;
   }
 
+  function getMilestoneDataForPeriod(period) {
+    const now2 = new Date(now);
+    let start, end;
+    if (period === 'daily') {
+      start = today; end = today;
+    } else if (period === 'weekly') {
+      const day = now2.getDay();
+      const diffToMon = day === 0 ? -6 : 1 - day;
+      const mon = new Date(now2); mon.setDate(now2.getDate() + diffToMon); mon.setHours(0,0,0,0);
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      start = mon.toISOString().split('T')[0];
+      end   = sun.toISOString().split('T')[0];
+    } else {
+      start = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString().split('T')[0];
+      end   = new Date(now2.getFullYear(), now2.getMonth()+1, 0).toISOString().split('T')[0];
+    }
+    const ms       = milestones.filter(m => m.dueDate >= start && m.dueDate <= end);
+    const total    = ms.length;
+    const completed = ms.filter(m => m.status === 'Completed').length;
+    const atRisk    = ms.filter(m => normaliseStatus(m.status) === 'At Risk').length;
+    const overdue   = ms.filter(m => m.dueDate < today && m.status !== 'Completed').length;
+    const onTime    = Math.max(0, total - atRisk - overdue);
+    const denom     = total || 1;
+    const onTimePct = Math.round(onTime / denom * 100);
+    const atRiskPct = Math.round(atRisk / denom * 100);
+    const periodLabel = period === 'daily' ? 'Today' : period === 'weekly' ? 'This Week' : 'This Month';
+    return { ms, total, completed, atRisk, overdue, onTime, onTimePct, atRiskPct, periodLabel };
+  }
+
+  function getHoursDataForPeriod(period) {
+    const now2 = new Date(now);
+    let start;
+    if (period === 'daily') {
+      start = today;
+    } else if (period === 'weekly') {
+      const day = now2.getDay();
+      const diffToMon = day === 0 ? -6 : 1 - day;
+      const mon = new Date(now2); mon.setDate(now2.getDate() + diffToMon);
+      start = mon.toISOString().split('T')[0];
+    } else {
+      start = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString().split('T')[0];
+    }
+    return tracks.map(track => {
+      const tm = members.filter(m => m.track === track);
+      const hrs = resources.filter(r => tm.some(m => m.id === r.memberId) && r.date >= start && !r.isLeave)
+                           .reduce((s, r) => s + (parseFloat(r.hours) || 0), 0);
+      return { name: track, hrs };
+    });
+  }
+
   function milestoneHealthDonut() {
-    const total = milestones.length || 1;
-    const onTime = milestones.filter(m=>['On Track','Yet to Start','In Progress','Completed'].includes(normaliseStatus(m.status))&&!(m.dueDate<today&&m.status!=='Completed')).length;
-    const atRisk = milestones.filter(m=>normaliseStatus(m.status)==='At Risk').length;
-    const overdue = overdueMilestones.length;
-    const onTimePct  = Math.round(onTime/total*100);
-    const atRiskPct  = Math.round(atRisk/total*100);
+    const d = getMilestoneDataForPeriod(activeTab);
     return `<div class="card" style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:14px">Milestone Health</div>
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px">Milestone Health</div>
+      <div style="font-size:11px;color:var(--lt);margin-bottom:14px">${d.periodLabel} · ${d.total} milestone${d.total!==1?'s':''}</div>
       <div style="display:flex;gap:20px;align-items:center">
-        <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(#22c55e 0% ${onTimePct}%,#f59e0b ${onTimePct}% ${Math.min(100,onTimePct+atRiskPct)}%,#ef4444 ${Math.min(100,onTimePct+atRiskPct)}% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <div style="width:56px;height:56px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--navy)">${onTimePct}%</div>
+        <div style="width:120px;height:120px;border-radius:50%;background:conic-gradient(#22c55e 0% ${d.onTimePct}%,#f59e0b ${d.onTimePct}% ${Math.min(100,d.onTimePct+d.atRiskPct)}%,#ef4444 ${Math.min(100,d.onTimePct+d.atRiskPct)}% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <div style="width:84px;height:84px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--navy)">${d.onTimePct}%</div>
         </div>
-        <div style="font-size:12px">
-          <div style="margin-bottom:4px">✅ On time: <strong>${onTime}</strong></div>
-          <div style="margin-bottom:4px">⚠️ At risk: <strong>${atRisk}</strong></div>
-          <div>❌ Overdue: <strong>${overdue}</strong></div>
+        <div style="font-size:12px;line-height:1.9">
+          <div>✅ On time: <strong>${d.onTime}</strong></div>
+          <div>⚠️ At risk: <strong>${d.atRisk}</strong></div>
+          <div>❌ Overdue: <strong>${d.overdue}</strong></div>
+          <div style="color:var(--lt)">✓ Completed: <strong>${d.completed}</strong></div>
         </div>
       </div>
     </div>`;
@@ -2541,35 +2635,38 @@ export function renderLeadership() {
 
   function hoursSparkline() {
     if (!tracks.length) return '';
-    const trackHrs = tracks.map(track=>{
-      const s = trackStats(track);
-      return { name:track, hrs:s.hrsLogged };
-    });
-    const maxH = Math.max(1, ...trackHrs.map(t=>t.hrs));
+    const data = getHoursDataForPeriod(activeTab);
+    const maxH = Math.max(1, ...data.map(t => t.hrs));
+    const periodLabel = activeTab === 'daily' ? 'Today' : activeTab === 'weekly' ? 'This Week' : 'This Month';
     return `<div class="card" style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Hours Logged This Week by Track</div>
-      <div style="display:flex;gap:8px;align-items:flex-end;height:48px;margin-bottom:8px">
-        ${trackHrs.map(t=>{
-          const h = t.hrs;
-          const barH = Math.max(4, (h/maxH*44));
-          return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div title="${t.name}: ${h}h" style="width:28px;height:${barH}px;background:var(--teal);border-radius:3px 3px 0 0;transition:height .4s"></div>
-            <div style="font-size:9px;color:var(--lt);font-weight:600">${h}h</div>
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px">Hours Logged by Track</div>
+      <div style="font-size:11px;color:var(--lt);margin-bottom:14px">${periodLabel}</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${data.map(t => {
+          const pct = Math.round((t.hrs / maxH) * 100);
+          return `<div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:11px;font-weight:600;color:var(--text)">${t.name}</span>
+              <span style="font-size:11px;font-weight:700;color:var(--navy)">${t.hrs}h</span>
+            </div>
+            <div style="height:12px;background:var(--bg);border-radius:6px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:var(--teal);border-radius:6px;transition:width .4s;${t.hrs>0?'min-width:4px':''}"></div>
+            </div>
           </div>`;
         }).join('')}
-      </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        ${trackHrs.map(t=>`<span style="font-size:11px;color:var(--mid)">${t.name}</span>`).join('')}
       </div>
     </div>`;
   }
 
-  const chartsHtml = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px">
-    ${projectStatusBar()}
-    ${milestoneHealthDonut()}
-    ${trackUtilChart()}
-    ${hoursSparkline()}
-  </div>`;
+  const chartsHtml = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      ${milestoneHealthDonut()}
+      ${hoursSparkline()}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px">
+      ${projectStatusBar()}
+      ${trackUtilChart()}
+    </div>`;
 
   const tabContent = activeTab==='daily'   ? dailyTab()
                    : activeTab==='monthly' ? monthlyTab()
