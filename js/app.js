@@ -96,6 +96,12 @@ window.markMilestoneComplete = async function(id) {
   } catch(e) { alert('Error: ' + e.message); }
 };
 
+// ─── MILESTONE FILTER ────────────────────────────────────
+window.setMsFilter = function(key, value) {
+  APP_STATE[key] = value;
+  navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
+};
+
 // ─── FILTER HANDLERS ──────────────────────────────────────
 window._filterChange = function(key, value) {
   APP_STATE.filters[key] = value === '' ? '' : (key === 'year' ? parseInt(value) : value);
@@ -193,13 +199,37 @@ window.openMilestoneDrawer = function(msId) {
   document.getElementById('ms-drawer')?.remove();
 
   const tasks = m.tasks || [];
+  const milestoneId = msId;
   function taskHtml(t, i) {
+    const today = DateHelpers.today();
+    const isOverdue = t.dueDate && t.dueDate < today && !t.done;
+    const notePreview = t.notes ? (t.notes.length > 80 ? t.notes.slice(0,80)+'…' : t.notes) : '';
     return `<div class="task-row" id="task-row-${i}">
       <input type="checkbox" class="task-cb" ${t.done?'checked':''} onchange="toggleTask('${msId}',${i},this.checked)"/>
       <div class="task-info">
         <div class="task-name-text ${t.done?'done':''}">${t.name||t.text||''}</div>
-        ${t.dueDate?`<div class="task-due ${t.dueDate<DateHelpers.today()?'overdue':''}">📅 ${DateHelpers.fmt(t.dueDate)}</div>`:''}
+        ${notePreview?`<div class="task-note-preview">${notePreview}</div>`:''}
+        ${t.dueDate?`<div class="task-due ${isOverdue?'overdue':''}">📅 ${t.dueDate}</div>`:''}
         ${t.owner?`<div class="task-due">👤 ${t.owner}</div>`:''}
+      </div>
+      <div style="flex-shrink:0">
+        <button class="btn-icon" style="font-size:11px" onclick="event.stopPropagation();window._editingTask='${t.id||i}';window.openMilestoneDrawer('${msId}')" title="Edit task">✏️</button>
+      </div>
+    </div>`;
+  }
+  function taskEditHtml(t, i) {
+    const tid = t.id || ('ti'+i);
+    const memberOpts = (APP_STATE.teamMembers||[]).map(m=>`<option value="${m.name||m.id}" ${t.owner===m.name||t.owner===m.id?'selected':''}>${m.name}</option>`).join('');
+    return `<div class="task-row" id="task-row-${i}" style="flex-direction:column;align-items:stretch">
+      <input class="form-control" id="te-name-${tid}" value="${(t.name||t.text||'').replace(/"/g,'&quot;')}" style="margin-bottom:5px;font-size:12px"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
+        <input type="date" class="form-control" id="te-due-${tid}" value="${t.dueDate||''}"/>
+        <select class="form-control" id="te-owner-${tid}"><option value="">Owner…</option>${memberOpts}</select>
+      </div>
+      <textarea class="form-control" id="te-notes-${tid}" placeholder="Notes…" style="min-height:50px;margin-bottom:6px;font-size:12px">${t.notes||''}</textarea>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-primary btn-xs" onclick="saveTaskEdit('${milestoneId}','${tid}',${i});event.stopPropagation()">Save</button>
+        <button class="btn btn-ghost btn-xs" onclick="window._editingTask=null;window.openMilestoneDrawer('${milestoneId}');event.stopPropagation()">Cancel</button>
       </div>
     </div>`;
   }
@@ -222,7 +252,10 @@ window.openMilestoneDrawer = function(msId) {
       <button style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--mid);line-height:1" onclick="closeDrawer()">×</button>
     </div>
     <div class="ms-drawer-body">
-      <div id="drawer-task-list">${tasks.length ? tasks.map((t,i)=>taskHtml(t,i)).join('') : '<div style="font-size:12px;color:var(--lt);padding:8px 0">No tasks yet</div>'}</div>
+      <div id="drawer-task-list">${tasks.length ? tasks.map((t,i)=>{
+        const tid = t.id || ('ti'+i);
+        return (window._editingTask === tid || window._editingTask === String(i)) ? taskEditHtml(t,i) : taskHtml(t,i);
+      }).join('') : '<div style="font-size:12px;color:var(--lt);padding:8px 0">No tasks yet</div>'}</div>
       <div class="add-task-form">
         <div style="font-size:11px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:8px">Add Task</div>
         <input class="form-control" id="drawer-task-name" placeholder="Task name…" style="margin-bottom:6px;font-size:12px"/>
@@ -289,6 +322,89 @@ window.toggleTask = async function(msId, idx, done) {
   try {
     await DB.update('milestones', msId, { tasks: m.tasks });
   } catch(e) { console.error(e); }
+};
+
+window.saveTaskEdit = async function(milestoneId, taskId, idx) {
+  const m = APP_STATE.milestones.find(x => x.id === milestoneId);
+  if (!m) return;
+  const tasks = (m.tasks||[]).map((t,i) => {
+    const tid = t.id || ('ti'+i);
+    if (tid !== taskId) return t;
+    return {
+      ...t,
+      name:    document.getElementById('te-name-'+taskId)?.value?.trim() || t.name || t.text,
+      dueDate: document.getElementById('te-due-'+taskId)?.value || t.dueDate || '',
+      owner:   document.getElementById('te-owner-'+taskId)?.value || t.owner || '',
+      notes:   document.getElementById('te-notes-'+taskId)?.value?.trim() || t.notes || ''
+    };
+  });
+  m.tasks = tasks;
+  try {
+    await DB.update('milestones', milestoneId, { tasks });
+    window._editingTask = null;
+    showToast('Task updated ✅');
+    window.openMilestoneDrawer(milestoneId);
+  } catch(e) { alert('Error: '+e.message); }
+};
+
+window.updateAllocation = async function(memberId, val) {
+  const pct = Math.min(200, Math.max(0, parseInt(val)||0));
+  const m = APP_STATE.teamMembers.find(x => x.id === memberId);
+  if (m) { m.capacity = pct; m.availability = pct; }
+  try {
+    await DB.update('teamMembers', memberId, { capacity: pct, availability: pct });
+    showToast(`Allocation updated to ${pct}%`);
+    const statusEl = document.querySelector(`[data-member-id="${memberId}"] .alloc-status`);
+    if (statusEl) {
+      const cls = pct>100?'badge-red':pct>=80?'badge-amber':'badge-teal';
+      const lbl = pct>100?'Overloaded':pct>=80?'At Capacity':'Available';
+      statusEl.className = `badge ${cls} alloc-status`;
+      statusEl.textContent = lbl;
+    }
+  } catch(e) { alert('Error: '+e.message); }
+};
+
+window.saveTimeLog = async function(memberId, dateStr) {
+  const hours   = parseFloat(document.getElementById('tl-hours-'+dateStr)?.value || 0);
+  const note    = document.getElementById('tl-note-'+dateStr)?.value?.trim() || '';
+  const project = document.getElementById('tl-proj-'+dateStr)?.value || '';
+  const docId   = memberId+'_'+dateStr;
+  try {
+    await DB.set('resources', docId, { memberId, date: dateStr, hours, note, project, isLeave: false, leaveType: '' });
+    showToast('Time logged ✅');
+    document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove());
+    navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
+  } catch(e) { alert('Error: '+e.message); }
+};
+
+window.markLeave = async function(memberId, dateStr, leaveType) {
+  const docId = memberId+'_'+dateStr;
+  try {
+    await DB.set('resources', docId, { memberId, date: dateStr, hours: 0, note: '', project: '', isLeave: true, leaveType });
+    showToast('Leave marked ✅');
+    document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove());
+    navigateTo(APP_STATE.currentView, APP_STATE.currentParams);
+  } catch(e) { alert('Error: '+e.message); }
+};
+
+window.showLeaveForm = function(memberId, dateStr) {
+  document.getElementById('cell-form-'+memberId+'-'+dateStr)?.remove();
+  const cell = document.querySelector(`td[onclick*="${memberId}-${dateStr}"]`) || document.body;
+  const form = document.createElement('div');
+  form.style.cssText = 'position:fixed;z-index:50;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:12px;min-width:160px';
+  form.id = 'leave-form-'+memberId+'-'+dateStr;
+  form.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--lt);margin-bottom:8px">LEAVE TYPE</div>
+    ${['Annual','Sick','Public Holiday','Other'].map(lt=>`
+      <button class="btn btn-ghost btn-sm" style="width:100%;text-align:left;margin-bottom:4px" onclick="markLeave('${memberId}','${dateStr}','${lt}');document.getElementById('leave-form-${memberId}-${dateStr}')?.remove()">
+        🏖 ${lt}
+      </button>`).join('')}
+    <button class="btn btn-ghost btn-xs" style="width:100%;margin-top:4px" onclick="this.closest('#leave-form-${memberId}-${dateStr}')?.remove()">Cancel</button>`;
+  const rect = event?.target?.getBoundingClientRect?.() || { left: 200, bottom: 200 };
+  form.style.left = Math.min(rect.left, window.innerWidth - 200)+'px';
+  form.style.top  = (rect.bottom + 4)+'px';
+  document.body.appendChild(form);
+  setTimeout(()=>document.addEventListener('click', function h(e){ if(!form.contains(e.target)){form.remove();document.removeEventListener('click',h);} }), 100);
 };
 
 // ─── TOAST ────────────────────────────────────────────────

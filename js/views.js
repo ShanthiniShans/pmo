@@ -445,7 +445,7 @@ export function renderTracks() {
     </div>
   </div>
 
-  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+  <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;flex-wrap:nowrap;scrollbar-width:thin;margin-bottom:14px;">
     ${['All',...tracks].map(t => {
       const isActive = activeTrack === t;
       const cnt = t==='All' ? projects.length : projects.filter(p=>p.track===t).length;
@@ -457,11 +457,12 @@ export function renderTracks() {
     }).join('')}
   </div>
 
-  <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:16px;align-items:flex-start">
+  <div style="overflow-x:auto;overflow-y:visible;padding-bottom:20px;width:100%">
+    <div style="display:flex;gap:14px;min-width:max-content;align-items:flex-start">
     ${STAGES.map(stage => {
       const colProjects = filtered.filter(p => stageOf(p) === stage.label);
       return `
-      <div style="min-width:230px;flex:0 0 230px;display:flex;flex-direction:column;gap:8px">
+      <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 220px);overflow-y:auto">
         <div style="padding:12px 14px;border-radius:10px;background:#fff;border:1px solid var(--border);border-top:3px solid ${stage.color}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
             <span style="font-weight:700;font-size:12px;color:var(--navy)">${stage.label}</span>
@@ -484,6 +485,7 @@ export function renderTracks() {
                 <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
                   ${p.track||p.trackId?`<span class="badge badge-navy" style="font-size:10px">${resolveTrackName(p.track||p.trackId)}</span>`:''}
                   ${p.phase?`<span class="badge badge-grey" style="font-size:10px">${p.phase}</span>`:''}
+                  ${p.priority?ragBadge(p.priority):''}
                   ${stale?`<span class="badge badge-amber" style="font-size:10px" title="Days in this stage">${daysInStage}d</span>`:''}
                 </div>
                 ${progressBar(projProgress(p))}
@@ -496,6 +498,7 @@ export function renderTracks() {
         }
       </div>`;
     }).join('')}
+    </div>
   </div>`;
 }
 
@@ -680,20 +683,38 @@ export function renderRoadmap() {
 
 // ─── MILESTONES ───────────────────────────────────────────
 export function renderMilestones() {
-  const all  = APP_STATE.milestones;
   const fp   = APP_STATE._msFilterProject || '';
   const ft   = APP_STATE._msFilterTrack   || '';
   const fo   = APP_STATE._msFilterOwner   || '';
-  const fs   = (APP_STATE._msFilterSearch || '').toLowerCase();
+  const fs   = (APP_STATE._msFilterSearch || '').toLowerCase().trim();
   const view = APP_STATE._msView || 'kanban';
   const today = DateHelpers.today();
 
-  let ms = all;
-  if (fp) ms = ms.filter(m => m.projectId === fp);
-  if (ft) ms = ms.filter(m => m.track === ft);
-  if (fo) ms = ms.filter(m => (m.owner||m.ownerId||'').includes(fo));
-  if (fs) ms = ms.filter(m => (m.title||'').toLowerCase().includes(fs) || (m.projectName||'').toLowerCase().includes(fs));
-  ms = [...ms].sort((a,b) => { if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate > b.dueDate ? 1 : -1; });
+  function applyMilestoneFilters(milestones) {
+    let filtered = [...milestones];
+    if (fp) {
+      filtered = filtered.filter(m => m.projectId === fp || m.projectName === fp || m.project === fp);
+    }
+    if (ft) {
+      const trackProjects = [...(APP_STATE.projects||[]),...(APP_STATE.onboardingProjects||[])]
+        .filter(p => p.track === ft || p.trackId === ft || resolveTrackName(p.track||p.trackId) === ft)
+        .map(p => p.id);
+      filtered = filtered.filter(m => trackProjects.includes(m.projectId) || trackProjects.includes(m.project));
+    }
+    if (fo) {
+      filtered = filtered.filter(m => (m.owner||'').toLowerCase() === fo.toLowerCase() || m.ownerId === fo);
+    }
+    if (fs) {
+      filtered = filtered.filter(m =>
+        (m.title||m.name||'').toLowerCase().includes(fs) ||
+        (m.projectName||m.project||'').toLowerCase().includes(fs)
+      );
+    }
+    return filtered;
+  }
+
+  const ms = applyMilestoneFilters(APP_STATE.milestones || [])
+    .sort((a,b) => { if(!a.dueDate) return 1; if(!b.dueDate) return -1; return a.dueDate > b.dueDate ? 1 : -1; });
 
   function isOverdueNow(m) {
     return m.dueDate && m.dueDate < today && normaliseStatus(m.status) !== 'Completed';
@@ -743,26 +764,28 @@ export function renderMilestones() {
     { key:'done',   title:'Completed / Overdue', items: ms.filter(m=>laneFor(m)==='done') },
   ];
 
-  const allProjects = [...APP_STATE.projects, ...(APP_STATE.onboardingProjects||[])];
-  const projectOpts = allProjects.map(p => `<option value="${p.id}" ${fp===p.id?'selected':''}>${p.name||p.customerName}</option>`).join('');
-  const trackOpts   = APP_STATE.tracks.map(t => `<option value="${t.name}" ${ft===t.name?'selected':''}>${t.name}</option>`).join('');
-  const ownerOpts   = APP_STATE.teamMembers.map(t => `<option value="${t.name||t.id}" ${fo===(t.name||t.id)?'selected':''}>${t.name}</option>`).join('');
+  const allProjects = [...(APP_STATE.projects||[]), ...(APP_STATE.onboardingProjects||[])];
+  const owners = [...new Set((APP_STATE.milestones||[]).map(m=>m.owner).filter(Boolean))].sort();
+  const activeFilterCount = [fp,ft,fo,fs].filter(Boolean).length;
 
   const filterSection = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
-    <select class="form-control" style="width:160px;font-size:12px" onchange="APP_STATE._msFilterProject=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
-      <option value="">All Projects</option>${projectOpts}
+    <select class="form-control" style="width:160px;font-size:12px" onchange="setMsFilter('_msFilterProject',this.value)">
+      <option value="">All Projects</option>
+      ${allProjects.map(p=>`<option value="${p.id}" ${fp===p.id?'selected':''}>${p.name||p.customerName}</option>`).join('')}
     </select>
-    <select class="form-control" style="width:130px;font-size:12px" onchange="APP_STATE._msFilterTrack=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
-      <option value="">All Tracks</option>${trackOpts}
+    <select class="form-control" style="width:130px;font-size:12px" onchange="setMsFilter('_msFilterTrack',this.value)">
+      <option value="">All Tracks</option>
+      ${(APP_STATE.tracks||[]).map(t=>`<option value="${t.name||t.id}" ${(ft===t.name||ft===t.id)?'selected':''}>${t.name||t.title}</option>`).join('')}
     </select>
-    <select class="form-control" style="width:130px;font-size:12px" onchange="APP_STATE._msFilterOwner=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
-      <option value="">All Owners</option>${ownerOpts}
+    <select class="form-control" style="width:130px;font-size:12px" onchange="setMsFilter('_msFilterOwner',this.value)">
+      <option value="">All Owners</option>
+      ${owners.map(o=>`<option value="${o}" ${fo===o?'selected':''}>${o}</option>`).join('')}
     </select>
-    <input class="form-control" style="width:160px;font-size:12px" placeholder="Search…" value="${APP_STATE._msFilterSearch||''}" oninput="APP_STATE._msFilterSearch=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)"/>
-    ${(fp||ft||fo||fs)?`<button class="btn btn-ghost btn-sm" onclick="APP_STATE._msFilterProject='';APP_STATE._msFilterTrack='';APP_STATE._msFilterOwner='';APP_STATE._msFilterSearch='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Reset</button>`:''}
+    <input class="form-control" style="width:160px;font-size:12px" placeholder="Search…" value="${APP_STATE._msFilterSearch||''}" oninput="setMsFilter('_msFilterSearch',this.value)"/>
+    ${activeFilterCount>0?`<span class="badge badge-teal" style="font-size:11px">${activeFilterCount} active</span><button class="btn btn-ghost btn-sm" onclick="APP_STATE._msFilterProject='';APP_STATE._msFilterTrack='';APP_STATE._msFilterOwner='';APP_STATE._msFilterSearch='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Reset</button>`:''}
     <div style="margin-left:auto;display:flex;gap:4px">
-      <button class="btn ${view==='kanban'?'btn-primary':'btn-ghost'} btn-sm" onclick="APP_STATE._msView='kanban';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)" title="Kanban">⬛ Kanban</button>
-      <button class="btn ${view==='list'?'btn-primary':'btn-ghost'} btn-sm" onclick="APP_STATE._msView='list';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)" title="List">≡ List</button>
+      <button class="btn ${view==='kanban'?'btn-primary':'btn-ghost'} btn-sm" onclick="APP_STATE._msView='kanban';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">⬛ Kanban</button>
+      <button class="btn ${view==='list'?'btn-primary':'btn-ghost'} btn-sm" onclick="APP_STATE._msView='list';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">≡ List</button>
     </div>
   </div>`;
 
@@ -806,7 +829,7 @@ export function renderMilestones() {
   <div class="vh">
     <div class="vh-left">
       <h1>Milestones</h1>
-      <div class="sub">${ms.length} milestone${ms.length!==1?'s':''} shown</div>
+      <div class="sub">${ms.length} milestone${ms.length!==1?'s':''} shown${activeFilterCount>0?' (filtered)':''}</div>
     </div>
     <div class="vh-right">
       <button class="btn btn-primary" onclick="openModal('milestone')">+ Add Milestone</button>
@@ -1358,6 +1381,22 @@ export function renderTeam() {
           <span style="font-size:12px;font-weight:700;color:var(--navy)">${m.availability||100}%</span>
         </div>
       </div>
+      ${(() => {
+        const mProj = APP_STATE.projects.filter(p=>p.devLead===m.id||p.devLead===m.name||(Array.isArray(p.team)?p.team.includes(m.id):(p.team||'').includes(m.id)));
+        const mOnb  = (APP_STATE.onboardingProjects||[]).filter(p=>p.devLead===m.id||p.devLead===m.name);
+        const mMs   = APP_STATE.milestones.filter(ms=>ms.owner===m.name||ms.owner===m.id||ms.ownerId===m.id);
+        const openMs = mMs.filter(ms=>normaliseStatus(ms.status)!=='Completed').length;
+        if (!mProj.length && !mOnb.length && !mMs.length) return '';
+        return `<div>
+          ${mProj.length||mOnb.length ? `<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:4px">Assigned To</div>
+          <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">
+            ${mProj.map(p=>`<span class="badge badge-navy" style="font-size:10px;cursor:pointer" onclick="nav('project-detail',{id:'${p.id}'})">${p.name||'—'}</span>`).join('')}
+            ${mOnb.map(p=>`<span class="badge badge-purple" style="font-size:10px;cursor:pointer" onclick="nav('onboarding-detail',{id:'${p.id}'})">🎓 ${p.name||p.customerName||'—'}</span>`).join('')}
+          </div>` : ''}
+          ${mMs.length ? `<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-bottom:2px">Milestones</div>
+          <div style="font-size:12px;color:var(--mid)">${mMs.length} total · <span style="color:${openMs>0?'#d97706':'#16a34a'}">${openMs} open</span></div>` : ''}
+        </div>`;
+      })()}
     </div>`).join('') : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👥</div>No members in ${activeTrack}</div>`}
   </div>`;
 }
@@ -1372,125 +1411,166 @@ export function renderCapacityResources() {
 export { renderCapacityResources as renderCapacity };
 
 function _renderAllocation() {
-  const members   = [...APP_STATE.teamMembers].sort((a,b)=>(b.availability||100)-(a.availability||100));
-  const f         = APP_STATE.filters;
-  const projects  = f.track ? APP_STATE.projects.filter(p=>resolveTrackName(p.track||p.trackId)===f.track) : APP_STATE.projects;
-  const milestones = APP_STATE.milestones;
+  const capTab = APP_STATE._capTab || 'allocation';
+  const filterTrack = APP_STATE._allocFilterTrack || '';
+  const searchStr   = (APP_STATE._allocSearch || '').toLowerCase();
 
-  function projectCompletion(p) {
-    const pMs = milestones.filter(m => m.projectId === p.id);
-    if (pMs.length === 0) return p.progress || 0;
-    const done = pMs.filter(m => normaliseStatus(m.status) === 'Completed').length;
-    return Math.round(done / pMs.length * 100);
+  let members = [...APP_STATE.teamMembers];
+  if (filterTrack) members = members.filter(m => m.track === filterTrack);
+  if (searchStr)   members = members.filter(m => (m.name||'').toLowerCase().includes(searchStr));
+
+  const allProjects = [...APP_STATE.projects, ...(APP_STATE.onboardingProjects||[])];
+  const activeProjects = allProjects.filter(p => normaliseStatus(p.status) !== 'Completed');
+
+  const overloaded  = members.filter(m => (m.capacity||m.availability||80) > 100).length;
+  const atCap       = members.filter(m => { const c=m.capacity||m.availability||80; return c>=80&&c<=100; }).length;
+  const available   = members.filter(m => (m.capacity||m.availability||80) < 80).length;
+
+  const expandedId = APP_STATE._expandedMember || '';
+
+  function memberProjects(m) {
+    return allProjects.filter(p =>
+      p.devLead === m.id || p.devLead === m.name ||
+      (Array.isArray(p.team) ? p.team.includes(m.id) : (p.team||'').includes(m.id))
+    );
   }
 
-  const projectTotals = projects.map(p => ({
-    allocated:  members.reduce((s,m)=>s+((m.allocations||{})[p.id]||0), 0),
-    completion: projectCompletion(p)
-  }));
+  function allocBadge(pct) {
+    const cls = pct > 100 ? 'badge-red' : pct >= 80 ? 'badge-amber' : 'badge-teal';
+    const lbl = pct > 100 ? 'Overloaded' : pct >= 80 ? 'At Capacity' : 'Available';
+    return `<span class="badge ${cls} alloc-status">${lbl}</span>`;
+  }
+
+  function memberDetail(m) {
+    const mProj    = memberProjects(m);
+    const mMs      = APP_STATE.milestones.filter(ms => ms.owner === m.name || ms.owner === m.id || ms.ownerId === m.id);
+    const openMs   = mMs.filter(ms => normaliseStatus(ms.status) !== 'Completed').length;
+    const today    = DateHelpers.today();
+    const weekAgo  = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+    const weekHrs  = (APP_STATE.resources||[]).filter(r=>r.memberId===m.id&&r.date>=weekAgoStr).reduce((s,r)=>s+(parseFloat(r.hours)||0),0);
+    const monthStart = new Date(); monthStart.setDate(1);
+    const monthStartStr = monthStart.toISOString().split('T')[0];
+    const leaveCount = (APP_STATE.resources||[]).filter(r=>r.memberId===m.id&&r.isLeave&&r.date>=monthStartStr).length;
+
+    return `<tr>
+      <td colspan="8" style="padding:0;background:var(--bg)">
+        <div class="member-detail-panel">
+          <div class="member-detail-section">
+            <div class="member-detail-title">Assigned Projects</div>
+            ${mProj.length ? mProj.map(p=>{
+              const isOnb = (APP_STATE.onboardingProjects||[]).some(o=>o.id===p.id);
+              return `<div style="margin-bottom:6px">
+                <span class="badge ${isOnb?'badge-purple':'badge-navy'}" style="cursor:pointer;font-size:10px" onclick="nav('${isOnb?'onboarding-detail':'project-detail'}',{id:'${p.id}'})">${isOnb?'🎓 ':''}${p.name||p.customerName}</span>
+                <span style="font-size:10px;color:var(--lt);margin-left:4px">${ragBadge(p.status)}</span>
+              </div>`;
+            }).join('') : '<div style="font-size:11px;color:var(--lt)">No projects assigned</div>'}
+          </div>
+          <div class="member-detail-section">
+            <div class="member-detail-title">Milestones</div>
+            <div style="font-size:12px;color:var(--mid)">Total: <strong>${mMs.length}</strong> · Open: <strong style="color:${openMs>0?'#d97706':'#16a34a'}">${openMs}</strong></div>
+            ${mMs.filter(ms=>normaliseStatus(ms.status)!=='Completed').slice(0,3).map(ms=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)">${ms.title} <span style="color:var(--lt)">${DateHelpers.fmt(ms.dueDate)}</span></div>`).join('')}
+          </div>
+          <div class="member-detail-section">
+            <div class="member-detail-title">Time & Availability</div>
+            <div style="font-size:12px;color:var(--mid)">Hours this week: <strong>${weekHrs}h</strong></div>
+            <div style="font-size:12px;color:var(--mid)">Leave days this month: <strong>${leaveCount}</strong></div>
+            <div style="font-size:12px;color:var(--mid)">Allocation: <strong>${m.capacity||m.availability||80}%</strong></div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }
 
   function capTabBar() {
-    const t = APP_STATE._capTab || 'allocation';
     return `<div class="pulse-tabs no-print" style="margin-bottom:14px">
-      <button class="pt ${t==='allocation'?'active':''}" onclick="switchTab('_capTab','allocation')">Allocation</button>
-      <button class="pt ${t==='timelog'?'active':''}" onclick="switchTab('_capTab','timelog')">Time Log</button>
+      <button class="pt ${capTab==='allocation'?'active':''}" onclick="switchTab('_capTab','allocation')">Allocation</button>
+      <button class="pt ${capTab==='timelog'?'active':''}" onclick="switchTab('_capTab','timelog')">Time Log</button>
     </div>`;
   }
 
   return `
   ${execBanner('capacity')}
-  ${filterBar()}
   <div class="vh">
     <div class="vh-left">
       <h1>Capacity &amp; Resources</h1>
-      <div class="sub">Allocation planning &amp; hour tracking</div>
-    </div>
-    <div class="vh-right">
-      <button class="btn btn-primary" onclick="openModal('capacity')">Edit Allocations</button>
+      <div class="sub">Team allocation and hour tracking</div>
     </div>
   </div>
   ${capTabBar()}
-
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+    <select class="form-control" style="width:160px;font-size:12px" onchange="APP_STATE._allocFilterTrack=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+      <option value="">All Tracks</option>
+      ${APP_STATE.tracks.map(t=>`<option value="${t.name}" ${filterTrack===t.name?'selected':''}>${t.name}</option>`).join('')}
+    </select>
+    <input class="form-control" style="width:160px;font-size:12px" placeholder="Search member…" value="${APP_STATE._allocSearch||''}" oninput="APP_STATE._allocSearch=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)"/>
+    ${(filterTrack||searchStr)?`<button class="btn btn-ghost btn-sm" onclick="APP_STATE._allocFilterTrack='';APP_STATE._allocSearch='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Reset</button>`:''}
+  </div>
+  ${statRow(
+    statBlock(members.length,'Total Members','on team','var(--navy)') +
+    statBlock(overloaded,'Overloaded','>100%','#dc2626') +
+    statBlock(atCap,'At Capacity','80-100%','#d97706') +
+    statBlock(available,'Available','<80%','#059669') +
+    statBlock(activeProjects.length,'Active Projects','regular + onboarding','#7c3aed')
+  )}
   <div class="card" style="padding:0">
-    <div style="overflow-x:auto">
-      <table class="cap-table">
+    <div class="tbl-wrap">
+      <table class="dt">
         <thead>
           <tr>
-            <th class="mc">Team Member</th>
-            <th>Availability</th>
-            ${projects.map(p => {
-              const completion = projectCompletion(p);
-              const cc = completion>=70?'#059669':completion>=40?'#D97706':'#DC2626';
-              return `<th title="${p.name}">
-                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">${p.name.length>13?p.name.slice(0,13)+'…':p.name}</div>
-                <div style="font-size:9px;font-weight:700;color:${cc};margin-top:2px">${completion}% done</div>
-              </th>`;
-            }).join('')}
-            <th>Total</th>
+            <th>Member</th>
+            <th>Role</th>
+            <th>Track</th>
+            <th>Projects Assigned</th>
+            <th>Allocation %</th>
+            <th>Available %</th>
             <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           ${members.map(m => {
-            const allocs = projects.map(p=>(m.allocations||{})[p.id]||0);
-            const total  = allocs.reduce((s,a)=>s+a, 0);
-            const avail  = m.availability || 100;
-            const tcol   = TRACK_COLORS[m.track] || '#1B2B5E';
-            const cls    = total > avail ? 'util-over' : total > 0 ? 'util-ok' : 'util-under';
-            return `<tr>
-              <td class="mc">
+            const cap  = m.capacity || m.availability || 80;
+            const avail = Math.max(0, 100 - cap);
+            const mProj = memberProjects(m);
+            const tcol = TRACK_COLORS[m.track] || '#1B2B5E';
+            const isExpanded = expandedId === m.id;
+            return `<tr data-member-id="${m.id}" style="cursor:pointer" onclick="APP_STATE._expandedMember=(APP_STATE._expandedMember==='${m.id}'?'':'${m.id}');navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+              <td>
                 <div style="display:flex;align-items:center;gap:8px">
                   <div class="av" style="background:${tcol}">${avatar(m.name)}</div>
                   <div>
-                    <div style="font-size:12px;font-weight:700;color:var(--navy)">${m.name}</div>
-                    <div style="font-size:11px;color:var(--mid)">${m.role||''}</div>
-                    <div style="font-size:10px;color:${tcol};font-weight:700">${m.track||''}</div>
+                    <div style="font-size:13px;font-weight:700;color:var(--navy)">${m.name}</div>
+                    ${m.email?`<div style="font-size:10px;color:var(--lt)">${m.email}</div>`:''}
                   </div>
                 </div>
               </td>
+              <td style="font-size:12px">${m.role||'—'}</td>
+              <td><span class="badge" style="background:${tcol}20;color:${tcol}">${m.track||'—'}</span></td>
               <td>
-                <div style="text-align:center">
-                  <div style="font-size:15px;font-weight:800;color:var(--navy)">${avail}%</div>
-                  <div style="width:60px;margin:4px auto 0">${progressBar(avail)}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:3px">
+                  ${mProj.slice(0,3).map(p=>`<span class="badge badge-grey" style="font-size:10px">${p.name||p.customerName}</span>`).join('')}
+                  ${mProj.length>3?`<span class="badge badge-grey" style="font-size:10px">+${mProj.length-3} more</span>`:''}
+                  ${!mProj.length?'<span style="font-size:11px;color:var(--lt)">None</span>':''}
                 </div>
               </td>
-              ${projects.map((p,i) => {
-                const v   = allocs[i];
-                const pct = avail > 0 ? Math.min((v/avail*100), 100).toFixed(0) : 0;
-                return `<td>
-                  ${v > 0 ? `
-                  <div style="text-align:center;font-size:14px;font-weight:700;color:${v>avail?'#ef4444':'var(--navy)'}">${v}%</div>
-                  <div style="width:60px;margin:3px auto 0"><div class="pb"><div class="pb-fill" style="width:${pct}%;background:${v>avail?'#ef4444':'var(--teal)'}"></div></div></div>` :
-                  `<div style="color:var(--lt);font-size:12px;text-align:center">—</div>`}
-                </td>`;
-              }).join('')}
-              <td>
-                <div style="text-align:center;font-size:16px;font-weight:800;color:${total>avail?'#ef4444':total===0?'var(--lt)':'var(--teal)'}">
-                  ${total}%
+              <td onclick="event.stopPropagation()">
+                <div style="display:flex;align-items:center;gap:4px">
+                  <input type="number" min="0" max="200" class="alloc-input" value="${cap}"
+                    onchange="updateAllocation('${m.id}',this.value)"
+                    style="width:60px;padding:4px 8px;border:1px solid var(--border-dk);border-radius:var(--rs);font-size:12px;font-weight:700;text-align:center"/>
+                  <span style="font-size:12px;color:var(--mid)">%</span>
                 </div>
-                <div style="font-size:10px;color:var(--lt);text-align:center">${avail > 0 ? Math.round(total/avail*100) : 0}% of cap</div>
               </td>
-              <td><span class="util-badge ${cls}">${cls==='util-over'?'Over-allocated':cls==='util-under'?'Under-allocated':'Optimal'}</span></td>
-            </tr>`;
+              <td style="font-size:12px;font-weight:700;color:${avail<20?'#dc2626':avail<50?'#d97706':'#059669'}">${avail}%</td>
+              <td>${allocBadge(cap)}</td>
+              <td style="font-size:11px;color:var(--lt)">${isExpanded?'▲':'▼'}</td>
+            </tr>
+            ${isExpanded ? memberDetail(m) : ''}`;
           }).join('')}
-          <tr style="background:#F5F6FA;border-top:2px solid var(--border)">
-            <td class="mc" style="font-size:11px;font-weight:700;color:var(--lt)">PROJECT TOTALS</td>
-            <td></td>
-            ${projectTotals.map(pt => `
-            <td>
-              <div style="text-align:center;font-size:13px;font-weight:700;color:var(--navy)">${pt.allocated}%</div>
-              <div style="text-align:center;font-size:10px;color:var(--lt)">${pt.completion}% done</div>
-            </td>`).join('')}
-            <td></td><td></td>
-          </tr>
         </tbody>
       </table>
     </div>
-  </div>
-  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--lt)">
-    <span>💡 Completion % is calculated from milestones</span>
-    <span>📊 Availability is set per member in Team</span>
-    <span>✏️ Allocations are entered via Edit Allocations</span>
   </div>`;
 }
 
@@ -1498,113 +1578,168 @@ function _renderAllocation() {
 export function renderResources() { return renderCapacityResources(); }
 
 function _renderTimeLog() {
-  const members     = APP_STATE.teamMembers;
-  const resources   = APP_STATE.resources;
-  const f           = APP_STATE.filters;
-  const weekOffset  = APP_STATE._resourceWeekOffset || 0;
-  const today       = DateHelpers.today();
+  const capTab     = APP_STATE._capTab || 'timelog';
+  const weekOffset = APP_STATE._timeLogWeekOffset !== undefined ? APP_STATE._timeLogWeekOffset : 0;
+  const selMember  = APP_STATE._timeLogMember || '';
+  const resources  = APP_STATE.resources || [];
+  const members    = APP_STATE.teamMembers;
 
-  const days = [];
-  for (let i=0; i<7; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() + weekOffset*7 + i - 6);
-    days.push(d.toISOString().split('T')[0]);
+  function getWeekDates(offset) {
+    const now = new Date();
+    const day = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day===0?6:day-1) + (offset*7));
+    monday.setHours(0,0,0,0);
+    const days = [];
+    for (let i=0;i<5;i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate()+i);
+      days.push(d);
+    }
+    return days;
   }
-  const weekStart = DateHelpers.fmtShort(days[0]);
-  const weekEnd   = DateHelpers.fmtShort(days[6]);
 
-  function getLogs(mid, date)  { return resources.filter(r=>r.memberId===mid&&r.date===date); }
-  function isCrossTrack(mid, date) {
-    return [...new Set(getLogs(mid,date).map(r=>r.track).filter(Boolean))].length > 1;
+  const weekDays = getWeekDates(weekOffset);
+  const dayStrs  = weekDays.map(d => d.toISOString().split('T')[0]);
+  const today    = DateHelpers.today();
+
+  const dayNames = ['MON','TUE','WED','THU','FRI'];
+  const fmtD = d => { const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); };
+
+  const monStr = weekDays[0].toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  const friStr = weekDays[4].toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+  function getLog(memberId, dateStr) {
+    const docId = memberId+'_'+dateStr;
+    return resources.find(r => r.id === docId || (r.memberId===memberId&&r.date===dateStr));
   }
-  function totalHours(mid, date) { return getLogs(mid,date).reduce((s,r)=>s+(parseFloat(r.hours)||0),0); }
+  function cellDisplay(memberId, dateStr) {
+    const log = getLog(memberId, dateStr);
+    if (!log) return `<div style="font-size:11px;color:var(--lt);text-align:center">—</div>`;
+    if (log.isLeave) {
+      const abbr = (log.leaveType||'Leave').slice(0,3).toUpperCase();
+      return `<span class="badge badge-purple" style="font-size:9px">🏖 ${abbr}</span>`;
+    }
+    return `<div style="font-size:12px;font-weight:700;color:var(--navy);text-align:center">${log.hours||0}h${log.note?` <span style="font-size:9px" title="${log.note}">📝</span>`:''}</div>`;
+  }
 
-  const filtMembers = f.track ? members.filter(m=>m.track===f.track) : members;
+  const allProjects = [...APP_STATE.projects, ...(APP_STATE.onboardingProjects||[])];
+
+  function memberSummaryCard(m) {
+    const weekHrs = dayStrs.reduce((s,d)=>{ const l=getLog(m.id,d); return s+(l&&!l.isLeave?parseFloat(l.hours)||0:0); }, 0);
+    const mProj   = allProjects.filter(p=>p.devLead===m.id||p.devLead===m.name);
+    const cap     = m.capacity||m.availability||80;
+    const tcol    = TRACK_COLORS[m.track]||'#1B2B5E';
+    return `<div class="card" style="margin-bottom:16px;border-left:4px solid ${tcol}">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div class="av av-lg" style="background:${tcol}">${avatar(m.name)}</div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:800;color:var(--navy)">${m.name}</div>
+          <div style="font-size:12px;color:var(--mid)">${m.role||'—'} · ${m.track||'—'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:20px;font-weight:800;color:var(--navy)">${weekHrs}h</div>
+          <div style="font-size:10px;color:var(--lt)">this week</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px">
+        <span style="color:var(--mid)">Allocation: <strong>${cap}%</strong></span>
+        ${mProj.map(p=>`<span class="badge badge-navy" style="font-size:10px">${p.name||p.customerName}</span>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  const selectedMember = selMember ? members.find(m=>m.id===selMember) : null;
+
+  function cellForm(memberId, dateStr) {
+    const log = getLog(memberId, dateStr);
+    const allProjectOpts = allProjects.map(p=>`<option value="${p.name||p.customerName}" ${(log?.project===p.name)?'selected':''}>${p.name||p.customerName}</option>`).join('');
+    return `<div style="background:#f8faff;border:1px solid var(--border);border-radius:var(--rs);padding:8px;min-width:160px;position:absolute;z-index:20;top:100%;left:0;box-shadow:var(--shm)" id="cell-form-${memberId}-${dateStr}">
+      <div style="font-size:10px;font-weight:700;color:var(--lt);margin-bottom:4px">${fmtD(dateStr)}</div>
+      <input type="number" min="0" max="24" step="0.5" class="form-control" id="tl-hours-${dateStr}" value="${log?.hours||''}" placeholder="Hours…" style="font-size:12px;margin-bottom:4px"/>
+      <select class="form-control" id="tl-proj-${dateStr}" style="font-size:12px;margin-bottom:4px">
+        <option value="">Project…</option>${allProjectOpts}
+      </select>
+      <input class="form-control" id="tl-note-${dateStr}" value="${log?.note||''}" placeholder="Note…" style="font-size:12px;margin-bottom:6px"/>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-xs" onclick="saveTimeLog('${memberId}','${dateStr}');event.stopPropagation()">Save</button>
+        <button class="btn btn-ghost btn-xs" onclick="document.getElementById('cell-form-${memberId}-${dateStr}')?.remove();event.stopPropagation()">×</button>
+        <button class="btn btn-ghost btn-xs" style="color:#7c3aed" onclick="showLeaveForm('${memberId}','${dateStr}');event.stopPropagation()">🏖 Leave</button>
+      </div>
+    </div>`;
+  }
+
+  const memberRows = (selectedMember ? [selectedMember] : members).map(m => {
+    const weekTotal = dayStrs.reduce((s,d)=>{const l=getLog(m.id,d);return s+(l&&!l.isLeave?parseFloat(l.hours)||0:0);}, 0);
+    return `<tr>
+      <td class="mc">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="av" style="background:${TRACK_COLORS[m.track]||'var(--navy)'}">${avatar(m.name)}</div>
+          <div>
+            <div style="font-weight:600;font-size:12px;color:var(--navy)">${m.name}</div>
+            <div style="font-size:10px;color:var(--lt)">${m.track||'—'}</div>
+          </div>
+        </div>
+      </td>
+      ${dayStrs.map(d => {
+        const log = getLog(m.id, d);
+        const isToday = d === today;
+        const isLeave = log?.isLeave;
+        return `<td style="cursor:pointer;position:relative;${isToday?'background:#f8faff;':''}" onclick="(function(e){if(!document.getElementById('cell-form-${m.id}-${d}')){document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove());const td=e.currentTarget;td.style.position='relative';td.insertAdjacentHTML('beforeend',${JSON.stringify(cellForm(m.id, d))});}e.stopPropagation();})(event)">
+          ${cellDisplay(m.id, d)}
+        </td>`;
+      }).join('')}
+      <td style="text-align:center;font-weight:700;color:${weekTotal>40?'#ef4444':weekTotal>0?'var(--navy)':'var(--lt)'}">
+        ${weekTotal>0?weekTotal+'h':'—'}
+      </td>
+    </tr>`;
+  });
 
   return `
   ${execBanner('capacity')}
-  ${filterBar()}
   <div class="vh">
     <div class="vh-left">
       <h1>Capacity &amp; Resources</h1>
-      <div class="sub">Weekly hour logs per team member</div>
-    </div>
-    <div class="vh-right">
-      <button class="btn btn-primary" onclick="openModal('resource')">+ Log Hours</button>
+      <div class="sub">Weekly time log — Mon to Fri</div>
     </div>
   </div>
   <div class="pulse-tabs no-print" style="margin-bottom:14px">
     <button class="pt" onclick="switchTab('_capTab','allocation')">Allocation</button>
     <button class="pt active" onclick="switchTab('_capTab','timelog')">Time Log</button>
   </div>
-
-  <div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:12px">
-    <button class="btn btn-ghost btn-sm" onclick="window._resourceWeek(-1)">← Prev Week</button>
-    <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:var(--navy)">
-      ${weekStart} — ${weekEnd}
-      ${weekOffset===0?`<span class="badge badge-teal" style="margin-left:8px">This Week</span>`:''}
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="window._resourceWeek(1)" ${weekOffset>=0?'disabled style="opacity:.4"':''}>Next Week →</button>
-    ${weekOffset!==0?`<button class="btn btn-ghost btn-sm" onclick="window._resourceWeek(0,'reset')">Today</button>`:''}
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn btn-ghost btn-sm" onclick="APP_STATE._timeLogWeekOffset=(APP_STATE._timeLogWeekOffset||0)-1;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">← Prev Week</button>
+    <span style="font-size:13px;font-weight:700;color:var(--navy)">${monStr} – ${friStr}</span>
+    <button class="btn btn-ghost btn-sm" onclick="if((APP_STATE._timeLogWeekOffset||0)<0){APP_STATE._timeLogWeekOffset=(APP_STATE._timeLogWeekOffset||0)+1;navigateTo(APP_STATE.currentView,APP_STATE.currentParams);}" ${weekOffset>=0?'disabled style="opacity:.4"':''}>Next Week →</button>
+    ${weekOffset!==0?`<button class="btn btn-ghost btn-sm" onclick="APP_STATE._timeLogWeekOffset=0;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">This Week</button>`:''}
+    <span class="badge badge-teal" style="margin-left:auto">${weekOffset===0?'Current Week':`${Math.abs(weekOffset)} week${Math.abs(weekOffset)!==1?'s':''} ago`}</span>
   </div>
-
-  <div class="card" style="padding:0">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+    <select class="form-control" style="width:180px;font-size:12px" onchange="APP_STATE._timeLogMember=this.value;navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">
+      <option value="">All Members</option>
+      ${members.map(m=>`<option value="${m.id}" ${selMember===m.id?'selected':''}>${m.name}</option>`).join('')}
+    </select>
+    ${selMember?`<button class="btn btn-ghost btn-sm" onclick="APP_STATE._timeLogMember='';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Show All</button>`:''}
+  </div>
+  ${selectedMember ? memberSummaryCard(selectedMember) : ''}
+  <div class="card" style="padding:0" onclick="document.querySelectorAll('[id^=cell-form-]').forEach(el=>el.remove())">
     <div style="overflow-x:auto">
       <table class="cap-table">
         <thead>
           <tr>
             <th class="mc">Member</th>
-            ${days.map(d=>{
-              const isToday = d===today;
-              return `<th style="${isToday?'background:var(--navy);color:#fff;':''}">${DateHelpers.fmtShort(d)}${isToday?'<div style="font-size:9px;opacity:.7">TODAY</div>':''}</th>`;
+            ${dayStrs.map((d,i)=>{
+              const isToday=d===today;
+              return `<th style="${isToday?'background:var(--navy);color:#fff;':''}">${dayNames[i]}<div style="font-weight:400;font-size:9px">${fmtD(d)}</div></th>`;
             }).join('')}
-            <th>Week Total</th>
+            <th>Total</th>
           </tr>
         </thead>
-        <tbody>
-          ${filtMembers.map(m=>{
-            const weekTotal = days.reduce((s,d)=>s+totalHours(m.id,d),0);
-            return `<tr>
-              <td class="mc">
-                <div style="display:flex;align-items:center;gap:6px">
-                  <div class="av" style="background:${TRACK_COLORS[m.track]||'var(--navy)'}">${avatar(m.name)}</div>
-                  <div>
-                    <div style="font-weight:600;font-size:12px;color:var(--navy)">${m.name}</div>
-                    <div style="font-size:10px;color:${TRACK_COLORS[m.track]||'var(--lt)'};font-weight:600">${m.track||'—'}</div>
-                  </div>
-                </div>
-              </td>
-              ${days.map(d=>{
-                const logs  = getLogs(m.id,d);
-                const cross = isCrossTrack(m.id,d);
-                const tot   = totalHours(m.id,d);
-                const isToday = d===today;
-                return `<td style="cursor:pointer;${isToday?'background:#f8faff;':''}" onclick="openModal('resourceDay','${m.id}','${d}')" title="Click to log for ${m.name}">
-                  ${logs.length>0?`
-                  <div style="display:flex;flex-direction:column;gap:2px">
-                    ${logs.map(log=>`
-                    <div style="display:flex;align-items:center;gap:3px;background:${TRACK_COLORS[log.track]||'#1B2B5E'}18;border-left:2px solid ${TRACK_COLORS[log.track]||'#1B2B5E'};padding:2px 4px;border-radius:0 3px 3px 0">
-                      <span style="font-size:11px;font-weight:700;color:${TRACK_COLORS[log.track]||'#1B2B5E'}">${log.hours}h</span>
-                      <span style="font-size:9px;color:var(--lt);white-space:nowrap;overflow:hidden;max-width:50px;text-overflow:ellipsis">${log.track||''}</span>
-                    </div>`).join('')}
-                    ${cross?`<div style="font-size:9px;color:var(--amber);font-weight:700">⚠️ ${tot}h</div>`:''}
-                  </div>` : `<div style="font-size:11px;color:var(--lt);text-align:center">—</div>`}
-                </td>`;
-              }).join('')}
-              <td style="text-align:center;font-weight:700;color:${weekTotal>40?'#ef4444':weekTotal>0?'var(--navy)':'var(--lt)'}">
-                ${weekTotal>0?weekTotal+'h':'—'}
-              </td>
-            </tr>`;
-          }).join('')}
-        </tbody>
+        <tbody>${memberRows.join('')}</tbody>
       </table>
     </div>
   </div>
-  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--lt)">
-    <span>💡 Click any cell to log or edit hours</span>
-    <span>⚠️ Amber = member logged across multiple tracks same day</span>
-    <span>🔴 Week total over 40h flagged red</span>
-  </div>`;
+  <div style="font-size:11px;color:var(--lt);margin-top:10px">💡 Click any cell to log hours · 🏖 Mark leave from the cell form · 📝 = has note</div>`;
 }
 
 // ─── RISKS ────────────────────────────────────────────────
@@ -1791,6 +1926,26 @@ export function renderLeadership() {
     <div class="report-section">
       <h2>🏗️ Track-wise Resource Status</h2>
       <div class="tbl-wrap"><table class="dt"><thead><tr><th>Track</th><th>Members</th><th>Active Projects</th><th>Avg Allocation %</th><th>Hours This Week</th><th>Milestones Due Today</th><th>Signal</th></tr></thead><tbody>${trackRows}</tbody></table></div>
+    </div>
+    <div class="report-section">
+      <h2>👥 Resource Snapshot</h2>
+      <div class="tbl-wrap"><table class="dt"><thead><tr><th>Member</th><th>Track</th><th>Allocation %</th><th>Status</th><th>Projects</th><th>Hours Today</th></tr></thead><tbody>
+        ${members.map(m => {
+          const cap = m.capacity||m.availability||80;
+          const cls = cap>100?'badge-red':cap>=80?'badge-amber':'badge-teal';
+          const lbl = cap>100?'Overloaded':cap>=80?'At Capacity':'Available';
+          const hoursToday = (resources||[]).filter(r=>r.memberId===m.id&&r.date===today).reduce((s,r)=>s+(parseFloat(r.hours)||0),0);
+          const mProj = [...APP_STATE.projects,...(APP_STATE.onboardingProjects||[])].filter(p=>p.devLead===m.id||p.devLead===m.name);
+          return `<tr>
+            <td style="font-weight:600">${m.name}</td>
+            <td>${m.track||'—'}</td>
+            <td><strong>${cap}%</strong></td>
+            <td><span class="badge ${cls}">${lbl}</span></td>
+            <td style="font-size:11px">${mProj.slice(0,2).map(p=>p.name||p.customerName).join(', ')||'—'}</td>
+            <td>${hoursToday>0?hoursToday+'h':'—'}</td>
+          </tr>`;
+        }).join('')||`<tr><td colspan="6" class="empty">No members</td></tr>`}
+      </tbody></table></div>
     </div>`;
   }
 
@@ -1878,6 +2033,36 @@ export function renderLeadership() {
       </div>` : `<div class="empty">No tracks configured</div>`}
     </div>
     <div class="report-section">
+      <h2>📊 Team Allocation &amp; Time Log — Week of ${DateHelpers.fmt(today)}</h2>
+      ${(() => {
+        const day = new Date().getDay();
+        const monday = new Date(); monday.setDate(monday.getDate()-(day===0?6:day-1)); monday.setHours(0,0,0,0);
+        const weekDayStrs = Array.from({length:5},(_,i)=>{ const d=new Date(monday); d.setDate(monday.getDate()+i); return d.toISOString().split('T')[0]; });
+        const allProj2 = [...APP_STATE.projects,...(APP_STATE.onboardingProjects||[])];
+        const overRows = tracks.length ? tracks.map(track=>{
+          const tm2 = members.filter(m=>m.track===track);
+          const avgCap = tm2.length?Math.round(tm2.reduce((s,m)=>s+(m.capacity||m.availability||80),0)/tm2.length):0;
+          const overCnt = tm2.filter(m=>(m.capacity||m.availability||80)>100).length;
+          const availCnt = tm2.filter(m=>(m.capacity||m.availability||80)<80).length;
+          return `<tr><td style="font-weight:700">${track}</td><td>${tm2.length}</td><td>${avgCap}%</td><td style="color:${overCnt>0?'#dc2626':'inherit'}">${overCnt}</td><td>${availCnt}</td></tr>`;
+        }).join('') : '<tr><td colspan="5" class="empty">No tracks</td></tr>';
+        const memberHrRows = members.map(m=>{
+          const dayHrs = weekDayStrs.map(d=>{ const l=(resources||[]).find(r=>r.memberId===m.id&&r.date===d); return l?.isLeave?'🏖':(l?.hours||0)+''; });
+          const total = weekDayStrs.reduce((s,d)=>{ const l=(resources||[]).find(r=>r.memberId===m.id&&r.date===d); return s+(l&&!l.isLeave?parseFloat(l.hours)||0:0); },0);
+          const leaveCnt = weekDayStrs.filter(d=>{ const l=(resources||[]).find(r=>r.memberId===m.id&&r.date===d); return l?.isLeave; }).length;
+          return `<tr><td style="font-weight:600">${m.name}</td><td>${m.track||'—'}</td>${dayHrs.map(h=>`<td style="text-align:center;font-size:11px">${h}</td>`).join('')}<td style="font-weight:700">${total>0?total+'h':'—'}</td><td>${leaveCnt>0?leaveCnt+'d':'—'}</td></tr>`;
+        }).join('');
+        return `<div style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:6px">Allocation by Track</div>
+          <div class="tbl-wrap"><table class="dt"><thead><tr><th>Track</th><th>Members</th><th>Avg Allocation</th><th>Overloaded</th><th>Available</th></tr></thead><tbody>${overRows}</tbody></table></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--mid);margin-bottom:6px">Weekly Hours by Member</div>
+          <div class="tbl-wrap"><table class="dt"><thead><tr><th>Member</th><th>Track</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Total</th><th>Leave</th></tr></thead><tbody>${memberHrRows}</tbody></table></div>
+        </div>`;
+      })()}
+    </div>
+    <div class="report-section">
       <h2>🔷 Decisions Required</h2>
       ${openEscL34.length+highRisks.length>0?[...openEscL34.map(e=>`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--rs);padding:12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:4px">ESCALATION ${e.level||''}</div><div style="font-size:13px;font-weight:700;color:var(--navy)">${e.project||'—'}</div><div style="font-size:12px;color:var(--mid)">${e.title||e.issue||'—'}</div></div>`), ...highRisks.map(r=>`<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--rs);padding:12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;margin-bottom:4px">HIGH RISK · SCORE ${(r.likelihood||1)*(r.impact||1)}</div><div style="font-size:13px;font-weight:700;color:var(--navy)">${r.title}</div><div style="font-size:12px;color:var(--mid)">${r.mitigation||'—'}</div></div>`)].join(''):`<div style="font-size:12px;color:#16a34a;padding:8px 0">✅ No decisions required this week</div>`}
     </div>`;
@@ -1942,6 +2127,36 @@ export function renderLeadership() {
     <div class="report-section">
       <h2>🔄 Projects In Flight</h2>
       <div class="tbl-wrap"><table class="dt"><thead><tr><th>Project</th><th>Track</th><th>Priority</th><th>Phase</th><th>Progress</th><th>Status</th><th>End Date</th></tr></thead><tbody>${projects.filter(p=>p.status!=='Completed').map(p=>`<tr><td style="font-weight:600">${p.name}</td><td>${resolveTrackName(p.track||p.trackId)||'—'}</td><td>${ragBadge(p.priority)}</td><td>${p.phase||'—'}</td><td>${progressBar(projProgress(p))}<span style="font-size:11px">${projProgress(p)}%</span></td><td>${ragBadge(p.status)}</td><td>${DateHelpers.fmt(p.endDate)}</td></tr>`).join('')||`<tr><td colspan="7" class="empty">No active projects</td></tr>`}</tbody></table></div>
+    </div>
+    <div class="report-section">
+      <h2>📈 Monthly Resource Utilisation</h2>
+      ${(() => {
+        const allProj3 = [...APP_STATE.projects,...(APP_STATE.onboardingProjects||[])];
+        const totalHrs = (resources||[]).filter(r=>r.date>=monthStart&&r.date<nextMonthStart&&!r.isLeave).reduce((s,r)=>s+(parseFloat(r.hours)||0),0);
+        const totalLeave = (resources||[]).filter(r=>r.date>=monthStart&&r.date<nextMonthStart&&r.isLeave).length;
+        const avgUtil = members.length?Math.round(members.reduce((s,m)=>s+(m.capacity||m.availability||80),0)/members.length):0;
+        const annualLeave = (resources||[]).filter(r=>r.date>=monthStart&&r.date<nextMonthStart&&r.leaveType==='Annual').length;
+        const sickLeave   = (resources||[]).filter(r=>r.date>=monthStart&&r.date<nextMonthStart&&r.leaveType==='Sick').length;
+        const phLeave     = (resources||[]).filter(r=>r.date>=monthStart&&r.date<nextMonthStart&&r.leaveType==='Public Holiday').length;
+        const otherLeave  = totalLeave - annualLeave - sickLeave - phLeave;
+        const overAllocated = members.filter(m=>(m.capacity||m.availability||80)>100);
+        const zeroHrs      = members.filter(m=>!(resources||[]).some(r=>r.memberId===m.id&&r.date>=monthStart&&r.date<nextMonthStart&&(parseFloat(r.hours)||0)>0));
+        return `
+        ${statRow(
+          statBlock(members.length,'Headcount','team members','var(--navy)')+
+          statBlock(avgUtil,'Avg Util %','team average','#7c3aed')+
+          statBlock(Math.round(totalHrs),'Hours Logged','this month','#059669')+
+          statBlock(totalLeave,'Leave Days','total','#d97706')
+        )}
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:12px">
+          <span>Annual: <strong>${annualLeave}d</strong></span>
+          <span>Sick: <strong>${sickLeave}d</strong></span>
+          <span>Public Holiday: <strong>${phLeave}d</strong></span>
+          <span>Other: <strong>${otherLeave}d</strong></span>
+        </div>
+        ${overAllocated.length?`<div style="background:#fef2f2;border-left:3px solid #dc2626;border-radius:0 var(--rs) var(--rs) 0;padding:10px;margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:4px">⚠️ OVERALLOCATED MEMBERS</div>${overAllocated.map(m=>`<div style="font-size:12px;color:var(--text)">${m.name} — ${m.capacity||m.availability||80}% across ${allProj3.filter(p=>p.devLead===m.id||p.devLead===m.name).length} projects</div>`).join('')}</div>`:''}
+        ${zeroHrs.length?`<div style="background:#fffbeb;border-left:3px solid #d97706;border-radius:0 var(--rs) var(--rs) 0;padding:10px"><div style="font-size:11px;font-weight:700;color:#d97706;margin-bottom:4px">⚠️ NO HOURS LOGGED THIS MONTH</div>${zeroHrs.map(m=>`<div style="font-size:12px;color:var(--text)">${m.name} — ${m.track||'—'}</div>`).join('')}</div>`:''}`;
+      })()}
     </div>
     <div class="report-section">
       <h2>📊 Milestone Adherence</h2>

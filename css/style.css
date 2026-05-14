@@ -436,3 +436,10 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 .task-due { font-size:10px; color:var(--lt); margin-top:2px; }
 .task-due.overdue { color:#dc2626; font-weight:600; }
 .add-task-form { padding:14px; background:var(--bg); border-radius:var(--rs); margin-top:12px; }
+.task-name-text { font-size:13px; color:var(--text); line-height:1.4; font-weight:500; }
+.task-name-text.done { text-decoration:line-through; color:var(--lt); font-weight:400; }
+.task-note-preview { font-size:11px; color:var(--lt); font-style:italic; margin-top:3px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.alloc-input:focus { outline:none; border-color:var(--teal); box-shadow:0 0 0 2px rgba(0,168,150,.15); }
+.member-detail-panel { background:var(--bg); border-radius:var(--rs); padding:14px 16px; margin:4px 0 8px; border-left:3px solid var(--teal); display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.member-detail-section { }
+.member-detail-title { font-size:9px; font-weight:800; color:var(--lt); text-transform:uppercase; letter-spacing:.6px; margin-bottom:8px; }
