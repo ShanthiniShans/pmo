@@ -755,13 +755,6 @@ export function renderRoadmap() {
     </div>
   </div>
 
-  <div class="legend-bar">
-    ${(()=>{ const seen=new Set(); const items=[]; (APP_STATE.tracks||[]).forEach((t,i)=>{ if(!seen.has(t.id)){seen.add(t.id); items.push({name:t.name||t.title||t,color:BAR_COLORS[i%BAR_COLORS.length]});} }); return items.map(it=>`<span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${it.color};flex-shrink:0"></span>${it.name}</span>`).join(''); })()}
-    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;flex-shrink:0"></span>Onboarding</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;flex-shrink:0"></span>Milestone</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="height:2px;width:16px;background:#ef4444;opacity:.5;display:inline-block"></span>Today</span>
-  </div>
-
   <div class="gantt-wrap" style="overflow-x:auto">
     <div class="gantt-hdr">
       <div class="gantt-hdr-lbl">Project</div>
@@ -1036,8 +1029,7 @@ export function renderProjects() {
         </tbody>
       </table>
     </div>
-  </div>
-  ${recentMilestoneNotesSection()}`;
+  </div>`;
 }
 
 // ─── PROJECT DETAIL ───────────────────────────────────────
@@ -1079,34 +1071,6 @@ export async function renderProjectDetail(params) {
            <button class="btn btn-ghost btn-xs" onclick="openModal('charter',null,'${id}')">Create Charter</button>
          </div>`;
     // Milestone notes section
-    const msNotesHtml = (() => {
-      if (!pMs.length) return `<div class="empty" style="padding:24px"><div class="empty-icon">🎯</div>No milestones yet. <span class="proj-link" onclick="APP_STATE._detailTab='milestones';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Add the first milestone →</span></div>`;
-      const notesHtml = pMs.map(m => {
-        const tasksWithNotes = (m.tasks||[]).filter(t=>t.notes&&t.notes.trim());
-        const msNote = m.notes||m.description||'';
-        if (!tasksWithNotes.length && !msNote) return '';
-        return `<div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <span style="font-size:13px;font-weight:700;color:var(--navy)">${m.title||m.name}</span>
-            <span class="badge ${(m.status||'').toLowerCase().includes('complet')?'badge-teal':'badge-amber'}">${m.status||''}</span>
-          </div>
-          ${msNote?`<div style="font-size:12px;color:var(--mid);font-style:italic;margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:var(--rs)">${msNote}</div>`:''}
-          ${tasksWithNotes.map(t=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border)">
-            <span style="width:14px;height:14px;border-radius:50%;flex-shrink:0;margin-top:2px;background:${t.done?'#22c55e':'var(--border-dk)'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white">${t.done?'✓':''}</span>
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text);${t.done?'text-decoration:line-through;':''}">${t.name||''}</div>
-              <div style="font-size:11px;color:var(--lt);font-style:italic;margin-top:2px">${t.notes}</div>
-            </div>
-          </div>`).join('')}
-        </div>`;
-      }).join('');
-      if (!notesHtml.replace(/\s/g,'')) return '';
-      return `<div style="margin-top:20px">
-        <div style="font-size:11px;font-weight:800;color:var(--lt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Milestone Notes &amp; Updates</div>
-        ${notesHtml}
-      </div>`;
-    })();
-
     return `
       <div class="card">
         <div class="card-title">Description</div>
@@ -1114,7 +1078,6 @@ export async function renderProjectDetail(params) {
         ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
         ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
         ${charterBlock}
-        ${msNotesHtml}
       </div>`;
   }
 
@@ -1372,8 +1335,7 @@ export function renderOnboarding() {
         </tbody>
       </table>
     </div>
-  </div>
-  ${recentMilestoneNotesSection()}`;
+  </div>`;
 }
 
 export async function renderOnboardingDetail(params) {
@@ -1392,39 +1354,11 @@ export async function renderOnboardingDetail(params) {
   }
 
   function tabOverview() {
-    const onbNotesHtml = (() => {
-      if (!pMs.length) return `<div class="empty" style="padding:24px"><div class="empty-icon">🎯</div>No milestones yet. <span class="proj-link" onclick="APP_STATE._detailTab='milestones';navigateTo(APP_STATE.currentView,APP_STATE.currentParams)">Add the first milestone →</span></div>`;
-      const notesHtml = pMs.map(m => {
-        const tasksWithNotes = (m.tasks||[]).filter(t=>t.notes&&t.notes.trim());
-        const msNote = m.notes||m.description||'';
-        if (!tasksWithNotes.length && !msNote) return '';
-        return `<div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <span style="font-size:13px;font-weight:700;color:var(--navy)">${m.title||m.name}</span>
-            <span class="badge ${(m.status||'').toLowerCase().includes('complet')?'badge-teal':'badge-amber'}">${m.status||''}</span>
-          </div>
-          ${msNote?`<div style="font-size:12px;color:var(--mid);font-style:italic;margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:var(--rs)">${msNote}</div>`:''}
-          ${tasksWithNotes.map(t=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border)">
-            <span style="width:14px;height:14px;border-radius:50%;flex-shrink:0;margin-top:2px;background:${t.done?'#22c55e':'var(--border-dk)'};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white">${t.done?'✓':''}</span>
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text);${t.done?'text-decoration:line-through;':''}">${t.name||''}</div>
-              <div style="font-size:11px;color:var(--lt);font-style:italic;margin-top:2px">${t.notes}</div>
-            </div>
-          </div>`).join('')}
-        </div>`;
-      }).join('');
-      if (!notesHtml.replace(/\s/g,'')) return '';
-      return `<div style="margin-top:20px">
-        <div style="font-size:11px;font-weight:800;color:var(--lt);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Milestone Notes &amp; Updates</div>
-        ${notesHtml}
-      </div>`;
-    })();
     return `<div class="card">
       <div class="card-title">Description</div>
       <div style="font-size:13px;color:var(--text)">${p.description||'<span style="color:var(--lt)">No description provided.</span>'}</div>
       ${p.objectives?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Objectives</div><div style="font-size:13px">${p.objectives}</div>`:''}
       ${p.stakeholders?`<div style="font-size:10px;font-weight:700;color:var(--lt);text-transform:uppercase;margin-top:12px;margin-bottom:4px">Stakeholders</div><div style="font-size:13px">${p.stakeholders}</div>`:''}
-      ${onbNotesHtml}
     </div>`;
   }
 
@@ -3050,16 +2984,20 @@ export function renderLeadership() {
 
   // ── PERIOD-AWARE PROJECT TABLE ────────────────────────────
   function periodProjectTable() {
+    const _day = now.getDay();
+    const _diff = _day === 0 ? -6 : 1 - _day;
+    const _mon = new Date(now); _mon.setDate(now.getDate() + _diff); _mon.setHours(0,0,0,0);
+    const _ptWeekStart = _mon.toISOString().split('T')[0];
+
     let tableProjects = [];
     let title = '';
     if (activeTab === 'daily') {
       const todayMsIds = new Set(milestones.filter(m=>m.dueDate===today).map(m=>m.projectId));
-      const todayResProjects = new Set(resources.filter(r=>r.date===today).map(r=>r.memberId));
       const blockerProjects = new Set([...openEscL34.map(e=>e.projectId),...highRisks.map(r=>r.projectId)].filter(Boolean));
       tableProjects = projects.filter(p=>todayMsIds.has(p.id)||blockerProjects.has(p.id)||normaliseStatus(p.status)==='In Progress');
       title = 'Projects with Activity Today';
     } else if (activeTab === 'weekly') {
-      tableProjects = projects.filter(p=>normaliseStatus(p.status)!=='Completed'||p.endDate>=weekStartStr);
+      tableProjects = projects.filter(p=>normaliseStatus(p.status)!=='Completed'||p.endDate>=_ptWeekStart);
       title = 'Active Projects — This Week';
     } else {
       const monthStart2 = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
