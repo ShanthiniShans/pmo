@@ -1793,14 +1793,33 @@ function _renderAllocation() {
     </div>
   </div>
   ${capTabBar()}
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-    <select class="form-control" style="width:160px;font-size:12px" onchange="setAllocFilter('_allocFilterTrack',this.value)">
-      <option value="">All Tracks</option>
-      ${APP_STATE.tracks.map(t=>{const tn=t.name||t.title||'';return `<option value="${tn}" ${filterTrack===tn?'selected':''}>${tn}</option>`;}).join('')}
-    </select>
-    <input class="form-control" style="width:160px;font-size:12px" placeholder="Search member…" value="${APP_STATE._allocSearch||''}" oninput="setAllocFilter('_allocSearch',this.value)"/>
-    ${(filterTrack||searchStr)?`<button class="btn btn-ghost btn-sm" onclick="setAllocFilter('_allocFilterTrack','');setAllocFilter('_allocSearch','')">Reset</button>`:''}
-  </div>
+  ${(() => {
+    const allM = APP_STATE.teamMembers;
+    const trackCounts = {};
+    allM.forEach(m => {
+      const tn = m.track || m.trackId || '—';
+      trackCounts[tn] = (trackCounts[tn]||0) + 1;
+    });
+    const sortedTracks = Object.keys(trackCounts).sort();
+    return `<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;margin-bottom:14px;flex-wrap:wrap">
+      <button onclick="setAllocFilter('_allocFilterTrack','')"
+        style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${!filterTrack?'var(--navy)':'var(--border)'};background:${!filterTrack?'var(--navy)':'#fff'};color:${!filterTrack?'#fff':'var(--navy)'};font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .15s;flex-shrink:0">
+        All (${allM.length})
+      </button>
+      ${sortedTracks.map(tn => {
+        const active = filterTrack === tn;
+        const col = TRACK_COLORS[tn] || 'var(--navy)';
+        return `<button onclick="setAllocFilter('_allocFilterTrack','${tn}')"
+          style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${active?col:'var(--border)'};background:${active?col:'#fff'};color:${active?'#fff':col};font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .15s;flex-shrink:0">
+          ${tn} (${trackCounts[tn]})
+        </button>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+      <input class="form-control" style="width:200px;font-size:12px" placeholder="Search member…" value="${APP_STATE._allocSearch||''}" oninput="setAllocFilter('_allocSearch',this.value)"/>
+      ${searchStr?`<button class="btn btn-ghost btn-sm" onclick="setAllocFilter('_allocSearch','')">Clear</button>`:''}
+    </div>`;
+  })()}
   ${statRow(
     statBlock(members.length,'Total Members','on team','var(--navy)') +
     statBlock(overloaded,'Overloaded','>100%','#dc2626') +
@@ -1932,7 +1951,7 @@ function _renderTimeLog() {
   const weekOffset = APP_STATE._timeLogWeekOffset !== undefined ? APP_STATE._timeLogWeekOffset : 0;
   const selMember  = APP_STATE._timeLogMember || '';
   const resources  = APP_STATE.resources || [];
-  const members    = APP_STATE.teamMembers;
+  const members    = [...APP_STATE.teamMembers].sort((a,b) => (a.name||'').localeCompare(b.name||''));
 
   function getWeekDates(offset) {
     const off = parseInt(offset) || 0;
