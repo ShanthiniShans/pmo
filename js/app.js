@@ -585,7 +585,18 @@ window._confirmImport = async function(type, rows) {
 };
 
 // ─── INIT ─────────────────────────────────────────────────
+let _initialized = false;
+
 export async function initApp() {
+  if (_initialized) {
+    // Already running — just re-navigate (e.g. after PIN change)
+    const savedView = localStorage.getItem('klarion_view') || 'dashboard';
+    navigateTo(VIEWS[savedView] ? savedView : 'dashboard',
+      (() => { try { return JSON.parse(localStorage.getItem('klarion_params') || '{}'); } catch { return {}; } })());
+    return;
+  }
+  _initialized = true;
+
   const content = document.getElementById('content');
   content.innerHTML = '<div class="loading">Connecting to Kriyadocs PMO…</div>';
 
@@ -627,5 +638,88 @@ window.testJiraConfig = async function() {
   }
 };
 
+// ─── ACCESS CONTROL ───────────────────────────────────────
+window.addNewUser = async function() {
+  const email = document.getElementById('new-user-email')?.value?.trim()?.toLowerCase();
+  const name  = document.getElementById('new-user-name')?.value?.trim();
+  const role  = document.getElementById('new-user-role')?.value;
+
+  if (!email || !email.includes('@')) {
+    showToast('Enter a valid email', 'error');
+    return;
+  }
+  const existing = (APP_STATE.users || []).find(u => u.email === email);
+  if (existing) {
+    showToast('User already exists', 'error');
+    return;
+  }
+  await DB.add('users', {
+    email,
+    name: name || email.split('@')[0],
+    role: role || 'view',
+    pinHash: '',
+    active: true,
+    status: 'pending'
+  });
+  document.getElementById('new-user-email').value = '';
+  document.getElementById('new-user-name').value  = '';
+  showToast('User added. They can now register their PIN on first login. ✅');
+};
+
+window.updateUserRole = async function(userId, role) {
+  await DB.update('users', userId, { role });
+  showToast('Role updated ✅');
+};
+
+window.resetUserPin = async function(userId, userName) {
+  const { generateTempPin, hashPin } = await import('./auth.js');
+  const tempPin  = generateTempPin();
+  const tempHash = await hashPin(tempPin);
+  await DB.update('users', userId, { tempPin: tempHash, status: 'pending' });
+
+  const html = `
+    <div class="mo" id="tempPinMo">
+      <div class="mo-box" style="max-width:360px">
+        <div class="mo-hdr">
+          <span class="mo-title">Temporary PIN for ${userName}</span>
+          <button class="mo-close" onclick="closeModal('tempPinMo')">×</button>
+        </div>
+        <div class="mo-body" style="text-align:center">
+          <div style="font-size:11px;color:var(--lt);margin-bottom:12px">
+            Share this PIN privately with ${userName}. It expires after first use.
+          </div>
+          <div style="font-size:48px;font-weight:800;color:var(--navy);
+            letter-spacing:12px;font-variant-numeric:tabular-nums;margin:16px 0">
+            ${tempPin}
+          </div>
+          <div style="font-size:11px;color:var(--lt)">
+            The user will be prompted to set a new PIN after using this.
+          </div>
+        </div>
+        <div class="mo-foot">
+          <button class="btn btn-primary" onclick="closeModal('tempPinMo')">
+            Done — I've noted it
+          </button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window.toggleUserActive = async function(userId, currentlyActive) {
+  await DB.update('users', userId, { active: !currentlyActive });
+  showToast(currentlyActive ? 'User deactivated' : 'User activated ✅');
+};
+
+window.deleteUser = async function(userId, email) {
+  if (!confirm(`Remove ${email} from Klarion? They will immediately lose access.`)) return;
+  await DB.remove('users', userId);
+  showToast('User removed');
+};
+
 // ─── BOOT ─────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => { initApp(); });
+document.addEventListener('DOMContentLoaded', async () => {
+  const { initAuth } = await import('./auth.js');
+  await initAuth();
+  // initApp() is called by auth after successful login — NOT here directly
+});

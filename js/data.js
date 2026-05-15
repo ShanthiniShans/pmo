@@ -22,6 +22,7 @@ export const db = initializeFirestore(app, { localCache: memoryLocalCache() });
 
 // ─── APP STATE ───────────────────────────────────────────
 export const APP_STATE = {
+  users: [],
   projects: [],
   milestones: [],
   tracks: [],
@@ -304,7 +305,7 @@ async function seedIfEmpty() {
 }
 
 // ─── LISTENERS ────────────────────────────────────────────
-const COLLECTIONS = ['projects','milestones','tracks','teamMembers','workflows',
+const COLLECTIONS = ['users','projects','milestones','tracks','teamMembers','workflows',
                      'resources','onboardingProjects','notes','risks','escalations','impacts','charters','pledges','knowledge'];
 
 export function startListeners(onUpdate) {

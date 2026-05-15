@@ -19,6 +19,16 @@
 </head>
 <body>
 
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card" id="auth-card">
+    <div style="text-align:center;padding:40px 0">
+      <div style="font-size:13px;color:var(--lt)">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<div id="app-shell" style="display:none">
+
 <nav id="sidebar">
   <!-- LOGO -->
   <a class="sb-logo" href="#">
@@ -146,12 +156,15 @@
     </div>
     <div class="topbar-right">
       <span class="topbar-time" id="topTimestamp"></span>
+      <div id="user-chip-container"></div>
     </div>
   </div>
   <div class="content" id="content">
     <div class="loading">Loading Kriyadocs PMO…</div>
   </div>
 </div>
+
+</div><!-- #app-shell -->
 <div id="modal-root"></div>
 
 <script type="module" src="js/app.js"></script>

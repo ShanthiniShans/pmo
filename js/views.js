@@ -3208,6 +3208,7 @@ export function renderSettings() {
       <button class="admin-tab active" id="atb-dropdowns" onclick="switchSettingsTab('dropdowns',this)">Dropdowns</button>
       <button class="admin-tab" id="atb-jira" onclick="switchSettingsTab('jira',this)">Jira ${isJiraConfigured?'✅':''}</button>
       <button class="admin-tab" id="atb-wf-cfg" onclick="switchSettingsTab('wf-cfg',this)">Workflows</button>
+      ${window.IS_ADMIN ? `<button class="admin-tab" id="atb-access" onclick="switchSettingsTab('access',this)">🔐 Access Control</button>` : ''}
     </div>
 
     <div class="admin-panel">
@@ -3285,6 +3286,101 @@ export function renderSettings() {
         <div class="admin-sec-title">Workflow Config</div>
         <div class="admin-sec-desc">Manage workflow templates from the <a href="#" onclick="nav('workflows');return false" style="color:var(--navy)">Workflows tab</a>.</div>
       </div>
+
+      ${window.IS_ADMIN ? `
+      <div id="settingsTab-access" style="display:none">
+        <div class="admin-sec-title">Access Control</div>
+        <div class="admin-sec-desc">
+          Manage who can access Klarion and their permission level. Only you can see this page.
+        </div>
+
+        <div style="background:var(--bg);border-radius:var(--r);padding:16px;margin-bottom:16px">
+          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px">Add New User</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+            <div>
+              <label class="form-label">Email *</label>
+              <input id="new-user-email" class="form-control" placeholder="user@kriyadocs.com"/>
+            </div>
+            <div>
+              <label class="form-label">Name</label>
+              <input id="new-user-name" class="form-control" placeholder="Full name"/>
+            </div>
+            <div>
+              <label class="form-label">Role</label>
+              <select id="new-user-role" class="form-control">
+                <option value="edit">Edit</option>
+                <option value="view">View Only</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="addNewUser()">+ Add</button>
+          </div>
+        </div>
+
+        <div class="tbl-wrap">
+          <table class="dt">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(APP_STATE.users || [])
+                .sort((a, b) => {
+                  if (a.role === 'admin') return -1;
+                  if (b.role === 'admin') return 1;
+                  return (a.name || '').localeCompare(b.name || '');
+                })
+                .map(u => {
+                  const isAdminRow = u.email === 'shanthini.k@kriyadocs.com' || u.role === 'admin';
+                  const initials = (u.name || u.email).split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                  const safeName  = (u.name  || '').replace(/'/g, "\\'");
+                  const safeEmail = (u.email || '').replace(/'/g, "\\'");
+                  return `<tr>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <div class="av av-sm" style="background:${isAdminRow ? 'var(--coral)' : 'var(--navy)'}">
+                          ${initials}
+                        </div>
+                        <span style="font-weight:600">${u.name || '—'}</span>
+                        ${isAdminRow ? '<span class="badge badge-coral" style="margin-left:4px">You</span>' : ''}
+                      </div>
+                    </td>
+                    <td style="font-size:12px">${u.email}</td>
+                    <td>
+                      ${isAdminRow
+                        ? '<span class="badge badge-coral">Admin</span>'
+                        : `<select onchange="updateUserRole('${u.id}',this.value)"
+                            style="font-size:12px;padding:3px 8px;border:1px solid var(--border-dk);border-radius:var(--rs)">
+                            <option value="edit" ${u.role === 'edit' ? 'selected' : ''}>Edit</option>
+                            <option value="view" ${u.role === 'view' ? 'selected' : ''}>View Only</option>
+                          </select>`}
+                    </td>
+                    <td>
+                      <span class="badge ${u.status === 'active' ? 'badge-teal' : u.status === 'pending' ? 'badge-amber' : 'badge-grey'}">
+                        ${u.status === 'pending' ? '⏳ PIN not set' : u.active !== false ? '✅ Active' : '❌ Inactive'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        ${!isAdminRow ? `
+                          <button class="btn btn-ghost btn-xs" onclick="resetUserPin('${u.id}','${safeName || safeEmail}')">Reset PIN</button>
+                          <button class="btn btn-ghost btn-xs" onclick="toggleUserActive('${u.id}',${u.active !== false})">
+                            ${u.active !== false ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button class="btn btn-danger btn-xs" onclick="deleteUser('${u.id}','${safeEmail}')">Remove</button>
+                        ` : '<span style="font-size:11px;color:var(--lt)">Protected</span>'}
+                      </div>
+                    </td>
+                  </tr>`;
+                }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : ''}
     </div>
   </div>`;
 }
