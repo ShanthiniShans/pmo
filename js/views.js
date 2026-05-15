@@ -1950,8 +1950,10 @@ function _renderTimeLog() {
   const capTab     = APP_STATE._capTab || 'timelog';
   const weekOffset = APP_STATE._timeLogWeekOffset !== undefined ? APP_STATE._timeLogWeekOffset : 0;
   const selMember  = APP_STATE._timeLogMember || '';
+  const tlTrack    = APP_STATE._timeLogTrack || '';
   const resources  = APP_STATE.resources || [];
-  const members    = [...APP_STATE.teamMembers].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  const allMembers = [...APP_STATE.teamMembers].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  const members    = tlTrack ? allMembers.filter(m => (m.track||m.trackId||'') === tlTrack) : allMembers;
 
   function getWeekDates(offset) {
     const off = parseInt(offset) || 0;
@@ -2085,6 +2087,25 @@ function _renderTimeLog() {
     <button class="pt" onclick="switchTab('_capTab','allocation')">Allocation</button>
     <button class="pt active" onclick="switchTab('_capTab','timelog')">Time Log</button>
   </div>
+  ${(() => {
+    const trackCounts = {};
+    allMembers.forEach(m => { const tn = m.track||m.trackId||'—'; trackCounts[tn]=(trackCounts[tn]||0)+1; });
+    const sortedTracks = Object.keys(trackCounts).sort();
+    return `<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;margin-bottom:14px;flex-wrap:wrap">
+      <button onclick="setAllocFilter('_timeLogTrack','')"
+        style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${!tlTrack?'var(--navy)':'var(--border)'};background:${!tlTrack?'var(--navy)':'#fff'};color:${!tlTrack?'#fff':'var(--navy)'};font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .15s;flex-shrink:0">
+        All (${allMembers.length})
+      </button>
+      ${sortedTracks.map(tn => {
+        const active = tlTrack === tn;
+        const col = TRACK_COLORS[tn] || 'var(--navy)';
+        return `<button onclick="setAllocFilter('_timeLogTrack','${tn}')"
+          style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:2px solid ${active?col:'var(--border)'};background:${active?col:'#fff'};color:${active?'#fff':col};font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .15s;flex-shrink:0">
+          ${tn} (${trackCounts[tn]})
+        </button>`;
+      }).join('')}
+    </div>`;
+  })()}
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
     <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">← Prev Week</button>
     <span style="font-size:13px;font-weight:700;color:var(--navy)">${monStr} – ${friStr}</span>
