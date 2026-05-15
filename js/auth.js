@@ -1,6 +1,10 @@
 // ============================================================
 // AUTH.JS — Email + 4-digit PIN Authentication
 // ============================================================
+import { db, DB, APP_STATE } from './data.js';
+import {
+  collection, query, where, getDocs
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ── CONSTANTS ─────────────────────────────────────────────
 export const ADMIN_EMAIL = 'shanthini.k@kriyadocs.com';
@@ -40,11 +44,16 @@ export function clearSession() {
 }
 
 // ── USER LOOKUP ───────────────────────────────────────────
+export function findUserInState(email) {
+  return (APP_STATE.users || []).find(u =>
+    u.email === email.toLowerCase().trim()
+  ) || null;
+}
+
 export async function findUser(email) {
-  const { db } = await import('./data.js');
-  const { collection, query, where, getDocs } = await import(
-    'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
-  );
+  const fromState = findUserInState(email);
+  if (fromState) return fromState;
+
   const q = query(
     collection(db, 'users'),
     where('email', '==', email.toLowerCase().trim())
@@ -56,21 +65,24 @@ export async function findUser(email) {
 
 // ── BOOTSTRAP ADMIN ───────────────────────────────────────
 export async function bootstrapAdmin() {
-  const { db, DB } = await import('./data.js');
-  const { collection, getDocs } = await import(
-    'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
-  );
-  const snap = await getDocs(collection(db, 'users'));
-  if (!snap.empty) return;
-  await DB.add('users', {
-    email: ADMIN_EMAIL,
-    name: 'Shanthini K',
-    role: 'admin',
-    pinHash: '',
-    active: true,
-    status: 'pending',
-    isAdmin: true
-  });
+  if (APP_STATE.users && APP_STATE.users.length > 0) return;
+
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    if (!snap.empty) return;
+    await DB.add('users', {
+      email: ADMIN_EMAIL,
+      name: 'Shanthini K',
+      role: 'admin',
+      pinHash: '',
+      active: true,
+      status: 'pending',
+      createdAt: new Date().toISOString().split('T')[0],
+      isAdmin: true
+    });
+  } catch (e) {
+    console.error('Bootstrap error:', e);
+  }
 }
 
 // ── GENERATE TEMP PIN ─────────────────────────────────────
@@ -263,20 +275,33 @@ function showAuthError(msg) {
 // ── AUTH ACTIONS ──────────────────────────────────────────
 
 export async function initAuth() {
-  const session = getSession();
-  if (session) {
-    setSession(session);
-    showApp(session);
-    const { initApp } = await import('./app.js');
-    await initApp();
-    return;
+  try {
+    const session = getSession();
+    if (session) {
+      setSession(session);
+      showApp(session);
+      const { initApp } = await import('./app.js');
+      await initApp();
+      return;
+    }
+
+    // Show login screen immediately — don't block on bootstrapAdmin
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-shell').style.display = 'none';
+    renderEmailStep();
+
+    // Bootstrap admin in background (non-blocking)
+    bootstrapAdmin().catch(e => console.warn('Bootstrap skipped:', e));
+
+  } catch (e) {
+    console.error('Auth init error:', e);
+    try {
+      document.getElementById('auth-screen').style.display = 'flex';
+      renderEmailStep();
+    } catch (e2) {
+      console.error('Cannot show login:', e2);
+    }
   }
-
-  await bootstrapAdmin();
-
-  document.getElementById('auth-screen').style.display = 'flex';
-  document.getElementById('app-shell').style.display = 'none';
-  renderEmailStep();
 }
 
 export function showApp(user) {
@@ -363,7 +388,6 @@ window._authSetPin = async function(userId, email, role, name) {
     return;
   }
 
-  const { DB } = await import('./data.js');
   const pinHash = await hashPin(pin);
   await DB.update('users', userId, { pinHash, status: 'active', tempPin: null });
 

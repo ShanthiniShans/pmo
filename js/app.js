@@ -720,7 +720,28 @@ window.deleteUser = async function(userId, email) {
 
 // ─── BOOT ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  const { initAuth } = await import('./auth.js');
-  await initAuth();
-  // initApp() is called by auth after successful login — NOT here directly
+  try {
+    // Ensure Firebase data layer is initialized first
+    await import('./data.js');
+
+    const { initAuth } = await import('./auth.js');
+    await initAuth();
+    // initApp() is called by auth after successful login — NOT here directly
+  } catch (e) {
+    console.error('Boot error:', e);
+    const content = document.getElementById('content') || document.body;
+    content.innerHTML = `
+      <div style="padding:40px;text-align:center">
+        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:16px;font-weight:700;color:#1B2B5E;margin-bottom:8px">
+          Connection Error
+        </div>
+        <div style="font-size:13px;color:#94a3b8">${e.message}</div>
+        <button onclick="location.reload()"
+          style="margin-top:16px;padding:10px 20px;background:#1B2B5E;color:white;
+            border:none;border-radius:8px;font-size:13px;cursor:pointer">
+          Retry
+        </button>
+      </div>`;
+  }
 });
