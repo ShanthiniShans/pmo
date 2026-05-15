@@ -76,6 +76,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(27,43,94,.06); }
 .topbar-title { font-size: 15px; font-weight: 700; color: var(--navy); }
 .topbar-time { font-size: 11px; color: var(--lt); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-left { display: flex; align-items: center; gap: 8px; }
 
 .content { padding: 22px 26px; flex: 1; max-width: 1500px; width: 100%; overflow: visible; }
 

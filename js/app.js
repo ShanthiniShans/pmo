@@ -68,6 +68,7 @@ async function navigateTo(view, params) {
   // Render
   const content = document.getElementById('content');
   content.innerHTML = '<div class="loading">Loading…</div>';
+  document.getElementById('main')?.scrollTo(0, 0);
   try {
     const html = await Promise.resolve(v.render(params));
     content.innerHTML = html;

@@ -284,7 +284,7 @@ export function showApp(user) {
   if (authScreen) authScreen.style.display = 'none';
 
   const appShell = document.getElementById('app-shell');
-  if (appShell) appShell.style.display = 'flex';
+  if (appShell) appShell.style.display = 'contents';
 
   if (user.role === 'view') {
     document.body.classList.add('view-mode');
