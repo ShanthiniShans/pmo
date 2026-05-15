@@ -1796,7 +1796,7 @@ function _renderAllocation() {
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
     <select class="form-control" style="width:160px;font-size:12px" onchange="setAllocFilter('_allocFilterTrack',this.value)">
       <option value="">All Tracks</option>
-      ${APP_STATE.tracks.map(t=>`<option value="${t.id||t.name||t.title}" ${(filterTrack===(t.id||t.name||t.title)||filterTrack===(t.name||t.title))?'selected':''}>${resolveTrackName(t.id)||t.name||t.title}</option>`).join('')}
+      ${APP_STATE.tracks.map(t=>{const tn=t.name||t.title||'';return `<option value="${tn}" ${filterTrack===tn?'selected':''}>${tn}</option>`;}).join('')}
     </select>
     <input class="form-control" style="width:160px;font-size:12px" placeholder="Search member…" value="${APP_STATE._allocSearch||''}" oninput="setAllocFilter('_allocSearch',this.value)"/>
     ${(filterTrack||searchStr)?`<button class="btn btn-ghost btn-sm" onclick="setAllocFilter('_allocFilterTrack','');setAllocFilter('_allocSearch','')">Reset</button>`:''}
@@ -1893,11 +1893,12 @@ function buildTimeLogCell(memberId, dateStr, existing, projects) {
     `<option value="${p.id||p.name||p.customerName||''}" ${proj===(p.id||p.name||p.customerName||'')?'selected':''}>
       ${p.name||p.customerName}
     </option>`
-  ).join('');
+  ).join('') + `<option value="Other" ${proj==='Other'?'selected':''}>Other</option>`;
 
   return `<div style="padding:4px">
-    <div style="font-size:11px;font-weight:700;color:var(--lt);text-align:center;margin-bottom:4px">
-      ${hours > 0 ? hours+'h'+(note?'  📝':'') : '—'}
+    <div style="font-size:11px;font-weight:700;color:var(--lt);text-align:center;margin-bottom:4px"
+      ${note ? `title="${note.replace(/"/g,'&quot;')}"` : ''}>
+      ${hours > 0 ? hours+'h'+(note?' 📝':'') : '—'}
     </div>
     <input type="number" min="0" max="24" step="0.5"
       id="tl-h-${memberId}-${dateStr}"
@@ -1951,7 +1952,13 @@ function _renderTimeLog() {
   }
 
   const weekDays = getWeekDates(weekOffset);
-  const dayStrs  = weekDays.map(d => d.toISOString().split('T')[0]);
+  // Use local date to avoid UTC-shift in timezones ahead of UTC (e.g. IST UTC+5:30)
+  const dayStrs  = weekDays.map(d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  });
   const today    = DateHelpers.today();
 
   const dayNames = ['MON','TUE','WED','THU','FRI'];
@@ -1971,7 +1978,7 @@ function _renderTimeLog() {
       const abbr = (log.leaveType||'Leave').slice(0,3).toUpperCase();
       return `<span class="badge badge-purple" style="font-size:9px">🏖 ${abbr}</span>`;
     }
-    return `<div style="font-size:12px;font-weight:700;color:var(--navy);text-align:center">${log.hours||0}h${log.note?` <span style="font-size:9px" title="${log.note}">📝</span>`:''}</div>`;
+    return `<div style="font-size:12px;font-weight:700;color:var(--navy);text-align:center;cursor:default" ${log.note?`title="${log.note.replace(/"/g,'&quot;')}"`:''} >${log.hours||0}h${log.note?' 📝':''}</div>`;
   }
 
   const allProjects = [...APP_STATE.projects, ...(APP_STATE.onboardingProjects||[])];
