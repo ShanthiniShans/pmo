@@ -1,6 +1,6 @@
-# Kriyadocs Engineering PMO
+# Engineering PMO
 
-Live, shared program management dashboard for the Kriyadocs Engineering team.
+Live, shared program management dashboard for the Engineering team.
 All data is stored in Firebase — every edit is instantly visible to everyone with the URL.
 
 ---
